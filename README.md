@@ -1,1 +1,1 @@
-# helix-resolver
+# helix-solver
