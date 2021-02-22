@@ -33,3 +33,6 @@
 
 # IDE
 .vscode
+
+# external
+libs/build-gtest/

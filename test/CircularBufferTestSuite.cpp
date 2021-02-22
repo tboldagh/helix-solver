@@ -3,6 +3,9 @@
 #include <memory>
 #include <boost/circular_buffer.hpp>
 
+namespace HelixSolver
+{
+
 constexpr int TEST_VECTOR_1[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 constexpr int TEST_VECTOR_2[]{1, 2, 3, 4};
 
@@ -43,3 +46,5 @@ TEST_F(CircularBufferTestSuite, ShouldStoreOnlyLastValuesIfMorePushesThanSizeOfB
 
     ASSERT_THAT(*m_sut, ::testing::ElementsAreArray(EXPECTED_BUFFER));
 }
+
+} // HelixSolver
