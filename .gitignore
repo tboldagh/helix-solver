@@ -36,3 +36,7 @@
 
 # external
 libs/build-gtest/
+libs/gtest-obj/
+
+# testing dir
+TESTING/

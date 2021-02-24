@@ -1,4 +1,4 @@
-CC := g++
+CC := dpcpp
 CFLAGS := -std=c++17
 WFLAGS := -Wall -Wextra
 
@@ -26,7 +26,6 @@ TESTOBJ := $(patsubst $(TESTSRCDIR)/%,$(TESTBUILDDIR)/%,$(TESTSRC:.$(SRCEXT)=.o)
 
 GTESTINC := -I libs/googletest/googletest/include -I libs/googletest/googlemock/include
 GTESTLIBPATH := $(LIBS)/build-gtest/lib
-GTESTLIBSLINK := -lgtest -lgmock -lgtest_main
 
 run: $(TARGET)
 	./$<
@@ -44,7 +43,7 @@ test: $(TESTTARGET)
 
 $(TESTTARGET): $(TESTOBJ)
 	mkdir -p $(BINDIR)
-	$(CC) $(CFLAGS) -L$(GTESTLIBPATH) $(GTESTLIBSLINK) $^ -o $@
+	$(CC) $(CFLAGS) -pthread $(LIBS)/gtest-obj/*.o $^ -o $@
 
 $(TESTBUILDDIR)/%.o: $(TESTSRCDIR)/%.$(SRCEXT)
 	mkdir -p $(TESTBUILDDIR)
@@ -52,12 +51,18 @@ $(TESTBUILDDIR)/%.o: $(TESTSRCDIR)/%.$(SRCEXT)
 
 build_gtest:
 	mkdir -p $(LIBS)/build-gtest
-	cmake -S $(LIBS)/googletest -B $(LIBS)/build-gtest
+	mkdir -p $(LIBS)/gtest-obj
+	cd $(LIBS)/build-gtest && cmake ../googletest
 	make -C $(LIBS)/build-gtest
+	cd $(LIBS)/gtest-obj && ar xv ../build-gtest/lib/libgmock.a
+	cd $(LIBS)/gtest-obj && ar xv ../build-gtest/lib/libgtest.a
+	cd $(LIBS)/gtest-obj && ar xv ../build-gtest/lib/libgtest_main.a
 
 clean:
 	rm -rf $(BUILDDIR) $(BINDIR) $(TESTBUILDDIR)
 
 clean_external:
-	rm -rf libs/build-gtest
+	rm -rf $(LIBS)/build-gtest
+	rm -rf $(LIBS)/gtest-obj
+
 .PHONY: clean, run, test, build_gtest, clean_external
