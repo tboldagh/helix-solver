@@ -1,15 +1,13 @@
 #pragma once
 
-#include <HelixSolver/IApplication.h>
-
 namespace HelixSolver
 {
 
-class Application : public IApplication
+class Application
 {
 public:
-    void Run() override;
-    ~Application() override;
+    void Run();
+    ~Application();
 };
 
 } // HelixSolver
