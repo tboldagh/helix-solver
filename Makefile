@@ -16,6 +16,8 @@ TARGET := $(BINDIR)/$(EXEC)
 TESTTARGET := $(BINDIR)/$(TESTEXEC)
 SRCEXT := cpp
 
+LINKBOOST = -lboost_program_options
+
 SRC := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJ := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SRC:.$(SRCEXT)=.o))
 
@@ -32,7 +34,7 @@ run: $(TARGET)
 
 $(TARGET): $(OBJ)
 	mkdir -p $(BINDIR)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $(LINKBOOST) $^ -o $@
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	mkdir -p $(BUILDDIR)
