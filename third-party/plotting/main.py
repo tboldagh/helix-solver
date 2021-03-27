@@ -30,4 +30,4 @@ if __name__ == '__main__':
     plt.xlabel('X')
     detector_bound = plt.Circle((0, 0), r_detector, color='b', fill=False)
     axes.add_artist(detector_bound)
-    plt.savefig('plot.png')
+    plt.savefig('plot.png', dpi=500)

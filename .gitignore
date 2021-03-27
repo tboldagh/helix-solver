@@ -40,3 +40,9 @@ libs/gtest-obj/
 
 # testing dir
 TESTING/
+
+# image files
+*.png
+*.eps
+*.jpg
+*.jpeg
