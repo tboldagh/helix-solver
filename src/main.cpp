@@ -3,12 +3,11 @@
 
 #include <HelixSolver/Application.h>
 
-int main(const int argc, const char** argv)
+int main(int argc, char* argv[])
 {
-    std::unique_ptr<HelixSolver::Application> app =
-            std::make_unique<HelixSolver::Application>();
+    std::vector<std::string> l_argv;
+    for (int i = 0; i < argc; ++i) l_argv.push_back(argv[i]);
 
-    app->Run();
-
-    return 0;
+    HelixSolver::Application app(l_argv);
+    return app.Run();
 }

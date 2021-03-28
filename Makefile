@@ -2,6 +2,8 @@ CC := dpcpp
 CFLAGS := -std=c++17
 WFLAGS := -Wall -Wextra
 
+INPUT_ARGS := config.json
+
 LIBS := libs
 SRCDIR := src
 BUILDDIR := build
@@ -16,12 +18,13 @@ TARGET := $(BINDIR)/$(EXEC)
 TESTTARGET := $(BINDIR)/$(TESTEXEC)
 SRCEXT := cpp
 
-LINKBOOST = -lboost_program_options
+LINKBOOST := -lboost_program_options
+JSON_SINGLE_INCLUDE := $(LIBS)/json/single_include
 
 SRC := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJ := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SRC:.$(SRCEXT)=.o))
 
-INC := -I $(INCDIR)
+INC := -I $(INCDIR) -I $(JSON_SINGLE_INCLUDE)
 
 TESTSRC := $(shell find $(TESTSRCDIR) -type f -name *.$(SRCEXT))
 TESTOBJ := $(patsubst $(TESTSRCDIR)/%,$(TESTBUILDDIR)/%,$(TESTSRC:.$(SRCEXT)=.o))
@@ -30,7 +33,7 @@ GTESTINC := -I libs/googletest/googletest/include -I libs/googletest/googlemock/
 GTESTLIBPATH := $(LIBS)/build-gtest/lib
 
 run: $(TARGET)
-	./$<
+	./$< $(INPUT_ARGS)
 
 build: $(TARGET)
 
