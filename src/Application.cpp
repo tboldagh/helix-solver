@@ -2,6 +2,7 @@
 #include <fstream>
 
 #include <HelixSolver/Application.h>
+#include <HelixSolver/TrackFindingAlgorithm.h>
 
 namespace HelixSolver
 {
@@ -21,7 +22,8 @@ Application::Application(std::vector<std::string>& p_argv)
 int Application::Run()
 {
     m_event.LoadFromFile(m_config["inputFile"]);
-    m_event.Print();
+    TrackFindingAlgorithm l_algorithm(m_config, m_event.GetStubs());
+    l_algorithm.Run();
     return 0;
 }
 
