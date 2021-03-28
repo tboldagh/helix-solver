@@ -34,7 +34,7 @@ void SingleRunMap::addPoint(const Point& point) {
 void SingleRunMap::dumpToFile(std::string_view p_fileName) const {
     std::ofstream l_file;
     l_file.open(p_fileName);
-    
+    l_file.precision(64);
     std::for_each(m_points.begin(), m_points.end(),
             [&l_file](const Point& l_point) {
                 l_file << l_point.getX() << " " << l_point.getY() << " " << l_point.getZ() << std::endl;

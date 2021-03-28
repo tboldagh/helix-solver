@@ -130,7 +130,7 @@ if __name__ == '__main__':
     main_acc.fill()
     acc_map = main_acc.get_map()
 
-    candidate_cells = main_acc.get_cells_above_threshold(4)
+    candidate_cells = main_acc.get_cells_above_threshold(3)
     
     for cand in candidate_cells:
         vals = main_acc.get_values_at_position(cand[1], cand[0])
@@ -154,7 +154,7 @@ if __name__ == '__main__':
         cell_acc = Accumulator(cell_accumulator_config)
         cell_acc.fill()
 
-        cand_idxes = cell_acc.get_cells_above_threshold(4)
+        cand_idxes = cell_acc.get_cells_above_threshold(3)
 
         for cand in cand_idxes:
             track_candidates.append(cell_acc.get_values_at_position(cand[1], cand[0]))
