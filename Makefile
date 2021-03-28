@@ -6,8 +6,8 @@ LIBS := libs
 SRCDIR := src
 BUILDDIR := build
 TESTBUILDDIR := testbuild
+DEVCLOUD_EXEC := exec
 INCDIR := include
-INTDIR := interfaces
 BINDIR := bin
 EXEC := HelixSolver.out
 TESTSRCDIR := test
@@ -21,7 +21,7 @@ LINKBOOST = -lboost_program_options
 SRC := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJ := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SRC:.$(SRCEXT)=.o))
 
-INC := -I $(INCDIR) -I $(INTDIR)
+INC := -I $(INCDIR)
 
 TESTSRC := $(shell find $(TESTSRCDIR) -type f -name *.$(SRCEXT))
 TESTOBJ := $(patsubst $(TESTSRCDIR)/%,$(TESTBUILDDIR)/%,$(TESTSRC:.$(SRCEXT)=.o))
@@ -31,6 +31,8 @@ GTESTLIBPATH := $(LIBS)/build-gtest/lib
 
 run: $(TARGET)
 	./$<
+
+build: $(TARGET)
 
 $(TARGET): $(OBJ)
 	mkdir -p $(BINDIR)
@@ -62,9 +64,11 @@ build_gtest:
 
 clean:
 	rm -rf $(BUILDDIR) $(BINDIR) $(TESTBUILDDIR)
+	rm -rf $(DEVCLOUD_EXEC)/build.sh.*
+	rm -rf $(DEVCLOUD_EXEC)/run.sh.*
 
 clean_external:
 	rm -rf $(LIBS)/build-gtest
 	rm -rf $(LIBS)/gtest-obj
 
-.PHONY: clean, run, test, build_gtest, clean_external
+.PHONY: clean, run, build, test, build_gtest, clean_external
