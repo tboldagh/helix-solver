@@ -1,4 +1,5 @@
 {
+    "inputFile": "inputs/event-gen-1.txt",
     "B": 2,
     "R": 600,
     "c": 299792458,

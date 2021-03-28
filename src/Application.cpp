@@ -20,6 +20,8 @@ Application::Application(std::vector<std::string>& p_argv)
 
 int Application::Run()
 {
+    m_event.LoadFromFile(m_config["inputFile"]);
+    m_event.Print();
     return 0;
 }
 
