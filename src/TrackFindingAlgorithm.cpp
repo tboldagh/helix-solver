@@ -13,6 +13,7 @@ TrackFindingAlgorithm::TrackFindingAlgorithm(nlohmann::json& p_config, const std
 
 void TrackFindingAlgorithm::Run()
 {
+    m_firstStageAcc.Fill();
 }
 
 } // namespace HelixSolver
