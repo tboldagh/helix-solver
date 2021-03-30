@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(helix-solver)
-
+set(CMAKE_CXX_COMPILER "dpcpp") 
+set(CMAKE_LINKER "dpcpp")
 set(CMAKE_CXX_STANDARD 17)
+
+project(helix-solver)
 
 add_subdirectory(libs/googletest)
 add_subdirectory(libs/json)

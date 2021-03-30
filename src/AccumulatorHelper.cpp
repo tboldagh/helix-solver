@@ -10,7 +10,7 @@ namespace HelixSolver {
             } else {
                 double delta = (end - start) / (num - 1);
 
-                for (auto i = 0; i < (num - 1); ++i) {
+                for (uint32_t i = 0; i < num - 1; ++i) {
                     vec.push_back(start + delta * i);
                 }
                 vec.push_back(end);
@@ -60,10 +60,12 @@ namespace HelixSolver {
         if (p_yLeft > yEnd and p_yRight < yEnd) {
             uint32_t rightIdx = FindClosest(p_Y, p_yRight);
             uint32_t leftIdx = yDpi - 1;
+            return std::make_pair(leftIdx, rightIdx);
         }
         if (p_yLeft < yEnd and p_yRight > yEnd) {
             uint32_t rightIdx = yDpi - 1;;
             uint32_t leftIdx = FindClosest(p_Y, p_yLeft);
+            return std::make_pair(leftIdx, rightIdx);
         }
 
         return {};

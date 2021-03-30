@@ -14,7 +14,7 @@ namespace HelixSolver {
         VectorIdxPair cellsAboveThreshold = m_firstStageAcc.GetCellsAboveThreshold(
                 m_config["threshold"].get<uint8_t>());
 
-        std::ofstream out(m_config["outputFile"].get<std::string_view>());
+        std::ofstream out(m_config["outputFile"].get<std::string>());
         out << std::setprecision(64);
         for (auto &p : cellsAboveThreshold) {
             const auto[q_over_p, angle] = m_firstStageAcc.GetValuesOfIndexes(p.first, p.second);
