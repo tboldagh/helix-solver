@@ -46,3 +46,10 @@ TESTING/
 *.eps
 *.jpg
 *.jpeg
+
+# idea files
+.idea/
+cmake-build-debug/
+
+# out files
+detected-circles.txt

@@ -4,10 +4,12 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def pol2cart(r, a):
     x = r * np.cos(a)
     y = r * np.sin(a)
     return (x, y)
+
 
 if __name__ == '__main__':
     r_detector = 600

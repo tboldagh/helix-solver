@@ -1,13 +1,11 @@
 #pragma once
 
-namespace HelixSolver
-{
+namespace HelixSolver {
 
-struct Stub
-{
-    const double x;
-    const double y;
-    const double z;
-};
+    struct Stub {
+        const double x;
+        const double y;
+        const double z;
+    };
 
 } // HelixSolver

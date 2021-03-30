@@ -13,6 +13,7 @@ multiplier = math.ceil(2 * math.pi)
 
 points = np.loadtxt('../out/points.out')
 
+
 def plot_points(points, map_size):
     plt.plot(for_plot[0], for_plot[1], '.', color='black')
     plt.ylabel('Y')
@@ -26,7 +27,7 @@ def plot_points(points, map_size):
 def calc_for_r(r, th):
     print('Th: {} calculating r: {}'.format(th, r))
     d_angles = np.linspace(0., np.pi / 2, int(r * multiplier))
-    
+
     sins = np.sin(d_angles)
     coss = np.cos(d_angles)
     rsins = np.flip(sins)
@@ -60,10 +61,11 @@ def calc_for_r(r, th):
     idx = np.unravel_index(space.argmax(), space.shape)
     print("From th: {} for r: {}: ".format(th, r) + " : " + str(idx) + " : " + str(space[idx[0]][idx[1]]))
 
-def runAlgotithm(radius_list, id):
 
+def runAlgotithm(radius_list, id):
     for r in radius_list:
         calc_for_r(r, id)
+
 
 if __name__ == '__main__':
 
@@ -78,14 +80,13 @@ if __name__ == '__main__':
     for i in range(0, num_of_threads):
         begin = i * one_range_len
         end = (i + 1) * one_range_len
-        
+
         if end > r_len:
             end = r_len
-        
+
         print('{} to {}'.format(begin, end))
         thread = threading.Thread(target=runAlgotithm, args=(r_range[begin:end], i))
         jobs.append(thread)
-
 
     for idx, j in enumerate(jobs):
         print(idx)

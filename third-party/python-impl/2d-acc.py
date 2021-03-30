@@ -6,20 +6,24 @@ import sys
 import json
 from copy import deepcopy
 
+
 def cart2pol(x, y):
-    r = np.sqrt(x**2 + y**2)
+    r = np.sqrt(x ** 2 + y ** 2)
     a = np.arctan2(y, x)
     return (r, a)
+
 
 def pol2cart(r, a):
     x = r * np.cos(a)
     y = r * np.sin(a)
     return (x, y)
 
+
 def find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx
+
 
 def prepare_y_idx(accumulator_config, Y, y_left, y_right):
     y_end = accumulator_config['y_end']
@@ -33,7 +37,7 @@ def prepare_y_idx(accumulator_config, Y, y_left, y_right):
     elif y_left > y_begin and y_right < y_begin:
         y_right_idx = 0
         y_left_idx = find_nearest(Y, y_left)
-    
+
     elif y_left < y_begin and y_right > y_begin:
         y_right_idx = find_nearest(Y, y_right)
         y_left_idx = 0
@@ -52,6 +56,7 @@ def prepare_y_idx(accumulator_config, Y, y_left, y_right):
 
     return y_left_idx, y_right_idx
 
+
 class Accumulator:
     points = []
 
@@ -65,10 +70,11 @@ class Accumulator:
         self._dy = self._Y[1] - self._Y[0]
         self._map = np.zeros((config['y_dpi'], config['x_dpi']), dtype=np.ubyte)
 
+
     def fill(self):
         for point in points:
             (r, phi) = cart2pol(point[0], point[1])
-            r = r / 1000 # to meters
+            r = r / 1000  # to meters
             fun = lambda x: -r * x + phi
 
             for x_idx in range(self._config['x_dpi']):
@@ -85,8 +91,8 @@ class Accumulator:
 
                 if y_left_idx > y_right_idx:
                     y_left_idx, y_right_idx = y_right_idx, y_left_idx
-                
-                for y_idx in range(y_left_idx, y_right_idx+1):
+
+                for y_idx in range(y_left_idx, y_right_idx + 1):
                     self._map[y_idx][x_idx] += 1
 
     def get_values_at_position(self, x, y):
@@ -106,19 +112,20 @@ class Accumulator:
 
     def dealloc(self):
         self._map = None
-    
+
     def get_cells_above_threshold(self, threshold=5):
         maximums = self._map > threshold
         maximums_idx = np.where(maximums)
         return np.transpose(maximums_idx)
 
+
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print('Args must be: <config_file> <points_file>', file=sys.stderr)
+    if len(sys.argv) < 2:
+        print('Args must be: <config_file>', file=sys.stderr)
     try:
         with open(sys.argv[1], 'r') as config_file:
             config = json.load(config_file)
-        points = np.loadtxt(sys.argv[2])
+        points = np.loadtxt(config["inputFile"])
     except Exception as e:
         print(e, file=sys.stderr)
     r_detector = config['R']
@@ -131,12 +138,10 @@ if __name__ == '__main__':
     acc_map = main_acc.get_map()
 
     candidate_cells = main_acc.get_cells_above_threshold(3)
-    
     for cand in candidate_cells:
         vals = main_acc.get_values_at_position(cand[1], cand[0])
         r = ((1 / vals[0]) / B) * 1000
-        phi = vals[1] + math.pi / 2
-        x, y = pol2cart(r, phi)
+        phi = vals[1] + math.pi / 2  # position of circle centers from first accumulator
 
     main_acc_dx, main_acc_dy = main_acc.get_deltas()
     main_acc_dx_2 = main_acc_dx / 2
@@ -159,7 +164,7 @@ if __name__ == '__main__':
         for cand in cand_idxes:
             track_candidates.append(cell_acc.get_values_at_position(cand[1], cand[0]))
 
-    with open('detected_circles.txt', 'w') as f:
+    with open(config["outputFile"], 'w') as f:
         for cand in track_candidates:
             r = ((1 / cand[0]) / B) * 1000
             phi = cand[1] + math.pi / 2
