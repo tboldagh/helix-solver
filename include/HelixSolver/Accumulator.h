@@ -1,17 +1,18 @@
 #pragma once
 
 #include <vector>
-#include <nlohmann/json.hpp>
-#include <HelixSolver/Stub.h>
 #include <utility>
+#include <functional>
 
+#include <nlohmann/json.hpp>
+#include <HelixSolver/Event.h>
 namespace HelixSolver {
 
     using VectorIdxPair = std::vector<std::pair<uint32_t, uint32_t>>;
 
     class Accumulator {
     public:
-        Accumulator(nlohmann::json &p_config, const std::vector<Stub> &p_stubs);
+        Accumulator(nlohmann::json &p_config, const Event &m_event);
 
         void Fill();
 
@@ -25,7 +26,7 @@ namespace HelixSolver {
         void PrepareLinspaces();
 
         nlohmann::json &m_config;
-        const std::vector<Stub> &m_stubs;
+        const Event &m_event;
 
         std::vector<double> m_X;
         std::vector<double> m_Y;

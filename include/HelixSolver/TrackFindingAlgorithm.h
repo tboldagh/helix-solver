@@ -10,14 +10,14 @@ namespace HelixSolver {
 
     class TrackFindingAlgorithm {
     public:
-        TrackFindingAlgorithm(nlohmann::json &p_config, const std::vector<Stub> &p_stubs);
+        TrackFindingAlgorithm(nlohmann::json &p_config, const Event &p_event);
 
         void Run();
 
     private:
         nlohmann::json &m_config;
         const double m_B{0};
-        const std::vector<Stub> &m_stubs;
+        const Event &m_event;
         Accumulator m_firstStageAcc;
     };
 

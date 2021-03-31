@@ -4,8 +4,8 @@
 
 namespace HelixSolver {
 
-    Accumulator::Accumulator(nlohmann::json &p_config, const std::vector<Stub> &p_stubs)
-            : m_config(p_config), m_stubs(p_stubs) {
+    Accumulator::Accumulator(nlohmann::json &p_config, const Event &m_event)
+            : m_config(p_config), m_event(m_event) {
         PrepareLinspaces();
 
         m_dx = m_X[1] - m_X[0];
@@ -20,18 +20,13 @@ namespace HelixSolver {
     }
 
     void Accumulator::Fill() {
-        for (auto &stub : m_stubs) {
-            const auto[rad, ang] = cart2pol(stub.x, stub.y);
-            const double r = rad / 1000.0;
-            const double phi = ang;
-            auto fun = [r, phi](double x) { return -r * x + phi; };
-
+        for (const auto& stubFunc : m_event.GetStubsFuncs()) {
             for (uint32_t i = 0; i < m_X.size(); ++i) {
                 double x = m_X[i];
                 double xLeft = x - m_dxHalf;
                 double xRight = x + m_dxHalf;
-                double yLeft = fun(xLeft);
-                double yRight = fun(xRight);
+                double yLeft = stubFunc(xLeft);
+                double yRight = stubFunc(xRight);
                 OptionalIdxPair yRange = FindYRange(m_config, m_Y, yLeft, yRight);
                 if (!yRange.has_value())
                     continue;

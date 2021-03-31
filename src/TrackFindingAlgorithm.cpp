@@ -4,9 +4,9 @@
 
 namespace HelixSolver {
 
-    TrackFindingAlgorithm::TrackFindingAlgorithm(nlohmann::json &p_config, const std::vector<Stub> &p_stubs)
-            : m_config(p_config), m_B(p_config["B"].get<double>()), m_stubs(p_stubs),
-              m_firstStageAcc(m_config["main_accumulator_config"], m_stubs) {
+    TrackFindingAlgorithm::TrackFindingAlgorithm(nlohmann::json &p_config, const Event& p_event)
+            : m_config(p_config), m_B(p_config["B"].get<double>()), m_event(p_event),
+              m_firstStageAcc(m_config["main_accumulator_config"], m_event) {
     }
 
     void TrackFindingAlgorithm::Run() {

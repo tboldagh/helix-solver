@@ -18,7 +18,8 @@ namespace HelixSolver {
 
     int Application::Run() {
         m_event.LoadFromFile(m_config["inputFile"]);
-        TrackFindingAlgorithm l_algorithm(m_config, m_event.GetStubs());
+        m_event.BuildStubsFunctions(m_config);
+        TrackFindingAlgorithm l_algorithm(m_config, m_event);
         l_algorithm.Run();
         return 0;
     }

@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <HelixSolver/AccumulatorHelper.h>
 #include <HelixSolver/Event.h>
 
 namespace HelixSolver {
@@ -32,6 +33,20 @@ namespace HelixSolver {
 
     const std::vector<Stub> &Event::GetStubs() const {
         return m_stubs;
+    }
+
+    const std::vector<std::function<double(double)>> &Event::GetStubsFuncs() const {
+        return m_stubsFunctions;
+    }
+
+    void Event::BuildStubsFunctions(const nlohmann::json& config) {
+        for (const auto& stub : m_stubs) {
+            const auto[rad, ang] = cart2pol(stub.x, stub.y);
+            const double r = rad / 1000.0;
+            const double phi = ang;
+            auto fun = [r, phi](double x) { return -r * x + phi; };
+            m_stubsFunctions.push_back(fun);
+        }
     }
 
 } // namespace HelixSolver
