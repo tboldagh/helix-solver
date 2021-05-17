@@ -81,7 +81,7 @@ namespace HelixSolver {
         std::vector<float> phiVec = m_event.GetPhi();
 
         sycl::buffer<float, 1> rBuffer(rVec.begin(), rVec.end());
-        sycl::buffer<float, 1> phiBuffer(rVec.begin(), rVec.end());
+        sycl::buffer<float, 1> phiBuffer(phiVec.begin(), phiVec.end());
         
         sycl::buffer<float, 1> XLinspaceBuf(m_X.begin(), m_X.end());
         sycl::buffer<float, 1> YLinspaceBuf(m_Y.begin(), m_Y.end());
@@ -111,7 +111,7 @@ namespace HelixSolver {
                     PHI[i] = phiAccessor[i];
                 }
 
-                float dx = X[1] - Y[0];
+                float dx = X[1] - X[0];
                 float dxHalf = dx / 2.0;
 
                 float x, xLeft, xRight, yLeft, yRight, yLeftIdx, yRightIdx;
@@ -149,14 +149,15 @@ namespace HelixSolver {
     void Accumulator::Fill() {
         for (const auto& stubFunc : m_event.GetStubsFuncs()) {
             for (uint32_t i = 0; i < m_X.size(); ++i) {
-                double x = m_X[i];
-                double xLeft = x - m_dxHalf;
-                double xRight = x + m_dxHalf;
-                double yLeft = stubFunc(xLeft);
-                double yRight = stubFunc(xRight);
+                float x = m_X[i];
+                float xLeft = x - m_dxHalf;
+                float xRight = x + m_dxHalf;
+                
+                float yLeft = stubFunc(xLeft);
+                float yRight = stubFunc(xRight);
 
-                double yLeftIdx = FindClosest(m_Y, yLeft);
-                double yRightIdx = FindClosest(m_Y, yRight);
+                float yLeftIdx = FindClosest(m_Y, yLeft);
+                float yRightIdx = FindClosest(m_Y, yRight);
 
                 for (uint32_t j = yRightIdx; j <= yLeftIdx; ++j) {
                     m_map[j * ACC_WIDTH + i] += 1;

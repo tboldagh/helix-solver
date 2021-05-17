@@ -13,7 +13,7 @@ namespace HelixSolver {
     void Event::LoadFromFile(std::string p_filePath) {
         try {
             std::ifstream l_pointsFile(p_filePath);
-            double l_x, l_y, l_z;
+            float l_x, l_y, l_z;
             while (l_pointsFile >> l_x >> l_y >> l_z) {
                 m_stubs.push_back(Stub{l_x, l_y, l_z});
             }
@@ -35,20 +35,20 @@ namespace HelixSolver {
         return m_stubs;
     }
 
-    const std::vector<std::function<double(double)>> &Event::GetStubsFuncs() const {
+    const std::vector<std::function<float(float)>> &Event::GetStubsFuncs() const {
         return m_stubsFunctions;
     }
 
     void Event::BuildStubsFunctions(const nlohmann::json& config) {
         for (const auto& stub : m_stubs) {
             const auto[rad, ang] = cart2pol(stub.x, stub.y);
-            const double r = rad / 1000.0;
-            const double phi = ang;
+            const float r = rad / 1000.0;
+            const float phi = ang;
 
-            m_r.push_back(static_cast<float>(r));
-            m_phi.push_back(static_cast<float>(phi));
+            m_r.push_back(r);
+            m_phi.push_back(phi);
 
-            auto fun = [r, phi](double x) { return -r * x + phi; };
+            auto fun = [r, phi](float x) { return -r * x + phi; };
             m_stubsFunctions.push_back(fun);
         }
     }

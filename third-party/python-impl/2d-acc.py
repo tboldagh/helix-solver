@@ -137,6 +137,8 @@ if __name__ == '__main__':
     main_acc.fill()
     acc_map = main_acc.get_map()
 
+    print(acc_map)
+
     candidate_cells = main_acc.get_cells_above_threshold(3)
     for cand in candidate_cells:
         vals = main_acc.get_values_at_position(cand[1], cand[0])

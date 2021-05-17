@@ -1,5 +1,5 @@
 {
-    "inputFile": "inputs/event-gen-1.txt",
+    "inputFile": "inputs/event-gen-2.txt",
     "outputFile": "detected-circles.txt",
     "B": 2,
     "R": 600,

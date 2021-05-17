@@ -3,9 +3,9 @@
 namespace HelixSolver {
 
     struct Stub {
-        const double x;
-        const double y;
-        const double z;
+        const float x;
+        const float y;
+        const float z;
     };
 
 } // HelixSolver
