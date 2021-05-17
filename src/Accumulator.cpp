@@ -1,4 +1,5 @@
 #include <iostream>
+#include <limits>
 
 #include <CL/sycl.hpp>
 #include <CL/sycl/INTEL/fpga_extensions.hpp>
@@ -66,7 +67,8 @@ namespace HelixSolver {
 
     void Accumulator::FillOnDevice() {
         sycl::INTEL::fpga_emulator_selector device_selector;
-        sycl::queue fpgaQueue(device_selector);
+        auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
+        sycl::queue fpgaQueue(device_selector, NULL, propertyList);
 
         sycl::platform platform = fpgaQueue.get_context().get_platform();
         sycl::device device = fpgaQueue.get_device();
@@ -96,19 +98,40 @@ namespace HelixSolver {
             sycl::accessor xLinspaceAccessor(XLinspaceBuf, h, sycl::read_only);
             sycl::accessor yLinspaceAccessor(YLinspaceBuf, h, sycl::read_only);
 
-            h.single_task<class KernelHoughTransform>([=]() {
-                float X[ACC_WIDTH], Y[ACC_HEIGHT], R[MAX_STUB_NUM], PHI[MAX_STUB_NUM];
+            h.single_task<class KernelHoughTransform>([=]() [[intel::kernel_args_restrict]] {
+                [[intel::numbanks(512)]]
+                float X[ACC_WIDTH];
 
+                [[intel::numbanks(512)]]
+                float Y[ACC_HEIGHT];
+
+                [[intel::numbanks(512)]]
+                float R[MAX_STUB_NUM];
+
+                [[intel::numbanks(512)]]
+                float PHI[MAX_STUB_NUM];
+
+                [[intel::numbanks(512)]]
                 uint8_t ACCUMULATOR[ACC_SIZE];
 
+                #pragma unroll 128
+                [[intel::ivdep]]
                 for (uint32_t i = 0; i < ACC_WIDTH; ++i) X[i] = xLinspaceAccessor[i];
+
+                #pragma unroll 128
+                [[intel::ivdep]]
                 for (uint32_t i = 0; i < ACC_HEIGHT; ++i) Y[i] = yLinspaceAccessor[i];
 
                 size_t stubsNum = rAccessor.get_count();
-                for (uint32_t i = 0; i < stubsNum; ++i)
+
+                #pragma unroll 128
+                [[intel::ivdep]]
+                for (uint32_t i = 0; i < MAX_STUB_NUM; ++i)
                 {
-                    R[i] = rAccessor[i];
-                    PHI[i] = phiAccessor[i];
+                    if (i < stubsNum) {
+                        R[i] = rAccessor[i];
+                        PHI[i] = phiAccessor[i];
+                    }
                 }
 
                 float dx = X[1] - X[0];
@@ -117,6 +140,8 @@ namespace HelixSolver {
                 float x, xLeft, xRight, yLeft, yRight, yLeftIdx, yRightIdx;
 
                 for (uint32_t j = 0; j < stubsNum; ++j) {
+                    #pragma unroll 128
+                    [[intel::ivdep]]
                     for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
                         x = X[i];
                         xLeft = x - dxHalf;
@@ -128,12 +153,20 @@ namespace HelixSolver {
                         yLeftIdx = FindClosest_FPGA(Y, ACC_HEIGHT, yLeft);
                         yRightIdx = FindClosest_FPGA(Y, ACC_HEIGHT, yRight);
 
-                        for (uint32_t k = yRightIdx; k <= yLeftIdx; ++k) {
-                            ACCUMULATOR[k * ACC_WIDTH + i] += 1;
+                        #pragma unroll 128
+                        [[intel::ivdep]]
+                        for (uint32_t k = 0; k < ACC_HEIGHT; ++k) {
+                            uint8_t incrementValue = 0;
+                            if (k >= yRightIdx && k <= yLeftIdx) {
+                                incrementValue = 1;
+                            }
+                            ACCUMULATOR[k * ACC_WIDTH + i] += incrementValue;
                         }
                     }
                 }
 
+                #pragma unroll 64
+                [[intel::ivdep]]
                 for (uint32_t i = 0; i < ACC_SIZE; ++i) {
                     mapAccessor[i] = ACCUMULATOR[i];
                 }
@@ -141,6 +174,12 @@ namespace HelixSolver {
         });
 
         qEvent.wait();
+
+        sycl::cl_ulong kernelStartTime = qEvent.get_profiling_info<sycl::info::event_profiling::command_start>();
+        sycl::cl_ulong kernelEndTime = qEvent.get_profiling_info<sycl::info::event_profiling::command_end>();
+        double kernelTime = (kernelEndTime - kernelStartTime) / NS;
+
+        std::cout << "Execution time: " << kernelTime << " seconds" << std::endl;
 
         sycl::host_accessor hostMapAccessor(mapBuffer, sycl::read_only);
         for (uint32_t i = 0; i < ACC_SIZE; ++i) m_map[i] = hostMapAccessor[i];
