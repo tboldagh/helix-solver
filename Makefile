@@ -32,6 +32,9 @@ TESTOBJ := $(patsubst $(TESTSRCDIR)/%,$(TESTBUILDDIR)/%,$(TESTSRC:.$(SRCEXT)=.o)
 GTESTINC := -I libs/googletest/googletest/include -I libs/googletest/googlemock/include
 GTESTLIBPATH := $(LIBS)/build-gtest/lib
 
+report:
+	$(CC) $(CFLAGS) -fintelfpga -fsycl-link -Xshardware $(INC) $(LINKBOOST) $(SRCDIR)/*.cpp -o bin/report.a
+
 run: $(TARGET)
 	./$< $(INPUT_ARGS)
 
@@ -39,11 +42,11 @@ build: $(TARGET)
 
 $(TARGET): $(OBJ)
 	mkdir -p $(BINDIR)
-	$(CC) $(CFLAGS) $(LINKBOOST) $^ -o $@
+	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(LINKBOOST) $^ -o $@
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	mkdir -p $(BUILDDIR)
-	$(CC) $(CFLAGS) $(INC) $< -c -o $@ $(WFLAGS)
+	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(INC) $< -c -o $@ $(WFLAGS)
 
 test: $(TESTTARGET)
 	./$<
@@ -74,4 +77,4 @@ clean_external:
 	rm -rf $(LIBS)/build-gtest
 	rm -rf $(LIBS)/gtest-obj
 
-.PHONY: clean, run, build, test, build_gtest, clean_external
+.PHONY: clean, run, build, test, build_gtest, clean_external, report

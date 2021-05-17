@@ -9,13 +9,13 @@ namespace HelixSolver {
 
     using OptionalIdxPair = std::optional<std::pair<uint32_t, uint32_t>>;
 
-    std::vector<double> linspace(std::vector<double> &vec, double start, double end, size_t num);
+    std::vector<float> linspace(std::vector<float> &vec, float start, float end, size_t num);
 
-    std::pair<double, double> cart2pol(double x, double y);
+    std::pair<float, float> cart2pol(float x, float y);
 
-    uint32_t FindClosest(const std::vector<double> &vec, double value);
+    uint32_t FindClosest(const std::vector<float> &vec, float value);
 
-    OptionalIdxPair FindYRange(nlohmann::json &p_config, std::vector<double> &p_Y, double p_yLeft, double p_yRight);
+    OptionalIdxPair FindYRange(nlohmann::json &p_config, std::vector<float> &p_Y, float p_yLeft, float p_yRight);
 
     template<typename T>
     void Swap(T &first, T &second) {

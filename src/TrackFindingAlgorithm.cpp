@@ -10,7 +10,9 @@ namespace HelixSolver {
     }
 
     void TrackFindingAlgorithm::Run() {
-        m_firstStageAcc.Fill();
+        // m_firstStageAcc.Fill();
+        m_firstStageAcc.FillOnDevice();
+        // m_firstStageAcc.PrintMainAcc();
         VectorIdxPair cellsAboveThreshold = m_firstStageAcc.GetCellsAboveThreshold(
                 m_config["threshold"].get<uint8_t>());
 

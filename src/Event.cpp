@@ -44,9 +44,21 @@ namespace HelixSolver {
             const auto[rad, ang] = cart2pol(stub.x, stub.y);
             const double r = rad / 1000.0;
             const double phi = ang;
+
+            m_r.push_back(static_cast<float>(r));
+            m_phi.push_back(static_cast<float>(phi));
+
             auto fun = [r, phi](double x) { return -r * x + phi; };
             m_stubsFunctions.push_back(fun);
         }
+    }
+
+    std::vector<float> Event::GetR() const {
+        return m_r;
+    }
+    
+    std::vector<float> Event::GetPhi() const {
+        return m_phi;
     }
 
 } // namespace HelixSolver
