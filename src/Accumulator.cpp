@@ -1,5 +1,6 @@
 #include <iostream>
 #include <limits>
+#include <cmath>
 
 #include <CL/sycl.hpp>
 #include <CL/sycl/INTEL/fpga_extensions.hpp>
@@ -53,6 +54,13 @@ namespace HelixSolver {
         return mid;
     }
 
+
+    uint32_t FindBeanIdx_FPGA(float y) {
+        constexpr float temp = (ACC_HEIGHT - 1) / (PHI_END - PHI_BEGIN);
+        float x = temp * (y - PHI_BEGIN);
+        return floor(x + 0.5);
+    }
+
     Accumulator::Accumulator(nlohmann::json &p_config, const Event &m_event)
             : m_config(p_config), m_event(m_event) {
         PrepareLinspaces();
@@ -99,33 +107,33 @@ namespace HelixSolver {
             sycl::accessor yLinspaceAccessor(YLinspaceBuf, h, sycl::read_only);
 
             h.single_task<class KernelHoughTransform>([=]() [[intel::kernel_args_restrict]] {
-                [[intel::numbanks(512)]]
+                // [[intel::numbanks(8)]]
                 float X[ACC_WIDTH];
 
-                [[intel::numbanks(512)]]
+                // [[intel::numbanks(8)]]
                 float Y[ACC_HEIGHT];
 
-                [[intel::numbanks(512)]]
+                // [[intel::numbanks(8)]]
                 float R[MAX_STUB_NUM];
 
-                [[intel::numbanks(512)]]
+                // [[intel::numbanks(512)]]
                 float PHI[MAX_STUB_NUM];
 
-                [[intel::numbanks(512)]]
+                // [[intel::numbanks(512)]]
                 uint8_t ACCUMULATOR[ACC_SIZE];
 
-                #pragma unroll 128
-                [[intel::ivdep]]
+                // #pragma unroll 128
+                // [[intel::ivdep]]
                 for (uint32_t i = 0; i < ACC_WIDTH; ++i) X[i] = xLinspaceAccessor[i];
 
-                #pragma unroll 128
-                [[intel::ivdep]]
+                // #pragma unroll 128
+                // [[intel::ivdep]]
                 for (uint32_t i = 0; i < ACC_HEIGHT; ++i) Y[i] = yLinspaceAccessor[i];
 
                 size_t stubsNum = rAccessor.get_count();
 
-                #pragma unroll 128
-                [[intel::ivdep]]
+                // #pragma unroll 128
+                // [[intel::ivdep]]
                 for (uint32_t i = 0; i < MAX_STUB_NUM; ++i)
                 {
                     if (i < stubsNum) {
@@ -140,8 +148,8 @@ namespace HelixSolver {
                 float x, xLeft, xRight, yLeft, yRight, yLeftIdx, yRightIdx;
 
                 for (uint32_t j = 0; j < stubsNum; ++j) {
-                    #pragma unroll 128
-                    [[intel::ivdep]]
+                    // #pragma unroll 128
+                    // [[intel::ivdep]]
                     for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
                         x = X[i];
                         xLeft = x - dxHalf;
@@ -150,11 +158,14 @@ namespace HelixSolver {
                         yLeft = calcAngle_FPGA(R[j], xLeft, PHI[j]);
                         yRight = calcAngle_FPGA(R[j], xRight, PHI[j]);
                         
-                        yLeftIdx = FindClosest_FPGA(Y, ACC_HEIGHT, yLeft);
-                        yRightIdx = FindClosest_FPGA(Y, ACC_HEIGHT, yRight);
+                        // yLeftIdx = FindClosest_FPGA(Y, ACC_HEIGHT, yLeft);
+                        // yRightIdx = FindClosest_FPGA(Y, ACC_HEIGHT, yRight);
 
-                        #pragma unroll 128
-                        [[intel::ivdep]]
+                        yLeftIdx = FindBeanIdx_FPGA(yLeft);
+                        yRightIdx = FindBeanIdx_FPGA(yRight);
+
+                        // #pragma unroll 128
+                        // [[intel::ivdep]]
                         for (uint32_t k = 0; k < ACC_HEIGHT; ++k) {
                             uint8_t incrementValue = 0;
                             if (k >= yRightIdx && k <= yLeftIdx) {
@@ -165,8 +176,8 @@ namespace HelixSolver {
                     }
                 }
 
-                #pragma unroll 64
-                [[intel::ivdep]]
+                // #pragma unroll 64
+                // [[intel::ivdep]]
                 for (uint32_t i = 0; i < ACC_SIZE; ++i) {
                     mapAccessor[i] = ACCUMULATOR[i];
                 }

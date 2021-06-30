@@ -139,39 +139,39 @@ if __name__ == '__main__':
 
     print(acc_map)
 
-    candidate_cells = main_acc.get_cells_above_threshold(3)
-    for cand in candidate_cells:
-        vals = main_acc.get_values_at_position(cand[1], cand[0])
-        r = ((1 / vals[0]) / B) * 1000
-        phi = vals[1] + math.pi / 2  # position of circle centers from first accumulator
+    # candidate_cells = main_acc.get_cells_above_threshold(3)
+    # for cand in candidate_cells:
+    #     vals = main_acc.get_values_at_position(cand[1], cand[0])
+    #     r = ((1 / vals[0]) / B) * 1000
+    #     phi = vals[1] + math.pi / 2  # position of circle centers from first accumulator
 
-    main_acc_dx, main_acc_dy = main_acc.get_deltas()
-    main_acc_dx_2 = main_acc_dx / 2
-    main_acc_dy_2 = main_acc_dy / 2
+    # main_acc_dx, main_acc_dy = main_acc.get_deltas()
+    # main_acc_dx_2 = main_acc_dx / 2
+    # main_acc_dy_2 = main_acc_dy / 2
 
-    track_candidates = []
+    # track_candidates = []
 
-    for cell in candidate_cells:
-        cell_accumulator_config = deepcopy(config['cell_accumulator_config'])
-        cell_accumulator_config['x_begin'] = main_acc.get_X_at(cell[1]) - main_acc_dx_2
-        cell_accumulator_config['x_end'] = main_acc.get_X_at(cell[1]) + main_acc_dx_2
-        cell_accumulator_config['y_begin'] = main_acc.get_Y_at(cell[0]) - main_acc_dy_2
-        cell_accumulator_config['y_end'] = main_acc.get_Y_at(cell[0]) + main_acc_dy_2
+    # for cell in candidate_cells:
+    #     cell_accumulator_config = deepcopy(config['cell_accumulator_config'])
+    #     cell_accumulator_config['x_begin'] = main_acc.get_X_at(cell[1]) - main_acc_dx_2
+    #     cell_accumulator_config['x_end'] = main_acc.get_X_at(cell[1]) + main_acc_dx_2
+    #     cell_accumulator_config['y_begin'] = main_acc.get_Y_at(cell[0]) - main_acc_dy_2
+    #     cell_accumulator_config['y_end'] = main_acc.get_Y_at(cell[0]) + main_acc_dy_2
 
-        cell_acc = Accumulator(cell_accumulator_config)
-        cell_acc.fill()
+    #     cell_acc = Accumulator(cell_accumulator_config)
+    #     cell_acc.fill()
 
-        cand_idxes = cell_acc.get_cells_above_threshold(3)
+    #     cand_idxes = cell_acc.get_cells_above_threshold(3)
 
-        for cand in cand_idxes:
-            track_candidates.append(cell_acc.get_values_at_position(cand[1], cand[0]))
+    #     for cand in cand_idxes:
+    #         track_candidates.append(cell_acc.get_values_at_position(cand[1], cand[0]))
 
-    with open(config["outputFile"], 'w') as f:
-        for cand in track_candidates:
-            r = ((1 / cand[0]) / B) * 1000
-            phi = cand[1] + math.pi / 2
+    # with open(config["outputFile"], 'w') as f:
+    #     for cand in track_candidates:
+    #         r = ((1 / cand[0]) / B) * 1000
+    #         phi = cand[1] + math.pi / 2
 
-            x, y = pol2cart(r, phi)
-            r, phi = cart2pol(x, y)
+    #         x, y = pol2cart(r, phi)
+    #         r, phi = cart2pol(x, y)
 
-            f.write('{} {}\n'.format(r, phi))
+    #         f.write('{} {}\n'.format(r, phi))

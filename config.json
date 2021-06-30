@@ -6,7 +6,7 @@
     "c": 299792458,
     "threshold": 6,
     "main_accumulator_config": {
-        "x_dpi": 10,
+        "x_dpi": 20,
         "x_begin": -0.2857142857142857,
         "x_end": 0.2857142857142857,
         "y_dpi": 30,
