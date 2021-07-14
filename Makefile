@@ -31,9 +31,10 @@ TESTOBJ := $(patsubst $(TESTSRCDIR)/%,$(TESTBUILDDIR)/%,$(TESTSRC:.$(SRCEXT)=.o)
 
 GTESTINC := -I libs/googletest/googletest/include -I libs/googletest/googlemock/include
 GTESTLIBPATH := $(LIBS)/build-gtest/lib
+ARRIA_FLAGS := -fintelfpga -Xshardware -fsycl-link=early -Xsboard=intel_a10gx_pac:pac_a10
 
 report:
-	$(CC) $(CFLAGS) -fintelfpga -fsycl-link -Xshardware $(INC) $(LINKBOOST) $(SRCDIR)/*.cpp -o bin/report.a
+	$(CC) $(CFLAGS) $(ARRIA_FLAGS) $(INC) $(LINKBOOST) $(SRCDIR)/*.cpp -o bin/report.a
 
 run: $(TARGET)
 	./$< $(INPUT_ARGS)

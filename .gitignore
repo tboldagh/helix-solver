@@ -56,3 +56,8 @@ detected-circles.txt
 
 # jupyterLab temp files
 .ipynb_checkpoints/
+
+# job execution and output logs
+
+*.sh.o*
+*.sh.e*

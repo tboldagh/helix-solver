@@ -38,7 +38,13 @@ namespace HelixSolver {
     }
 
     void Accumulator::FillOnDevice() {
-        sycl::INTEL::fpga_emulator_selector device_selector;
+
+        #if defined(FPGA_EMULATOR)
+            sycl::INTEL::fpga_emulator_selector device_selector;
+        #else
+            sycl::INTEL::fpga_selector device_selector;
+        #endif
+
         auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
         sycl::queue fpgaQueue(device_selector, NULL, propertyList);
 
