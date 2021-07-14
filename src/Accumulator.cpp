@@ -18,47 +18,11 @@ namespace HelixSolver {
         return -r * x + phi;
     };
 
-    uint32_t getNearest_FPGA(float *arr, uint32_t x, uint32_t y, float target) {
-        uint32_t idx = x;
-        if (target - arr[x] >= arr[y] - target)
-            idx = y;
-        
-        return idx;
-    }
-
-    uint32_t FindClosest_FPGA(float *arr, uint32_t n, float target) {
-        if (target <= arr[0])
-            return 0;
-        if (target >= arr[n - 1])
-            return n - 1;
-        uint32_t left = 0, right = n, mid = 0;
-        while (left < right) {
-            mid = (left + right) / 2;
-            if (arr[mid] == target)
-                return mid;
-            if (target < arr[mid]) {
-                if (mid > 0 && target > arr[mid - 1])
-                {
-                    return getNearest_FPGA(arr, mid - 1, mid, target);
-                }
-                    
-                right = mid;
-            } else {
-                if (mid < n - 1 && target < arr[mid + 1])
-                {
-                    return getNearest_FPGA(arr, mid, mid + 1, target);
-                }
-                left = mid + 1;
-            }
-        }
-        return mid;
-    }
-
 
     uint32_t FindBeanIdx_FPGA(float y) {
         constexpr float temp = (ACC_HEIGHT - 1) / (PHI_END - PHI_BEGIN);
         float x = temp * (y - PHI_BEGIN);
-        return floor(x + 0.5);
+        return static_cast<uint32_t>(x + 0.5);
     }
 
     Accumulator::Accumulator(nlohmann::json &p_config, const Event &m_event)
@@ -70,7 +34,7 @@ namespace HelixSolver {
 
         m_dy = m_Y[1] - m_Y[0];
 
-        m_map.fill(0);
+        m_map.fill(SolutionCircle{0});
     }
 
     void Accumulator::FillOnDevice() {
@@ -83,16 +47,18 @@ namespace HelixSolver {
         std::cout << "Platform: " <<  platform.get_info<sycl::info::platform::name>().c_str() << std::endl;
         std::cout << "Device: " <<  device.get_info<sycl::info::device::name>().c_str() << std::endl;
 
-        std::array<uint8_t, ACC_SIZE> tempMap;
-        tempMap.fill(0);
-        sycl::buffer<uint8_t, 1> mapBuffer(tempMap.begin(), tempMap.end());
+        std::array<SolutionCircle, ACC_SIZE> tempMap;
+        tempMap.fill(SolutionCircle{0});
+        sycl::buffer<SolutionCircle, 1> mapBuffer(tempMap.begin(), tempMap.end());
 
         std::vector<float> rVec = m_event.GetR();
         std::vector<float> phiVec = m_event.GetPhi();
+        std::vector<uint8_t> layers = m_event.GetLayers();
 
         sycl::buffer<float, 1> rBuffer(rVec.begin(), rVec.end());
         sycl::buffer<float, 1> phiBuffer(phiVec.begin(), phiVec.end());
-        
+        sycl::buffer<uint8_t, 1> layersBuffer(layers.begin(), layers.end());
+
         sycl::buffer<float, 1> XLinspaceBuf(m_X.begin(), m_X.end());
         sycl::buffer<float, 1> YLinspaceBuf(m_Y.begin(), m_Y.end());
 
@@ -102,6 +68,7 @@ namespace HelixSolver {
             
             sycl::accessor rAccessor(rBuffer, h, sycl::read_only);
             sycl::accessor phiAccessor(phiBuffer, h, sycl::read_only);
+            sycl::accessor layersAccessor(layersBuffer, h, sycl::read_only);
 
             sycl::accessor xLinspaceAccessor(XLinspaceBuf, h, sycl::read_only);
             sycl::accessor yLinspaceAccessor(YLinspaceBuf, h, sycl::read_only);
@@ -120,7 +87,10 @@ namespace HelixSolver {
                 float PHI[MAX_STUB_NUM];
 
                 // [[intel::numbanks(512)]]
-                uint8_t ACCUMULATOR[ACC_SIZE];
+                uint8_t LAYER[MAX_STUB_NUM];
+
+                // [[intel::numbanks(512)]]
+                bool ACCUMULATOR[NUM_OF_LAYERS][ACC_SIZE];
 
                 // #pragma unroll 128
                 // [[intel::ivdep]]
@@ -139,39 +109,42 @@ namespace HelixSolver {
                     if (i < stubsNum) {
                         R[i] = rAccessor[i];
                         PHI[i] = phiAccessor[i];
+                        LAYER[i] = layersAccessor[i];
                     }
                 }
 
                 float dx = X[1] - X[0];
                 float dxHalf = dx / 2.0;
 
-                float x, xLeft, xRight, yLeft, yRight, yLeftIdx, yRightIdx;
+                float x, xLeft, xRight, yLeft, yRight;
+                uint32_t yLeftIdx, yRightIdx;
 
-                for (uint32_t j = 0; j < stubsNum; ++j) {
-                    // #pragma unroll 128
-                    // [[intel::ivdep]]
-                    for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
-                        x = X[i];
-                        xLeft = x - dxHalf;
-                        xRight = x + dxHalf;
-
-                        yLeft = calcAngle_FPGA(R[j], xLeft, PHI[j]);
-                        yRight = calcAngle_FPGA(R[j], xRight, PHI[j]);
-                        
-                        // yLeftIdx = FindClosest_FPGA(Y, ACC_HEIGHT, yLeft);
-                        // yRightIdx = FindClosest_FPGA(Y, ACC_HEIGHT, yRight);
-
-                        yLeftIdx = FindBeanIdx_FPGA(yLeft);
-                        yRightIdx = FindBeanIdx_FPGA(yRight);
+                #pragma unroll
+                [[intel::ivdep]]
+                for (uint8_t layer = 0; layer < NUM_OF_LAYERS; ++layer) {
+                    for (uint32_t j = 0; j < MAX_STUB_NUM; ++j) {
+                        if (j >= stubsNum || LAYER[j] != layer) continue; // skip if stub does not belong to layer
 
                         // #pragma unroll 128
                         // [[intel::ivdep]]
-                        for (uint32_t k = 0; k < ACC_HEIGHT; ++k) {
-                            uint8_t incrementValue = 0;
-                            if (k >= yRightIdx && k <= yLeftIdx) {
-                                incrementValue = 1;
+                        for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
+                            x = X[i];
+                            xLeft = x - dxHalf;
+                            xRight = x + dxHalf;
+
+                            yLeft = calcAngle_FPGA(R[j], xLeft, PHI[j]);
+                            yRight = calcAngle_FPGA(R[j], xRight, PHI[j]);
+
+                            yLeftIdx = FindBeanIdx_FPGA(yLeft);
+                            yRightIdx = FindBeanIdx_FPGA(yRight);
+
+                            // #pragma unroll 128
+                            // [[intel::ivdep]]
+                            for (uint32_t k = 0; k < ACC_HEIGHT; ++k) {
+                                if (k >= yRightIdx && k <= yLeftIdx) {
+                                    ACCUMULATOR[layer][k * ACC_WIDTH + i] = true;
+                                }
                             }
-                            ACCUMULATOR[k * ACC_WIDTH + i] += incrementValue;
                         }
                     }
                 }
@@ -179,7 +152,30 @@ namespace HelixSolver {
                 // #pragma unroll 64
                 // [[intel::ivdep]]
                 for (uint32_t i = 0; i < ACC_SIZE; ++i) {
-                    mapAccessor[i] = ACCUMULATOR[i];
+                    bool belongToAllLayers = true;
+
+                    #pragma unroll
+                    [[intel::ivdep]]
+                    for (uint8_t j = 0; j < NUM_OF_LAYERS; ++j) {
+                        if (!ACCUMULATOR[j][i]) {
+                            belongToAllLayers = false; // WHAT WILL HAPPEN ????????????
+                        }
+                    }
+
+                    if (belongToAllLayers) {
+                        constexpr float qOverPtMultiplier = (Q_OVER_P_END - Q_OVER_P_BEGIN) / ACC_WIDTH;
+                        constexpr float phiMultiplier = (PHI_END - PHI_BEGIN) / ACC_HEIGHT;
+
+                        uint32_t qOverPtIdx = i % ACC_WIDTH;
+                        uint32_t phiIdx = i / ACC_WIDTH;
+
+                        float qOverPt = qOverPtIdx * qOverPtMultiplier + Q_OVER_P_BEGIN;
+                        float phi = phiIdx * phiMultiplier + PHI_BEGIN;
+                        
+                        mapAccessor[i].isValid = true;
+                        mapAccessor[i].r = ((1 / qOverPt) / B) * 1000;
+                        mapAccessor[i].phi = phi + M_PI_2;
+                    }
                 }
             });
         });
@@ -193,6 +189,7 @@ namespace HelixSolver {
         std::cout << "Execution time: " << kernelTime << " seconds" << std::endl;
 
         sycl::host_accessor hostMapAccessor(mapBuffer, sycl::read_only);
+        // std::copy(hostMapAccessor.begin(), hostMapAccessor.end(), m_map);
         for (uint32_t i = 0; i < ACC_SIZE; ++i) m_map[i] = hostMapAccessor[i];
     }
 
@@ -210,21 +207,25 @@ namespace HelixSolver {
                 float yRightIdx = FindClosest(m_Y, yRight);
 
                 for (uint32_t j = yRightIdx; j <= yLeftIdx; ++j) {
-                    m_map[j * ACC_WIDTH + i] += 1;
+                    m_map[j * ACC_WIDTH + i].isValid = true;
                 }
             }
         }
     }
 
     VectorIdxPair Accumulator::GetCellsAboveThreshold(uint8_t p_threshold) const {
-        VectorIdxPair cellsAboveThreshold;
-        for (uint32_t i = 0; i < ACC_HEIGHT; ++i) {
-            for (uint32_t j = 0; j < ACC_WIDTH; ++j) {
-                if (m_map[i * ACC_WIDTH + j] >= p_threshold)
-                    cellsAboveThreshold.push_back(std::make_pair(j, i));
-            }
-        }
-        return cellsAboveThreshold;
+        // VectorIdxPair cellsAboveThreshold;
+        // for (uint32_t i = 0; i < ACC_HEIGHT; ++i) {
+        //     for (uint32_t j = 0; j < ACC_WIDTH; ++j) {
+        //         if (m_map[i * ACC_WIDTH + j] >= p_threshold)
+        //             cellsAboveThreshold.push_back(std::make_pair(j, i));
+        //     }
+        // }
+        // return cellsAboveThreshold;
+    }
+
+    const std::array<SolutionCircle, ACC_SIZE> &Accumulator::GetSolution() const {
+        return m_map;
     }
 
     void Accumulator::PrepareLinspaces() {
@@ -242,7 +243,7 @@ namespace HelixSolver {
     void Accumulator::PrintMainAcc() const {
         for (uint32_t i = 0; i < ACC_HEIGHT; ++i) {
             for (uint32_t j = 0; j < ACC_WIDTH; ++j) {
-                std::cout << int(m_map[i * ACC_WIDTH + j]) << " ";
+                std::cout << int(m_map[i * ACC_WIDTH + j].isValid) << " ";
             }
             std::cout << std::endl;
         }

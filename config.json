@@ -1,17 +1,17 @@
 {
-    "inputFile": "inputs/event-gen-1.txt",
+    "inputFile": "../measurements/pu0/entries-8-event-2281.txt",
     "outputFile": "detected-circles.txt",
     "B": 2,
     "R": 600,
     "c": 299792458,
     "threshold": 6,
     "main_accumulator_config": {
-        "x_dpi": 20,
+        "x_dpi": 256,
         "x_begin": -0.2857142857142857,
         "x_end": 0.2857142857142857,
-        "y_dpi": 30,
-        "y_begin": -3.641592653589793,
-        "y_end": 3.641592653589793
+        "y_dpi": 64,
+        "y_begin": -3.361592653589793,
+        "y_end": 3.361592653589793
     },
     "cell_accumulator_config": {
         "x_dpi": 20,

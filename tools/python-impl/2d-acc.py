@@ -68,7 +68,7 @@ class Accumulator:
 
         self._Y = np.linspace(config['y_begin'], config['y_end'], config['y_dpi'])
         self._dy = self._Y[1] - self._Y[0]
-        self._map = np.zeros((config['y_dpi'], config['x_dpi']), dtype=np.ubyte)
+        self._map = np.zeros((config['y_dpi'], config['x_dpi']), dtype=np.int64)
 
 
     def fill(self):

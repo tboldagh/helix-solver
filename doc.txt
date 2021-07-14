@@ -1,0 +1,1 @@
+ppn - processes pre node (more useful with MPI rather than with oneAPI)

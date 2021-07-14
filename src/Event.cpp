@@ -14,8 +14,9 @@ namespace HelixSolver {
         try {
             std::ifstream l_pointsFile(p_filePath);
             float l_x, l_y, l_z;
-            while (l_pointsFile >> l_x >> l_y >> l_z) {
-                m_stubs.push_back(Stub{l_x, l_y, l_z});
+            uint32_t l_layer;
+            while (l_pointsFile >> l_x >> l_y >> l_z >> l_layer) {
+                m_stubs.push_back(Stub{l_x, l_y, l_z, static_cast<uint8_t>(l_layer)});
             }
         }
         catch (std::exception &l_exc) {
@@ -47,6 +48,7 @@ namespace HelixSolver {
 
             m_r.push_back(r);
             m_phi.push_back(phi);
+            m_layers.push_back(stub.layer);
 
             auto fun = [r, phi](float x) { return -r * x + phi; };
             m_stubsFunctions.push_back(fun);
@@ -59,6 +61,10 @@ namespace HelixSolver {
     
     std::vector<float> Event::GetPhi() const {
         return m_phi;
+    }
+
+    std::vector<uint8_t> Event::GetLayers() const {
+        return m_layers;
     }
 
 } // namespace HelixSolver

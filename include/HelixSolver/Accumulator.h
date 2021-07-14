@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 #include <HelixSolver/Event.h>
 #include <HelixSolver/Constants.h>
+#include <HelixSolver/SolutionCircle.h>
 
 namespace HelixSolver {
 
@@ -27,6 +28,8 @@ namespace HelixSolver {
 
         std::pair<double, double> GetValuesOfIndexes(uint32_t x, uint32_t y) const;
 
+        const std::array<SolutionCircle, ACC_SIZE> &GetSolution() const;
+
     private:
         void PrepareLinspaces();
 
@@ -40,7 +43,7 @@ namespace HelixSolver {
         double m_dx;
         double m_dxHalf;
 
-        std::array<uint8_t, ACC_SIZE> m_map;
+        std::array<SolutionCircle, ACC_SIZE> m_map;
     };
 
 } // namespace HelixSolver
