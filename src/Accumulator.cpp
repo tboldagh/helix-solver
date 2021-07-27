@@ -2,28 +2,16 @@
 #include <limits>
 #include <cmath>
 
-#include <CL/sycl.hpp>
+#include "HelixSolver/KernelHoughTransform.h"
+
 #include <CL/sycl/INTEL/fpga_extensions.hpp>
 
-#include <HelixSolver/Constants.h>
 
-#include <HelixSolver/Accumulator.h>
-#include <HelixSolver/AccumulatorHelper.h>
+#include "HelixSolver/Accumulator.h"
+#include "HelixSolver/AccumulatorHelper.h"
 
-class KernelHoughTransform;
 
 namespace HelixSolver {
-
-    float calcAngle_FPGA(float r, float x, float phi) {
-        return -r * x + phi;
-    };
-
-
-    uint32_t FindBeanIdx_FPGA(float y) {
-        constexpr float temp = (ACC_HEIGHT - 1) / (PHI_END - PHI_BEGIN);
-        float x = temp * (y - PHI_BEGIN);
-        return static_cast<uint32_t>(x + 0.5);
-    }
 
     Accumulator::Accumulator(nlohmann::json &p_config, const Event &m_event)
             : m_config(p_config), m_event(m_event) {
@@ -68,122 +56,12 @@ namespace HelixSolver {
         sycl::buffer<float, 1> XLinspaceBuf(m_X.begin(), m_X.end());
         sycl::buffer<float, 1> YLinspaceBuf(m_Y.begin(), m_Y.end());
 
+
         sycl::event qEvent = fpgaQueue.submit([&](sycl::handler &h) {
 
-            sycl::accessor mapAccessor(mapBuffer, h, sycl::write_only);
-            
-            sycl::accessor rAccessor(rBuffer, h, sycl::read_only);
-            sycl::accessor phiAccessor(phiBuffer, h, sycl::read_only);
-            sycl::accessor layersAccessor(layersBuffer, h, sycl::read_only);
+            KernelHoughTransform kernel(h, mapBuffer, rBuffer, phiBuffer, layersBuffer, XLinspaceBuf, YLinspaceBuf);
 
-            sycl::accessor xLinspaceAccessor(XLinspaceBuf, h, sycl::read_only);
-            sycl::accessor yLinspaceAccessor(YLinspaceBuf, h, sycl::read_only);
-
-            h.single_task<class KernelHoughTransform>([=]() [[intel::kernel_args_restrict]] {
-                // [[intel::numbanks(8)]]
-                float X[ACC_WIDTH];
-
-                // [[intel::numbanks(8)]]
-                float Y[ACC_HEIGHT];
-
-                // [[intel::numbanks(8)]]
-                float R[MAX_STUB_NUM];
-
-                // [[intel::numbanks(512)]]
-                float PHI[MAX_STUB_NUM];
-
-                // [[intel::numbanks(512)]]
-                uint8_t LAYER[MAX_STUB_NUM];
-
-                // [[intel::numbanks(512)]]
-                bool ACCUMULATOR[NUM_OF_LAYERS][ACC_SIZE];
-
-                // #pragma unroll 128
-                // [[intel::ivdep]]
-                for (uint32_t i = 0; i < ACC_WIDTH; ++i) X[i] = xLinspaceAccessor[i];
-
-                // #pragma unroll 128
-                // [[intel::ivdep]]
-                for (uint32_t i = 0; i < ACC_HEIGHT; ++i) Y[i] = yLinspaceAccessor[i];
-
-                size_t stubsNum = rAccessor.get_count();
-
-                // #pragma unroll 128
-                // [[intel::ivdep]]
-                for (uint32_t i = 0; i < MAX_STUB_NUM; ++i)
-                {
-                    if (i < stubsNum) {
-                        R[i] = rAccessor[i];
-                        PHI[i] = phiAccessor[i];
-                        LAYER[i] = layersAccessor[i];
-                    }
-                }
-
-                float dx = X[1] - X[0];
-                float dxHalf = dx / 2.0;
-
-                float x, xLeft, xRight, yLeft, yRight;
-                uint32_t yLeftIdx, yRightIdx;
-
-                #pragma unroll
-                [[intel::ivdep]]
-                for (uint8_t layer = 0; layer < NUM_OF_LAYERS; ++layer) {
-                    for (uint32_t j = 0; j < MAX_STUB_NUM; ++j) {
-                        if (j >= stubsNum || LAYER[j] != layer) continue; // skip if stub does not belong to layer
-
-                        // #pragma unroll 128
-                        // [[intel::ivdep]]
-                        for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
-                            x = X[i];
-                            xLeft = x - dxHalf;
-                            xRight = x + dxHalf;
-
-                            yLeft = calcAngle_FPGA(R[j], xLeft, PHI[j]);
-                            yRight = calcAngle_FPGA(R[j], xRight, PHI[j]);
-
-                            yLeftIdx = FindBeanIdx_FPGA(yLeft);
-                            yRightIdx = FindBeanIdx_FPGA(yRight);
-
-                            // #pragma unroll 128
-                            // [[intel::ivdep]]
-                            for (uint32_t k = 0; k < ACC_HEIGHT; ++k) {
-                                if (k >= yRightIdx && k <= yLeftIdx) {
-                                    ACCUMULATOR[layer][k * ACC_WIDTH + i] = true;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // #pragma unroll 64
-                // [[intel::ivdep]]
-                for (uint32_t i = 0; i < ACC_SIZE; ++i) {
-                    bool belongToAllLayers = true;
-
-                    #pragma unroll
-                    [[intel::ivdep]]
-                    for (uint8_t j = 0; j < NUM_OF_LAYERS; ++j) {
-                        if (!ACCUMULATOR[j][i]) {
-                            belongToAllLayers = false; // WHAT WILL HAPPEN ????????????
-                        }
-                    }
-
-                    if (belongToAllLayers) {
-                        constexpr float qOverPtMultiplier = (Q_OVER_P_END - Q_OVER_P_BEGIN) / ACC_WIDTH;
-                        constexpr float phiMultiplier = (PHI_END - PHI_BEGIN) / ACC_HEIGHT;
-
-                        uint32_t qOverPtIdx = i % ACC_WIDTH;
-                        uint32_t phiIdx = i / ACC_WIDTH;
-
-                        float qOverPt = qOverPtIdx * qOverPtMultiplier + Q_OVER_P_BEGIN;
-                        float phi = phiIdx * phiMultiplier + PHI_BEGIN;
-                        
-                        mapAccessor[i].isValid = true;
-                        mapAccessor[i].r = ((1 / qOverPt) / B) * 1000;
-                        mapAccessor[i].phi = phi + M_PI_2;
-                    }
-                }
-            });
+            h.single_task<KernelHoughTransform>(kernel);
         });
 
         qEvent.wait();
@@ -195,7 +73,6 @@ namespace HelixSolver {
         std::cout << "Execution time: " << kernelTime << " seconds" << std::endl;
 
         sycl::host_accessor hostMapAccessor(mapBuffer, sycl::read_only);
-        // std::copy(hostMapAccessor.begin(), hostMapAccessor.end(), m_map);
         for (uint32_t i = 0; i < ACC_SIZE; ++i) m_map[i] = hostMapAccessor[i];
     }
 
@@ -217,17 +94,6 @@ namespace HelixSolver {
                 }
             }
         }
-    }
-
-    VectorIdxPair Accumulator::GetCellsAboveThreshold(uint8_t p_threshold) const {
-        // VectorIdxPair cellsAboveThreshold;
-        // for (uint32_t i = 0; i < ACC_HEIGHT; ++i) {
-        //     for (uint32_t j = 0; j < ACC_WIDTH; ++j) {
-        //         if (m_map[i * ACC_WIDTH + j] >= p_threshold)
-        //             cellsAboveThreshold.push_back(std::make_pair(j, i));
-        //     }
-        // }
-        // return cellsAboveThreshold;
     }
 
     const std::array<SolutionCircle, ACC_SIZE> &Accumulator::GetSolution() const {

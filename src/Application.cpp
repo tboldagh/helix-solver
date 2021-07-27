@@ -1,8 +1,8 @@
 #include <iostream>
 #include <fstream>
 
-#include <HelixSolver/Application.h>
-#include <HelixSolver/TrackFindingAlgorithm.h>
+#include "HelixSolver/Application.h"
+#include "HelixSolver/TrackFindingAlgorithm.h"
 
 namespace HelixSolver {
 

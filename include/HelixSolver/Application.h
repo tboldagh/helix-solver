@@ -1,7 +1,8 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
-#include <HelixSolver/Event.h>
+
+#include "HelixSolver/Event.h"
 
 namespace HelixSolver {
 

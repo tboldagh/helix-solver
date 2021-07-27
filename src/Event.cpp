@@ -1,8 +1,8 @@
 #include <fstream>
 #include <iostream>
 
-#include <HelixSolver/AccumulatorHelper.h>
-#include <HelixSolver/Event.h>
+#include "HelixSolver/AccumulatorHelper.h"
+#include "HelixSolver/Event.h"
 
 namespace HelixSolver {
 
