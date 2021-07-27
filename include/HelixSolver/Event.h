@@ -4,7 +4,7 @@
 #include <functional>
 #include <nlohmann/json.hpp>
 
-#include <HelixSolver/Stub.h>
+#include "HelixSolver/Stub.h"
 
 namespace HelixSolver {
 

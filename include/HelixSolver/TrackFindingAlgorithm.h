@@ -3,8 +3,8 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
-#include <HelixSolver/Stub.h>
-#include <HelixSolver/Accumulator.h>
+#include "HelixSolver/Stub.h"
+#include "HelixSolver/Accumulator.h"
 
 namespace HelixSolver {
 

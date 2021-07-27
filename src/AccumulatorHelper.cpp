@@ -1,5 +1,5 @@
 #include <cmath>
-#include <HelixSolver/AccumulatorHelper.h>
+#include "HelixSolver/AccumulatorHelper.h"
 
 namespace HelixSolver {
 

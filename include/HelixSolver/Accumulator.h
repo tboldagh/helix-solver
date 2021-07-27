@@ -6,9 +6,9 @@
 #include <functional>
 
 #include <nlohmann/json.hpp>
-#include <HelixSolver/Event.h>
-#include <HelixSolver/Constants.h>
-#include <HelixSolver/SolutionCircle.h>
+#include "HelixSolver/Event.h"
+#include "HelixSolver/Constants.h"
+#include "HelixSolver/SolutionCircle.h"
 
 namespace HelixSolver {
 

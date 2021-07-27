@@ -1,7 +1,6 @@
 #include <iostream>
-#include <memory>
 
-#include <HelixSolver/Application.h>
+#include "HelixSolver/Application.h"
 
 int main(int argc, char *argv[]) {
     std::vector<std::string> l_argv;
