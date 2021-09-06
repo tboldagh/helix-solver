@@ -39,7 +39,7 @@ ARRIA_FLAGS := -fintelfpga -Xshardware -Xsboard=intel_a10gx_pac:pac_a10
 STRATIX_FLAGS := -fintelfpga -Xshardware -Xsboard=intel_s10sx_pac:pac_s10
 
 fpga_hw:
-	$(CC) $(CFLAGS) $(STRATIX_FLAGS) $(INC) $(SRCDIR)/*.cpp -o bin/out.fpga
+	$(CC) $(CFLAGS) $(STRATIX_FLAGS) $(INC) $(SRCDIR)/*.cpp -o bin/fpga_out.fpga
 
 report:
 	$(CC) $(CFLAGS) $(STRATIX_FLAGS_FOR_REPORT) $(INC) $(SRCDIR)/*.cpp -o bin/fpga_compile_report.a

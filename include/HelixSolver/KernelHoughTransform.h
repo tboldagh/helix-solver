@@ -73,19 +73,19 @@ void KernelHoughTransform::TransferDataToBoardMemory(float *X,
                                                       uint8_t *LAYER) const {
     size_t stubsNum = m_rAccessor.get_count();
 
-    #pragma unroll 128
+    #pragma unroll 64
     [[intel::ivdep]]
     for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
         X[i] = m_xLinspaceAccessor[i];
     }
 
-    #pragma unroll 128
+    #pragma unroll 64
     [[intel::ivdep]]
     for (uint32_t i = 0; i < ACC_HEIGHT; ++i) {
         Y[i] = m_yLinspaceAccessor[i];
     }
 
-    #pragma unroll 128
+    #pragma unroll 64
     [[intel::ivdep]]
     for (uint32_t i = 0; i < MAX_STUB_NUM; ++i)
     {
@@ -116,7 +116,7 @@ void KernelHoughTransform::FillBoardAccumulator(float *X,
         for (uint32_t j = 0; j < MAX_STUB_NUM; ++j) {
             if (j >= stubsNum || LAYER[j] != layer) continue; // skip if stub does not belong to layer
 
-            #pragma unroll 128
+            #pragma unroll 22
             [[intel::ivdep]]
             for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
                 x = X[i];
@@ -138,18 +138,21 @@ void KernelHoughTransform::FillBoardAccumulator(float *X,
 }
 
 void KernelHoughTransform::TransferSolutionToHostDevice(bool ACCUMULATOR[][ACC_SIZE]) const {
-    #pragma unroll 64
+    #pragma unroll 16
     [[intel::ivdep]]
     for (uint32_t i = 0; i < ACC_SIZE; ++i) {
         bool belongToAllLayers = true;
 
-        #pragma unroll
-        [[intel::ivdep]]
-        for (uint8_t j = 0; j < NUM_OF_LAYERS; ++j) {
-            if (!ACCUMULATOR[j][i]) {
+        if (!ACCUMULATOR[0][i] ||
+            !ACCUMULATOR[1][i] ||
+            !ACCUMULATOR[2][i] ||
+            !ACCUMULATOR[3][i] ||
+            !ACCUMULATOR[4][i] ||
+            !ACCUMULATOR[5][i] ||
+            !ACCUMULATOR[6][i] ||
+            !ACCUMULATOR[7][i]) {
                 belongToAllLayers = false;
             }
-        }
 
         if (belongToAllLayers) {
             constexpr float qOverPtMultiplier = (Q_OVER_P_END - Q_OVER_P_BEGIN) / ACC_WIDTH;
@@ -180,22 +183,22 @@ uint32_t KernelHoughTransform::MapToBeanIndex(float y) {
 
 void KernelHoughTransform::operator()() const {
 
-    [[intel::numbanks(8)]]
+    [[intel::numbanks(4)]]
     float X[ACC_WIDTH];
 
-    [[intel::numbanks(8)]]
+    [[intel::numbanks(4)]]
     float Y[ACC_HEIGHT];
 
-    [[intel::numbanks(8)]]
+    [[intel::numbanks(4)]]
     float R[MAX_STUB_NUM];
 
-    [[intel::numbanks(8)]]
+    [[intel::numbanks(4)]]
     float PHI[MAX_STUB_NUM];
 
-    [[intel::numbanks(8)]]
+    [[intel::numbanks(4)]]
     uint8_t LAYER[MAX_STUB_NUM];
 
-    [[intel::numbanks(8)]]
+    [[intel::numbanks(4)]]
     bool ACCUMULATOR[NUM_OF_LAYERS][ACC_SIZE];
 
     TransferDataToBoardMemory(X, Y, R, PHI, LAYER);
