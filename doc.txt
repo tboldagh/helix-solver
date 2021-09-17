@@ -1,3 +1,0 @@
-ppn - processes pre node (more useful with MPI rather than with oneAPI)
-
-https://devcloud.intel.com/oneapi/documentation/base-toolkit/ - how to select proper node for fpga compilation and runtime

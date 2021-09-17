@@ -19,10 +19,7 @@ public:
 
     void operator()() const;
 
-#ifndef ALGO_TESTING
 private:
-#endif
-
     void FillBoardAccumulator(float *X,
                               float *R,
                               float *PHI,
@@ -129,6 +126,9 @@ void KernelHoughTransform::FillBoardAccumulator(float *X,
                 yLeftIdx = MapToBeanIndex(yLeft);
                 yRightIdx = MapToBeanIndex(yRight);
 
+                if (yRightIdx < 0 || yLeftIdx >= ACC_HEIGHT)
+                    continue;
+
                 for (uint32_t k = yRightIdx; k <= yLeftIdx; ++k) {
                     ACCUMULATOR[layer][k * ACC_WIDTH + i] = true;
                 }
@@ -141,20 +141,17 @@ void KernelHoughTransform::TransferSolutionToHostDevice(bool ACCUMULATOR[][ACC_S
     #pragma unroll 16
     [[intel::ivdep]]
     for (uint32_t i = 0; i < ACC_SIZE; ++i) {
-        bool belongToAllLayers = true;
+        uint8_t sum = ACCUMULATOR[0][i] +
+                      ACCUMULATOR[1][i] +
+                      ACCUMULATOR[2][i] +
+                      ACCUMULATOR[3][i] +
+                      ACCUMULATOR[4][i] +
+                      ACCUMULATOR[5][i] +
+                      ACCUMULATOR[6][i] +
+                      ACCUMULATOR[7][i];
+        bool isAboveThreshold = sum > THRESHOLD ? true : false;
 
-        if (!ACCUMULATOR[0][i] ||
-            !ACCUMULATOR[1][i] ||
-            !ACCUMULATOR[2][i] ||
-            !ACCUMULATOR[3][i] ||
-            !ACCUMULATOR[4][i] ||
-            !ACCUMULATOR[5][i] ||
-            !ACCUMULATOR[6][i] ||
-            !ACCUMULATOR[7][i]) {
-                belongToAllLayers = false;
-            }
-
-        if (belongToAllLayers) {
+        if (isAboveThreshold) {
             constexpr float qOverPtMultiplier = (Q_OVER_P_END - Q_OVER_P_BEGIN) / ACC_WIDTH;
             constexpr float phiMultiplier = (PHI_END - PHI_BEGIN) / ACC_HEIGHT;
 
@@ -162,17 +159,17 @@ void KernelHoughTransform::TransferSolutionToHostDevice(bool ACCUMULATOR[][ACC_S
             uint32_t phiIdx = i / ACC_WIDTH;
 
             float qOverPt = qOverPtIdx * qOverPtMultiplier + Q_OVER_P_BEGIN;
-            float phi = phiIdx * phiMultiplier + PHI_BEGIN;
+            float phi_0 = phiIdx * phiMultiplier + PHI_BEGIN;
             
             m_mapAccessor[i].isValid = true;
             m_mapAccessor[i].r = ((1 / qOverPt) / B) * 1000;
-            m_mapAccessor[i].phi = phi + M_PI_2;
+            m_mapAccessor[i].phi = phi_0 + M_PI_2;
         }
     }
 }
 
-float KernelHoughTransform::CalculateAngle(float r, float x, float phi) {
-    return -r * x + phi;
+float KernelHoughTransform::CalculateAngle(float r, float q_over_pt, float phi) {
+    return -r * q_over_pt + phi;
 };
 
 uint32_t KernelHoughTransform::MapToBeanIndex(float y) {

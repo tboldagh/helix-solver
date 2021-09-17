@@ -50,17 +50,18 @@ if __name__ == '__main__':
             phi = np.random.uniform(-np.pi, np.pi)  # get random angle
             X, Y = pol2cart(r, phi)
             cnt = int(sys.argv[4])
+            checker = lambda x,y: y < ((Y/X) * x)
             while cnt > 0:
                 x = np.random.uniform(-r_detector, r_detector)  # random x inside detector
                 y = np.random.choice(calculate_y(x, X, Y, r))
-                if y is None:
+                if y is None or checker(x, y):
                     continue
                 if is_point_in_detector(x, y, detector_layers):
-                    points.append([x, y, 0])
+                    points.append([x, y, 0, cnt - 1])
                     cnt = cnt - 1
         with open('event-gen.txt', 'w') as f:
             for point in points:
-                f.write('{} {} {}\n'.format(point[0], point[1], point[2]))
+                f.write('{} {} {} {}\n'.format(point[0], point[1], point[2], point[3]))
     except:
         print('Something went wrong - traceback below')
         traceback.print_exc()

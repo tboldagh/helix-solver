@@ -1,3 +1,4 @@
 #!/bin/bash
 source /opt/intel/inteloneapi/setvars.sh
-make -C .. run
+
+make build

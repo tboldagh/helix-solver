@@ -83,6 +83,7 @@ clean:
 	rm -rf $(DEVCLOUD_EXEC)/run.sh.*
 	rm -rf *.sh.o*
 	rm -rf *.sh.e*
+	rm -rf *.png
 
 clean_external:
 	rm -rf $(LIBS)/build-gtest

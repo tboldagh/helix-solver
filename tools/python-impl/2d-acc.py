@@ -25,6 +25,11 @@ def find_nearest(array, value):
     return idx
 
 
+def map_to_bean_index(accumulator_config, y):
+    temp = (accumulator_config["y_dpi"] - 1) / (accumulator_config["y_end"] - accumulator_config["y_begin"])
+    x = temp * (y - accumulator_config["y_begin"])
+    return round(x)
+
 def prepare_y_idx(accumulator_config, Y, y_left, y_right):
     y_end = accumulator_config['y_end']
     y_begin = accumulator_config['y_begin']
@@ -68,7 +73,7 @@ class Accumulator:
 
         self._Y = np.linspace(config['y_begin'], config['y_end'], config['y_dpi'])
         self._dy = self._Y[1] - self._Y[0]
-        self._map = np.zeros((config['y_dpi'], config['x_dpi']), dtype=np.int64)
+        self._map = np.zeros((config["layers"], config['y_dpi'], config['x_dpi']), dtype=np.short)
 
 
     def fill(self):
@@ -84,16 +89,14 @@ class Accumulator:
 
                 y_left = fun(x_left)
                 y_right = fun(x_right)
-                y_left_idx, y_right_idx = prepare_y_idx(self._config, self._Y, y_left, y_right)
 
-                if y_left_idx == None:
+                y_left_idx = map_to_bean_index(self._config, y_left)
+                y_right_idx = map_to_bean_index(self._config, y_right)
+                if y_right_idx < 0 or y_left_idx >= self._config['y_dpi']:
                     continue
 
-                if y_left_idx > y_right_idx:
-                    y_left_idx, y_right_idx = y_right_idx, y_left_idx
-
-                for y_idx in range(y_left_idx, y_right_idx + 1):
-                    self._map[y_idx][x_idx] += 1
+                for k in range(y_right_idx, y_left_idx + 1):
+                    self._map[int(point[3])][k][x_idx] = 1
 
     def get_values_at_position(self, x, y):
         return [self._X[x], self._Y[y]]
@@ -113,8 +116,10 @@ class Accumulator:
     def dealloc(self):
         self._map = None
 
-    def get_cells_above_threshold(self, threshold=5):
-        maximums = self._map > threshold
+    def get_cells_above_threshold(self, threshold=7):
+        summed_map = np.sum(self._map, axis = 0)
+        # np.savetxt("out.txt", summed_map, fmt='%i')
+        maximums = summed_map > threshold
         maximums_idx = np.where(maximums)
         return np.transpose(maximums_idx)
 
@@ -122,6 +127,7 @@ class Accumulator:
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('Args must be: <config_file>', file=sys.stderr)
+        exit(-1)
     try:
         with open(sys.argv[1], 'r') as config_file:
             config = json.load(config_file)
@@ -135,43 +141,20 @@ if __name__ == '__main__':
 
     main_acc = Accumulator(config['main_accumulator_config'])
     main_acc.fill()
-    acc_map = main_acc.get_map()
+    track_candidates = main_acc.get_cells_above_threshold(config["threshold"])
 
-    print(acc_map)
+    config_acc = config['main_accumulator_config']
 
-    # candidate_cells = main_acc.get_cells_above_threshold(3)
-    # for cand in candidate_cells:
-    #     vals = main_acc.get_values_at_position(cand[1], cand[0])
-    #     r = ((1 / vals[0]) / B) * 1000
-    #     phi = vals[1] + math.pi / 2  # position of circle centers from first accumulator
+    qOverPtMultiplier = (config_acc['x_end'] - config_acc['x_begin']) / config_acc['x_dpi']
+    phiMultiplier = (config_acc['y_end'] - config_acc['y_begin']) / config_acc['y_dpi']
 
-    # main_acc_dx, main_acc_dy = main_acc.get_deltas()
-    # main_acc_dx_2 = main_acc_dx / 2
-    # main_acc_dy_2 = main_acc_dy / 2
 
-    # track_candidates = []
+    with open(config["outputFile"], 'w') as f:
+        for cand in track_candidates:
+            qOverPt = cand[1] * qOverPtMultiplier + config_acc["x_begin"]
+            phi_0 = cand[0] * phiMultiplier + config_acc["y_begin"]
 
-    # for cell in candidate_cells:
-    #     cell_accumulator_config = deepcopy(config['cell_accumulator_config'])
-    #     cell_accumulator_config['x_begin'] = main_acc.get_X_at(cell[1]) - main_acc_dx_2
-    #     cell_accumulator_config['x_end'] = main_acc.get_X_at(cell[1]) + main_acc_dx_2
-    #     cell_accumulator_config['y_begin'] = main_acc.get_Y_at(cell[0]) - main_acc_dy_2
-    #     cell_accumulator_config['y_end'] = main_acc.get_Y_at(cell[0]) + main_acc_dy_2
+            r = ((1 / qOverPt) / B) * 1000
+            phi = phi_0 + math.pi / 2
 
-    #     cell_acc = Accumulator(cell_accumulator_config)
-    #     cell_acc.fill()
-
-    #     cand_idxes = cell_acc.get_cells_above_threshold(3)
-
-    #     for cand in cand_idxes:
-    #         track_candidates.append(cell_acc.get_values_at_position(cand[1], cand[0]))
-
-    # with open(config["outputFile"], 'w') as f:
-    #     for cand in track_candidates:
-    #         r = ((1 / cand[0]) / B) * 1000
-    #         phi = cand[1] + math.pi / 2
-
-    #         x, y = pol2cart(r, phi)
-    #         r, phi = cart2pol(x, y)
-
-    #         f.write('{} {}\n'.format(r, phi))
+            f.write('{} {}\n'.format(r, phi))
