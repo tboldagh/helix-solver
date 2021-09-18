@@ -8,18 +8,44 @@ using namespace std;
 
 int main(int argc, char *argv[]) {
 
-    if (argc < 5) {
-        std::cerr << "You must pass path to ROOT file, name of tree, number of entry and output file name" << std::endl;
+    if (argc < 3) {
+        std::cerr << "You must pass path to ROOT file and name of tree" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    std::unique_ptr<TFile> l_file = std::make_unique<TFile>(argv[1], "READ");
-    std::unique_ptr<SingleRunMap> l_run =
-            std::make_unique<SingleRunMap>((TTree *) l_file->Get(argv[2]), stoi(argv[3]));
+    TFile l_file(argv[1], "READ");
 
-    l_file->Close();
+    TTree *tree = dynamic_cast<TTree *>(l_file.Get(argv[2]));
 
-    std::string_view l_outputFileName = argv[4];
-    l_run->dumpToFile(l_outputFileName);
+    if (tree == nullptr) {
+        exit(EXIT_FAILURE);
+    }
+
+    uint32_t entriesInTree = tree->GetEntries();
+
+    int most = -1;
+    std::string mostFileName = "";
+
+    for (uint32_t i = 0; i < entriesInTree; ++i) {
+        SingleRunMap singleEvent(tree, i);
+
+        std::string fileName(std::string("out/entries-" +
+                                         std::to_string(singleEvent.getSize()) +
+                                         "-event-" +
+                                         std::to_string(i) +
+                                         ".txt"));
+
+        if (singleEvent.getSize() > most) {
+            most = singleEvent.getSize();
+            mostFileName = fileName;
+        }
+
+        singleEvent.dumpToFile(fileName);
+    }
+
+    l_file.Close();
+
+    std::cout << "Most entries: " << mostFileName << std::endl;
+
     return 0;
 }

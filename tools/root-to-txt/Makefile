@@ -1,5 +1,4 @@
-MEAS_PATH := ../../../sample-measurements/measurements.root
-EVENT_NO := 177
+MEAS_PATH := ../../../sample-measurements/downloaded/HitsSave-pu200-with-layers.root
 
 R_LDFLAGS := $(shell root-config --ldflags)
 R_LIBS := $(shell root-config --libs)
@@ -12,7 +11,7 @@ app: $(SRC)
 	g++ -Wall -fPIC $(R_ALL) $^ -o $@
 
 run: app
-	./$^ $(MEAS_PATH) 'SPTrkNtuple;1' $(EVENT_NO) event-$(EVENT_NO).txt
+	./$^ $(MEAS_PATH) 'htt;1'
 
 clean:
 	rm -rf *.o *.txt app
