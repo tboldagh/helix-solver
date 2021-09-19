@@ -7,13 +7,13 @@
 #include <CL/sycl/INTEL/fpga_extensions.hpp>
 
 
-#include "HelixSolver/Accumulator.h"
+#include "HelixSolver/KernelExecutionContainer.h"
 #include "HelixSolver/AccumulatorHelper.h"
 
 
 namespace HelixSolver {
 
-    Accumulator::Accumulator(nlohmann::json &p_config, const Event &m_event)
+    KernelExecutionContainer::KernelExecutionContainer(nlohmann::json &p_config, const Event &m_event)
             : m_config(p_config), m_event(m_event) {
         PrepareLinspaces();
 
@@ -25,7 +25,7 @@ namespace HelixSolver {
         m_map.fill(SolutionCircle{0});
     }
 
-    void Accumulator::FillOnDevice() {
+    void KernelExecutionContainer::FillOnDevice() {
 
         #if defined(FPGA_EMULATOR)
             sycl::INTEL::fpga_emulator_selector device_selector;
@@ -76,7 +76,7 @@ namespace HelixSolver {
         for (uint32_t i = 0; i < ACC_SIZE; ++i) m_map[i] = hostMapAccessor[i];
     }
 
-    void Accumulator::Fill() {
+    void KernelExecutionContainer::Fill() {
         for (const auto& stubFunc : m_event.GetStubsFuncs()) {
             for (uint32_t i = 0; i < m_X.size(); ++i) {
                 float x = m_X[i];
@@ -96,11 +96,11 @@ namespace HelixSolver {
         }
     }
 
-    const std::array<SolutionCircle, ACC_SIZE> &Accumulator::GetSolution() const {
+    const std::array<SolutionCircle, ACC_SIZE> &KernelExecutionContainer::GetSolution() const {
         return m_map;
     }
 
-    void Accumulator::PrepareLinspaces() {
+    void KernelExecutionContainer::PrepareLinspaces() {
         linspace(m_X,
                  Q_OVER_P_BEGIN,
                  Q_OVER_P_END,
@@ -112,7 +112,7 @@ namespace HelixSolver {
                  ACC_HEIGHT);
     }
 
-    void Accumulator::PrintMainAcc() const {
+    void KernelExecutionContainer::PrintMainAcc() const {
         for (uint32_t i = 0; i < ACC_HEIGHT; ++i) {
             for (uint32_t j = 0; j < ACC_WIDTH; ++j) {
                 std::cout << int(m_map[i * ACC_WIDTH + j].isValid) << " ";
@@ -121,7 +121,7 @@ namespace HelixSolver {
         }
     }
 
-    std::pair<double, double> Accumulator::GetValuesOfIndexes(uint32_t x, uint32_t y) const {
+    std::pair<double, double> KernelExecutionContainer::GetValuesOfIndexes(uint32_t x, uint32_t y) const {
         return std::pair<double, double>(m_X[x], m_Y[y]);
     }
 

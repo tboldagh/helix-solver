@@ -5,11 +5,11 @@
 
 namespace HelixSolver {
 
-class KernelHoughTransform {
+class HoughTransformKernel {
 public:
-    KernelHoughTransform() = default;
+    HoughTransformKernel() = default;
 
-    KernelHoughTransform(sycl::handler &h,
+    HoughTransformKernel(sycl::handler &h,
                          sycl::buffer<SolutionCircle, 1> &mapBuffer,
                          sycl::buffer<float, 1> &rBuffer,
                          sycl::buffer<float, 1> &phiBuffer,
@@ -47,7 +47,7 @@ private:
     sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::global_buffer> m_yLinspaceAccessor;
 };
 
-KernelHoughTransform::KernelHoughTransform(sycl::handler &h,
+HoughTransformKernel::HoughTransformKernel(sycl::handler &h,
                                            sycl::buffer<SolutionCircle, 1> &mapBuffer,
                                            sycl::buffer<float, 1> &rBuffer,
                                            sycl::buffer<float, 1> &phiBuffer,
@@ -63,7 +63,7 @@ KernelHoughTransform::KernelHoughTransform(sycl::handler &h,
 
 }
 
-void KernelHoughTransform::TransferDataToBoardMemory(float *X,
+void HoughTransformKernel::TransferDataToBoardMemory(float *X,
                                                       float *Y,
                                                       float *R,
                                                       float *PHI,
@@ -94,7 +94,7 @@ void KernelHoughTransform::TransferDataToBoardMemory(float *X,
     }
 }
 
-void KernelHoughTransform::FillBoardAccumulator(float *X,
+void HoughTransformKernel::FillBoardAccumulator(float *X,
                                                 float *R,
                                                 float *PHI,
                                                 uint8_t *LAYER,
@@ -137,7 +137,7 @@ void KernelHoughTransform::FillBoardAccumulator(float *X,
     }
 }
 
-void KernelHoughTransform::TransferSolutionToHostDevice(bool ACCUMULATOR[][ACC_SIZE]) const {
+void HoughTransformKernel::TransferSolutionToHostDevice(bool ACCUMULATOR[][ACC_SIZE]) const {
     #pragma unroll 16
     [[intel::ivdep]]
     for (uint32_t i = 0; i < ACC_SIZE; ++i) {
@@ -168,17 +168,17 @@ void KernelHoughTransform::TransferSolutionToHostDevice(bool ACCUMULATOR[][ACC_S
     }
 }
 
-float KernelHoughTransform::CalculateAngle(float r, float q_over_pt, float phi) {
+float HoughTransformKernel::CalculateAngle(float r, float q_over_pt, float phi) {
     return -r * q_over_pt + phi;
 };
 
-uint32_t KernelHoughTransform::MapToBeanIndex(float y) {
+uint32_t HoughTransformKernel::MapToBeanIndex(float y) {
     constexpr float temp = (ACC_HEIGHT - 1) / (PHI_END - PHI_BEGIN);
     float x = temp * (y - PHI_BEGIN);
     return static_cast<uint32_t>(x + 0.5);
 }
 
-void KernelHoughTransform::operator()() const {
+void HoughTransformKernel::operator()() const {
 
     [[intel::numbanks(4)]]
     float X[ACC_WIDTH];

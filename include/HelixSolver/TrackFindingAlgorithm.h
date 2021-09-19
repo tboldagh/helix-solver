@@ -4,7 +4,7 @@
 #include <nlohmann/json.hpp>
 
 #include "HelixSolver/Stub.h"
-#include "HelixSolver/Accumulator.h"
+#include "HelixSolver/KernelExecutionContainer.h"
 
 namespace HelixSolver {
 
@@ -18,7 +18,7 @@ namespace HelixSolver {
         nlohmann::json &m_config;
         const double m_B{0};
         const Event &m_event;
-        Accumulator m_firstStageAcc;
+        KernelExecutionContainer m_kec;
     };
 
 } // HelixSolver

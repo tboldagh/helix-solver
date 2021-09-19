@@ -14,9 +14,9 @@ namespace HelixSolver {
 
     using VectorIdxPair = std::vector<std::pair<uint32_t, uint32_t>>;
 
-    class Accumulator {
+    class KernelExecutionContainer {
     public:
-        Accumulator(nlohmann::json &p_config, const Event &m_event);
+        KernelExecutionContainer(nlohmann::json &p_config, const Event &m_event);
 
         void Fill();
 
