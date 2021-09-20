@@ -84,6 +84,7 @@ clean:
 	rm -rf *.sh.o*
 	rm -rf *.sh.e*
 	rm -rf *.png
+	rm -rf detected-circles.txt
 
 clean_external:
 	rm -rf $(LIBS)/build-gtest

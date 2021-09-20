@@ -32,7 +32,6 @@ private:
 
     static uint32_t MapToBeanIndex(float y);
 
-private:
     void TransferDataToBoardMemory(float *X,
                                    float *Y,
                                    float *R,

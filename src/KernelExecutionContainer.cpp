@@ -2,7 +2,7 @@
 #include <limits>
 #include <cmath>
 
-#include "HelixSolver/KernelHoughTransform.h"
+#include "HelixSolver/HoughTransformKernel.h"
 
 #include <CL/sycl/INTEL/fpga_extensions.hpp>
 
@@ -59,9 +59,9 @@ namespace HelixSolver {
 
         sycl::event qEvent = fpgaQueue.submit([&](sycl::handler &h) {
 
-            KernelHoughTransform kernel(h, mapBuffer, rBuffer, phiBuffer, layersBuffer, XLinspaceBuf, YLinspaceBuf);
+            HoughTransformKernel kernel(h, mapBuffer, rBuffer, phiBuffer, layersBuffer, XLinspaceBuf, YLinspaceBuf);
 
-            h.single_task<KernelHoughTransform>(kernel);
+            h.single_task<HoughTransformKernel>(kernel);
         });
 
         qEvent.wait();
