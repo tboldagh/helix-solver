@@ -4,7 +4,8 @@
 
 #include "HelixSolver/HoughTransformKernel.h"
 
-#include <CL/sycl/INTEL/fpga_extensions.hpp>
+// #include <CL/sycl/INTEL/fpga_extensions.hpp>
+#include <sycl/ext/intel/fpga_extensions.hpp>
 
 
 #include "HelixSolver/KernelExecutionContainer.h"
@@ -28,9 +29,9 @@ namespace HelixSolver {
     void KernelExecutionContainer::FillOnDevice() {
 
         #if defined(FPGA_EMULATOR)
-            sycl::INTEL::fpga_emulator_selector device_selector;
+            sycl::intel::fpga_emulator_selector device_selector;
         #else
-            sycl::INTEL::fpga_selector device_selector;
+            sycl::intel::fpga_selector device_selector;
         #endif
 
         auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
