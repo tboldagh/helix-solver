@@ -1,9 +1,10 @@
 #include <fstream>
 #include <iostream>
+#include <TFile.h>
+#include <TTree.h>
 
 #include "HelixSolver/AccumulatorHelper.h"
 #include "HelixSolver/Event.h"
-#include "TFile.h"
 
 namespace HelixSolver {
 
@@ -31,6 +32,21 @@ namespace HelixSolver {
         // TODO add exception handling
 
         std::unique_ptr<TFile> file(TFile::Open(path.c_str()));
+        std::unique_ptr<TTree> hitsTree(file->Get<TTree>("hits"));
+
+        float x;
+        float y;
+        float z;
+        uint8_t layer;
+        hitsTree->SetBranchAddress("tx", &x);
+        hitsTree->SetBranchAddress("tx", &y);
+        hitsTree->SetBranchAddress("tz", &z);
+        hitsTree->SetBranchAddress("layer_id", &layer);
+        for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
+        {
+            hitsTree->GetEntry(i);
+            m_stubs.push_back(Stub{x, y, z, layer});
+        }
     }
 
     void Event::Print() const {

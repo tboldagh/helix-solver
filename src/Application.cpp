@@ -51,4 +51,3 @@ namespace HelixSolver {
     }
 
 } // HelixSolver
-// ROOT_FLAGS := $(shell root-config --glibs --libs)
