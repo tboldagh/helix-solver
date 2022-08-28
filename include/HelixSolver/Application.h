@@ -18,6 +18,8 @@ namespace HelixSolver {
         Event m_event;
         nlohmann::json m_config;
         std::vector<std::string> &m_argv;
+
+        void load_event();
     };
 
 } // HelixSolver

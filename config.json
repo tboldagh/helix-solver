@@ -1,5 +1,7 @@
 {
+    "inputFileType": "txt",
     "inputFile": "inputs/entries-8-event-2281.txt",
+    "inputRootFile": "inuts/rootFileHere.root",
     "outputFile": "detected-circles.txt",
     "B": 2,
     "R": 600,

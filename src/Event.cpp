@@ -3,6 +3,7 @@
 
 #include "HelixSolver/AccumulatorHelper.h"
 #include "HelixSolver/Event.h"
+#include "TFile.h"
 
 namespace HelixSolver {
 
@@ -23,6 +24,13 @@ namespace HelixSolver {
             std::cerr << l_exc.what() << std::endl;
             exit(EXIT_FAILURE);
         }
+    }
+
+    void Event::loadFromRootFile(std::string path)
+    {
+        // TODO add exception handling
+
+        std::unique_ptr<TFile> file(TFile::Open(path.c_str()));
     }
 
     void Event::Print() const {

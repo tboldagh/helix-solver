@@ -19,12 +19,14 @@ TESTTARGET := $(BINDIR)/$(TESTEXEC)
 SRCEXT := cpp
 
 LINKBOOST := -lboost_program_options
-JSON_SINGLE_INCLUDE := $(LIBS)/json/single_include
+JSON_SINGLE_INCLUDE := $(LIBS)/root/include
+ROOT_CONFIG := $(shell root-config --glibs --libs)
 
 SRC := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJ := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SRC:.$(SRCEXT)=.o))
 
 INC := -I $(INCDIR) -I $(JSON_SINGLE_INCLUDE)
+# INC := -I $(INCDIR) -I $(JSON_SINGLE_INCLUDE) -I $(shell root-config --incdir)
 
 TESTSRC := $(shell find $(TESTSRCDIR) -type f -name *.$(SRCEXT))
 TESTOBJ := $(patsubst $(TESTSRCDIR)/%,$(TESTBUILDDIR)/%,$(TESTSRC:.$(SRCEXT)=.o))
@@ -51,11 +53,11 @@ build: $(TARGET)
 
 $(TARGET): $(OBJ)
 	mkdir -p $(BINDIR)
-	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(LINKBOOST) $^ -o $@
+	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(ROOT_CONFIG) $(INC) $(LINKBOOST) $^ -o $@
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	mkdir -p $(BUILDDIR)
-	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(INC) $< -c -o $@ $(WFLAGS)
+	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(ROOT_CONFIG) $(INC) $< -c -o $@ $(WFLAGS)
 
 test: $(TESTTARGET)
 	./$<
