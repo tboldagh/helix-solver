@@ -15,7 +15,7 @@ namespace HelixSolver {
 
     uint32_t FindClosest(const std::vector<float> &vec, float value);
 
-    OptionalIdxPair FindYRange(nlohmann::json &p_config, std::vector<float> &p_Y, float p_yLeft, float p_yRight);
+    OptionalIdxPair FindYRange(nlohmann::json &config, std::vector<float> &Y, float yLeft, float yRight);
 
     template<typename T>
     void Swap(T &first, T &second) {

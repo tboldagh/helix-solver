@@ -30,10 +30,10 @@ namespace HelixSolver {
 
     private:
         std::vector<Stub> m_stubs;
-        std::vector<std::function<float(float)>> m_stubsFunctions;
-        std::vector<float> m_r;
-        std::vector<float> m_phi;
-        std::vector<uint8_t> m_layers;
+        std::vector<std::function<float(float)>> stubsFunctions;
+        std::vector<float> rs;
+        std::vector<float> phis;
+        std::vector<uint8_t> layers;
     };
 
 } // HelixSolver

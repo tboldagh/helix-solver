@@ -14,14 +14,14 @@
 
 namespace HelixSolver {
 
-    KernelExecutionContainer::KernelExecutionContainer(nlohmann::json &p_config, const Event &m_event)
-            : m_config(p_config), m_event(m_event) {
+    KernelExecutionContainer::KernelExecutionContainer(nlohmann::json &p_config, const Event &event)
+            : config(p_config), event(event) {
         PrepareLinspaces();
 
-        m_dx = m_X[1] - m_X[0];
-        m_dxHalf = m_dx / 2;
+        dx = xs[1] - xs[0];
+        dxHalf = dx / 2;
 
-        m_dy = m_Y[1] - m_Y[0];
+        dy = ys[1] - ys[0];
 
         m_map.fill(SolutionCircle{0});
     }
@@ -46,16 +46,16 @@ namespace HelixSolver {
         tempMap.fill(SolutionCircle{0});
         sycl::buffer<SolutionCircle, 1> mapBuffer(tempMap.begin(), tempMap.end());
 
-        std::vector<float> rVec = m_event.GetR();
-        std::vector<float> phiVec = m_event.GetPhi();
-        std::vector<uint8_t> layers = m_event.GetLayers();
+        std::vector<float> rVec = event.GetR();
+        std::vector<float> phiVec = event.GetPhi();
+        std::vector<uint8_t> layers = event.GetLayers();
 
         sycl::buffer<float, 1> rBuffer(rVec.begin(), rVec.end());
         sycl::buffer<float, 1> phiBuffer(phiVec.begin(), phiVec.end());
         sycl::buffer<uint8_t, 1> layersBuffer(layers.begin(), layers.end());
 
-        sycl::buffer<float, 1> XLinspaceBuf(m_X.begin(), m_X.end());
-        sycl::buffer<float, 1> YLinspaceBuf(m_Y.begin(), m_Y.end());
+        sycl::buffer<float, 1> XLinspaceBuf(xs.begin(), xs.end());
+        sycl::buffer<float, 1> YLinspaceBuf(ys.begin(), ys.end());
 
 
         sycl::event qEvent = fpgaQueue.submit([&](sycl::handler &h) {
@@ -78,17 +78,17 @@ namespace HelixSolver {
     }
 
     void KernelExecutionContainer::Fill() {
-        for (const auto& stubFunc : m_event.GetStubsFuncs()) {
-            for (uint32_t i = 0; i < m_X.size(); ++i) {
-                float x = m_X[i];
-                float xLeft = x - m_dxHalf;
-                float xRight = x + m_dxHalf;
+        for (const auto& stubFunc : event.GetStubsFuncs()) {
+            for (uint32_t i = 0; i < xs.size(); ++i) {
+                float x = xs[i];
+                float xLeft = x - dxHalf;
+                float xRight = x + dxHalf;
                 
                 float yLeft = stubFunc(xLeft);
                 float yRight = stubFunc(xRight);
 
-                float yLeftIdx = FindClosest(m_Y, yLeft);
-                float yRightIdx = FindClosest(m_Y, yRight);
+                float yLeftIdx = FindClosest(ys, yLeft);
+                float yRightIdx = FindClosest(ys, yRight);
 
                 for (uint32_t j = yRightIdx; j <= yLeftIdx; ++j) {
                     m_map[j * ACC_WIDTH + i].isValid = true;
@@ -102,12 +102,12 @@ namespace HelixSolver {
     }
 
     void KernelExecutionContainer::PrepareLinspaces() {
-        linspace(m_X,
+        linspace(xs,
                  Q_OVER_P_BEGIN,
                  Q_OVER_P_END,
                  ACC_WIDTH);
 
-        linspace(m_Y,
+        linspace(ys,
                  PHI_BEGIN,
                  PHI_END,
                  ACC_HEIGHT);
@@ -123,7 +123,7 @@ namespace HelixSolver {
     }
 
     std::pair<double, double> KernelExecutionContainer::GetValuesOfIndexes(uint32_t x, uint32_t y) const {
-        return std::pair<double, double>(m_X[x], m_Y[y]);
+        return std::pair<double, double>(xs[x], ys[y]);
     }
 
 } // namespace HelixSolver

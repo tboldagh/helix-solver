@@ -37,34 +37,34 @@ namespace HelixSolver {
         return value - *leftIt < *it - value ? std::distance(begin, leftIt) : std::distance(vec.begin(), it);
     }
 
-    OptionalIdxPair FindYRange(nlohmann::json &p_config, std::vector<float> &p_Y, float p_yLeft, float p_yRight) {
-        float yEnd = p_config["y_end"].get<float>();
-        float yBegin = p_config["y_begin"].get<float>();
-        uint32_t yDpi = p_config["y_dpi"].get<uint32_t>();
+    OptionalIdxPair FindYRange(nlohmann::json &config, std::vector<float> &Y, float yLeft, float yRight) {
+        float yEnd = config["y_end"].get<float>();
+        float yBegin = config["y_begin"].get<float>();
+        uint32_t yDpi = config["y_dpi"].get<uint32_t>();
 
-        if (p_yLeft > yBegin and p_yLeft < yEnd and p_yRight > yBegin and p_yRight < yEnd) {
-            uint32_t rightIdx = FindClosest(p_Y, p_yRight);
-            uint32_t leftIdx = FindClosest(p_Y, p_yLeft);
+        if (yLeft > yBegin and yLeft < yEnd and yRight > yBegin and yRight < yEnd) {
+            uint32_t rightIdx = FindClosest(Y, yRight);
+            uint32_t leftIdx = FindClosest(Y, yLeft);
             return std::make_pair(leftIdx, rightIdx);
         }
-        if (p_yLeft > yBegin and p_yRight < yBegin) {
+        if (yLeft > yBegin and yRight < yBegin) {
             uint32_t rightIdx = 0;
-            uint32_t leftIdx = FindClosest(p_Y, p_yLeft);
+            uint32_t leftIdx = FindClosest(Y, yLeft);
             return std::make_pair(leftIdx, rightIdx);
         }
-        if (p_yLeft < yBegin and p_yRight > yBegin) {
-            uint32_t rightIdx = FindClosest(p_Y, p_yRight);
+        if (yLeft < yBegin and yRight > yBegin) {
+            uint32_t rightIdx = FindClosest(Y, yRight);
             uint32_t leftIdx = 0;
             return std::make_pair(leftIdx, rightIdx);
         }
-        if (p_yLeft > yEnd and p_yRight < yEnd) {
-            uint32_t rightIdx = FindClosest(p_Y, p_yRight);
+        if (yLeft > yEnd and yRight < yEnd) {
+            uint32_t rightIdx = FindClosest(Y, yRight);
             uint32_t leftIdx = yDpi - 1;
             return std::make_pair(leftIdx, rightIdx);
         }
-        if (p_yLeft < yEnd and p_yRight > yEnd) {
+        if (yLeft < yEnd and yRight > yEnd) {
             uint32_t rightIdx = yDpi - 1;;
-            uint32_t leftIdx = FindClosest(p_Y, p_yLeft);
+            uint32_t leftIdx = FindClosest(Y, yLeft);
             return std::make_pair(leftIdx, rightIdx);
         }
 

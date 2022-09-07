@@ -16,13 +16,13 @@ namespace HelixSolver {
 
     class KernelExecutionContainer {
     public:
-        KernelExecutionContainer(nlohmann::json &p_config, const Event &m_event);
+        KernelExecutionContainer(nlohmann::json &config, const Event &event);
 
         void Fill();
 
         void FillOnDevice();
 
-        VectorIdxPair GetCellsAboveThreshold(uint8_t p_threshold) const;
+        VectorIdxPair GetCellsAboveThreshold(uint8_t threshold) const;
 
         void PrintMainAcc() const;
 
@@ -33,15 +33,15 @@ namespace HelixSolver {
     private:
         void PrepareLinspaces();
 
-        nlohmann::json &m_config;
-        const Event &m_event;
+        nlohmann::json &config;
+        const Event &event;
 
-        std::vector<float> m_X;
-        std::vector<float> m_Y;
+        std::vector<float> xs;
+        std::vector<float> ys;
 
-        double m_dy;
-        double m_dx;
-        double m_dxHalf;
+        double dx;
+        double dy;
+        double dxHalf;
 
         std::array<SolutionCircle, ACC_SIZE> m_map;
     };
