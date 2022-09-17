@@ -4,22 +4,21 @@
 
 #include "HelixSolver/Event.h"
 
-namespace HelixSolver {
-
-    class Application {
+namespace HelixSolver
+{
+    class Application
+    {
     public:
-        explicit Application(std::vector<std::string> &argv);
+        explicit Application(std::vector<std::string>& argv);
 
-        int Run();
+        void Run();
 
         ~Application();
 
     private:
-        Event event;
         nlohmann::json config;
-        std::vector<std::string> &argv;
 
-        void load_event();
+        void loadEvent(Event& event);
+        void loadConfig(const std::string& configFilePath);
     };
-
 } // HelixSolver

@@ -4,50 +4,43 @@
 #include "HelixSolver/Application.h"
 #include "HelixSolver/TrackFindingAlgorithm.h"
 
-namespace HelixSolver {
-
-    Application::Application(std::vector<std::string> &argv)
-    : argv(argv)
+namespace HelixSolver
+{
+    Application::Application(std::vector<std::string>& argv)
     {
         if (argv.size() < 2)
         {
             std::cerr << "You must pass configuration file location as program arg!" << std::endl;
             exit(EXIT_FAILURE);
         }
-        std::ifstream l_configFile(argv[1]);
-        l_configFile >> config;
+
+        loadConfig(argv[1]);
     }
 
-    int Application::Run()
+    void Application::Run()
     {
-        load_event();
-        event.BuildStubsFunctions(config);
-        TrackFindingAlgorithm l_algorithm(config, event);
-        l_algorithm.Run();
-        return 0;
+        Event event;
+        loadEvent(event);
+        event.buildStubsFunctions(config);
+        TrackFindingAlgorithm algorithm(config, event);
+        algorithm.run();
     }
 
-    Application::~Application() {
-    }
-
-    void Application::load_event()
+    Application::~Application()
     {
-        if(config.contains("inputFileType"))
-        {
-            event.LoadFromFile(config["inputFile"]);
-            if(config["inputFileType"] == std::string("root"))
-            {
-                event.loadFromRootFile(config["inputRootFile"]);
-            }
-            else if(config["inputFileType"] == std::string("txt"))
-            {
-                event.LoadFromFile(config["inputFile"]);
-            }
-        }
-        else
-        {
-            event.LoadFromFile(config["inputFile"]);
-        }
+
     }
 
+    void Application::loadEvent(Event& event)
+    {
+        std::string path = config["inputFile"];
+        std::string fileType = config.contains("inputFileType") ? std::string(config["inputFileType"]) : std::string("txt");
+        event.loadFromFile(path, fileType);
+    }
+
+    void Application::loadConfig(const std::string& configFilePath)
+    {
+        std::ifstream configFile(configFilePath);
+        configFile >> config;   
+    }
 } // HelixSolver
