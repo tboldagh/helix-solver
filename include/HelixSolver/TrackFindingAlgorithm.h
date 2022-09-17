@@ -6,19 +6,20 @@
 #include "HelixSolver/Stub.h"
 #include "HelixSolver/KernelExecutionContainer.h"
 
-namespace HelixSolver {
-
-    class TrackFindingAlgorithm {
+namespace HelixSolver
+{
+    class TrackFindingAlgorithm
+    {
     public:
-        TrackFindingAlgorithm(nlohmann::json &config, const Event &event);
+        TrackFindingAlgorithm(nlohmann::json& config, Event& event);
 
-        void Run();
+        void run();
 
     private:
-        nlohmann::json &config;
+        nlohmann::json& config;
+        // TODO: rename
         const double B{0};
-        const Event &event;
-        KernelExecutionContainer kec;
+        Event& event;
+        KernelExecutionContainer kernelExecutionContainer;
     };
-
 } // HelixSolver

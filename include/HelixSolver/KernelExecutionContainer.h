@@ -10,31 +10,29 @@
 #include "HelixSolver/Constants.h"
 #include "HelixSolver/SolutionCircle.h"
 
-namespace HelixSolver {
-
+namespace HelixSolver
+{
     using VectorIdxPair = std::vector<std::pair<uint32_t, uint32_t>>;
 
-    class KernelExecutionContainer {
+    class KernelExecutionContainer
+    {
     public:
-        KernelExecutionContainer(nlohmann::json &config, const Event &event);
+        KernelExecutionContainer(nlohmann::json& config, Event& event);
 
-        void Fill();
-
-        void FillOnDevice();
-
-        VectorIdxPair GetCellsAboveThreshold(uint8_t threshold) const;
-
-        void PrintMainAcc() const;
-
-        std::pair<double, double> GetValuesOfIndexes(uint32_t x, uint32_t y) const;
-
-        const std::array<SolutionCircle, ACC_SIZE> &GetSolution() const;
+        void fill();
+        void fillOnDevice();
+        VectorIdxPair getCellsAboveThreshold(uint8_t threshold) const;
+        void printMainAcc() const;
+        // TODO: make inline
+        const std::array<SolutionCircle, ACC_SIZE>& getSolution() const;
+        // TODO: make inline
+        std::pair<double, double> getValuesOfIndexes(uint32_t x, uint32_t y) const;
 
     private:
-        void PrepareLinspaces();
+        void prepareLinspaces();
 
-        nlohmann::json &config;
-        const Event &event;
+        nlohmann::json& config;
+        Event& event;
 
         std::vector<float> xs;
         std::vector<float> ys;
@@ -43,7 +41,7 @@ namespace HelixSolver {
         double dy;
         double dxHalf;
 
-        std::array<SolutionCircle, ACC_SIZE> m_map;
+        std::array<SolutionCircle, ACC_SIZE> map;
     };
 
 } // namespace HelixSolver

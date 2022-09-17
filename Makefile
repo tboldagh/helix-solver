@@ -57,7 +57,8 @@ $(TARGET): $(OBJ)
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	mkdir -p $(BUILDDIR)
-	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(ROOT_CONFIG) $(INC) $< -c -o $@ $(WFLAGS)
+	# $(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(ROOT_CONFIG) $(INC) $< -c -o $@ $(WFLAGS)
+	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(INC) $< -c -o $@ $(WFLAGS)
 
 test: $(TESTTARGET)
 	./$<

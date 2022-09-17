@@ -6,34 +6,35 @@
 
 #include "HelixSolver/Stub.h"
 
-namespace HelixSolver {
-
-    class Event {
+namespace HelixSolver
+{
+    class Event
+    {
     public:
-        Event() = default;
+        void loadFromFile(std::string& path, std::string& fileType);
 
-        Event(std::string p_filePath);
-
-        void LoadFromFile(std::string p_filePath); 
-        void loadFromRootFile(std::string path);
-
-        const std::vector<Stub> &GetStubs() const;
-        const std::vector<std::function<float(float)>> &GetStubsFuncs() const;
+        const std::vector<Stub>& getStubs() const;
+        const std::vector<std::function<float(float)>>& getStubsFuncs() const;
         
-        std::vector<float> GetR() const;
-        std::vector<float> GetPhi() const;
-        std::vector<uint8_t> GetLayers() const;
+        // TODO: change getters to return references
+        // TODO: fix building process and make getters inline
+        std::vector<float>& getR();
+        std::vector<float> getPhi() const;
+        std::vector<uint8_t> getLayers() const;
 
-        void BuildStubsFunctions(const nlohmann::json& config);
+        void buildStubsFunctions(const nlohmann::json& config);
 
-        void Print() const;
+        void print() const;
 
     private:
-        std::vector<Stub> m_stubs;
+        std::vector<Stub> stubs;
         std::vector<std::function<float(float)>> stubsFunctions;
         std::vector<float> rs;
         std::vector<float> phis;
         std::vector<uint8_t> layers;
+
+        void loadFromTxtFile(std::string filePath); 
+        void loadFromRootFile(std::string path); 
     };
 
 } // HelixSolver

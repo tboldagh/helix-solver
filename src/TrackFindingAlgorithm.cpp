@@ -3,23 +3,23 @@
 
 #include "HelixSolver/TrackFindingAlgorithm.h"
 
-namespace HelixSolver {
+namespace HelixSolver
+{
+    TrackFindingAlgorithm::TrackFindingAlgorithm(nlohmann::json& config, Event& event)
+    : config(config)
+    , B(config["B"].get<double>())
+    , event(event)
+    , kernelExecutionContainer(config["main_accumulator_config"], event) {}
 
-    TrackFindingAlgorithm::TrackFindingAlgorithm(nlohmann::json &p_config, const Event& p_event)
-            : config(p_config), B(p_config["B"].get<double>()), event(p_event),
-              kec(config["main_accumulator_config"], event) {
-    }
-
-    void TrackFindingAlgorithm::Run() {
-        kec.FillOnDevice();
-        kec.PrintMainAcc();
+    void TrackFindingAlgorithm::run()
+    {
+        kernelExecutionContainer.fillOnDevice();
+        kernelExecutionContainer.printMainAcc();
         std::ofstream out(config["outputFile"].get<std::string>());
         out << std::setprecision(64);
-        for (const auto &solution : kec.GetSolution()) {
-            if (solution.isValid) {
-                out << solution.r << " " << solution.phi << std::endl;
-            } 
+        for (const auto &solution : kernelExecutionContainer.getSolution())
+        {
+            if (solution.isValid) out << solution.r << " " << solution.phi << std::endl;
         }
     }
-
 } // namespace HelixSolver

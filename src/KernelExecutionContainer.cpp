@@ -2,32 +2,29 @@
 #include <limits>
 #include <cmath>
 
-#include "HelixSolver/HoughTransformKernel.h"
-
-// #include <CL/sycl/INTEL/fpga_extensions.hpp>
 #include <sycl/ext/intel/fpga_extensions.hpp>
 
-
+#include "HelixSolver/HoughTransformKernel.h"
 #include "HelixSolver/KernelExecutionContainer.h"
 #include "HelixSolver/AccumulatorHelper.h"
 
-
-namespace HelixSolver {
-
-    KernelExecutionContainer::KernelExecutionContainer(nlohmann::json &p_config, const Event &event)
-            : config(p_config), event(event) {
-        PrepareLinspaces();
+namespace HelixSolver
+{
+    KernelExecutionContainer::KernelExecutionContainer(nlohmann::json& p_config, Event& event)
+    : config(p_config)
+    , event(event)
+    {
+        prepareLinspaces();
 
         dx = xs[1] - xs[0];
         dxHalf = dx / 2;
-
         dy = ys[1] - ys[0];
 
-        m_map.fill(SolutionCircle{0});
+        map.fill(SolutionCircle{0});
     }
 
-    void KernelExecutionContainer::FillOnDevice() {
-
+    void KernelExecutionContainer::fillOnDevice()
+    {
         #if defined(FPGA_EMULATOR)
             sycl::intel::fpga_emulator_selector device_selector;
         #else
@@ -46,21 +43,21 @@ namespace HelixSolver {
         tempMap.fill(SolutionCircle{0});
         sycl::buffer<SolutionCircle, 1> mapBuffer(tempMap.begin(), tempMap.end());
 
-        std::vector<float> rVec = event.GetR();
-        std::vector<float> phiVec = event.GetPhi();
-        std::vector<uint8_t> layers = event.GetLayers();
+        std::vector<float> rVec = event.getR();
+        std::vector<float> phiVec = event.getPhi();
+        std::vector<uint8_t> layers = event.getLayers();
 
         sycl::buffer<float, 1> rBuffer(rVec.begin(), rVec.end());
         sycl::buffer<float, 1> phiBuffer(phiVec.begin(), phiVec.end());
         sycl::buffer<uint8_t, 1> layersBuffer(layers.begin(), layers.end());
 
-        sycl::buffer<float, 1> XLinspaceBuf(xs.begin(), xs.end());
-        sycl::buffer<float, 1> YLinspaceBuf(ys.begin(), ys.end());
+        sycl::buffer<float, 1> xLinspaceBuf(xs.begin(), xs.end());
+        sycl::buffer<float, 1> yLinspaceBuf(ys.begin(), ys.end());
 
 
-        sycl::event qEvent = fpgaQueue.submit([&](sycl::handler &h) {
-
-            HoughTransformKernel kernel(h, mapBuffer, rBuffer, phiBuffer, layersBuffer, XLinspaceBuf, YLinspaceBuf);
+        sycl::event qEvent = fpgaQueue.submit([&](sycl::handler &h)
+        {
+            HoughTransformKernel kernel(h, mapBuffer, rBuffer, phiBuffer, layersBuffer, xLinspaceBuf, yLinspaceBuf);
 
             h.single_task<HoughTransformKernel>(kernel);
         });
@@ -74,12 +71,15 @@ namespace HelixSolver {
         std::cout << "Execution time: " << kernelTime << " seconds" << std::endl;
 
         sycl::host_accessor hostMapAccessor(mapBuffer, sycl::read_only);
-        for (uint32_t i = 0; i < ACC_SIZE; ++i) m_map[i] = hostMapAccessor[i];
+        for (uint32_t i = 0; i < ACC_SIZE; ++i) map[i] = hostMapAccessor[i];
     }
 
-    void KernelExecutionContainer::Fill() {
-        for (const auto& stubFunc : event.GetStubsFuncs()) {
-            for (uint32_t i = 0; i < xs.size(); ++i) {
+    void KernelExecutionContainer::fill()
+    {
+        for (const auto& stubFunc : event.getStubsFuncs())
+        {
+            for (uint32_t i = 0; i < xs.size(); ++i)
+            {
                 float x = xs[i];
                 float xLeft = x - dxHalf;
                 float xRight = x + dxHalf;
@@ -87,42 +87,39 @@ namespace HelixSolver {
                 float yLeft = stubFunc(xLeft);
                 float yRight = stubFunc(xRight);
 
-                float yLeftIdx = FindClosest(ys, yLeft);
-                float yRightIdx = FindClosest(ys, yRight);
+                float yLeftIdx = findClosest(ys, yLeft);
+                float yRightIdx = findClosest(ys, yRight);
 
-                for (uint32_t j = yRightIdx; j <= yLeftIdx; ++j) {
-                    m_map[j * ACC_WIDTH + i].isValid = true;
+                for (uint32_t j = yRightIdx; j <= yLeftIdx; ++j)
+                {
+                    map[j * ACC_WIDTH + i].isValid = true;
                 }
             }
         }
     }
 
-    const std::array<SolutionCircle, ACC_SIZE> &KernelExecutionContainer::GetSolution() const {
-        return m_map;
+    const std::array<SolutionCircle, ACC_SIZE> &KernelExecutionContainer::getSolution() const
+    {
+        return map;
     }
 
-    void KernelExecutionContainer::PrepareLinspaces() {
-        linspace(xs,
-                 Q_OVER_P_BEGIN,
-                 Q_OVER_P_END,
-                 ACC_WIDTH);
-
-        linspace(ys,
-                 PHI_BEGIN,
-                 PHI_END,
-                 ACC_HEIGHT);
+    void KernelExecutionContainer::prepareLinspaces()
+    {
+        linspace(xs, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
+        linspace(ys, PHI_BEGIN, PHI_END, ACC_HEIGHT);
     }
 
-    void KernelExecutionContainer::PrintMainAcc() const {
-        for (uint32_t i = 0; i < ACC_HEIGHT; ++i) {
-            for (uint32_t j = 0; j < ACC_WIDTH; ++j) {
-                std::cout << int(m_map[i * ACC_WIDTH + j].isValid) << " ";
-            }
+    void KernelExecutionContainer::printMainAcc() const
+    {
+        for (uint32_t i = 0; i < ACC_HEIGHT; ++i)
+        {
+            for (uint32_t j = 0; j < ACC_WIDTH; ++j) std::cout << int(map[i * ACC_WIDTH + j].isValid) << " ";
             std::cout << std::endl;
         }
     }
 
-    std::pair<double, double> KernelExecutionContainer::GetValuesOfIndexes(uint32_t x, uint32_t y) const {
+    std::pair<double, double> KernelExecutionContainer::getValuesOfIndexes(uint32_t x, uint32_t y) const
+    {
         return std::pair<double, double>(xs[x], ys[y]);
     }
 
