@@ -16,34 +16,31 @@ namespace HelixSolver
     , m_xLinspaceAccessor(XLinspaceBuf, h, sycl::read_only)
     , m_yLinspaceAccessor(YLinspaceBuf, h, sycl::read_only) {}
 
-    void HoughTransformKernel::transferDataToBoardMemory(float *X,
-                                                        float *Y,
-                                                        float *R,
-                                                        float *PHI,
-                                                        uint8_t *LAYER) const
+    void HoughTransformKernel::transferDataToBoardMemory(float* x,
+                                                        float* y,
+                                                        float* r,
+                                                        float* phi,
+                                                        uint8_t* layer) const
     {
         size_t stubsNum = m_rAccessor.get_count();
 
         #pragma unroll 64
         [[intel::ivdep]]
-        for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
-            X[i] = m_xLinspaceAccessor[i];
-        }
+        for (uint32_t i = 0; i < ACC_WIDTH; ++i) x[i] = m_xLinspaceAccessor[i];
 
         #pragma unroll 64
         [[intel::ivdep]]
-        for (uint32_t i = 0; i < ACC_HEIGHT; ++i) {
-            Y[i] = m_yLinspaceAccessor[i];
-        }
+        for (uint32_t i = 0; i < ACC_HEIGHT; ++i) y[i] = m_yLinspaceAccessor[i];
 
         #pragma unroll 64
         [[intel::ivdep]]
         for (uint32_t i = 0; i < MAX_STUB_NUM; ++i)
         {
-            if (i < stubsNum) {
-                R[i] = m_rAccessor[i];
-                PHI[i] = m_phiAccessor[i];
-                LAYER[i] = m_layersAccessor[i];
+            if (i < stubsNum)
+            {
+                r[i] = m_rAccessor[i];
+                phi[i] = m_phiAccessor[i];
+                layer[i] = m_layersAccessor[i];
             }
         }
     }
@@ -63,14 +60,19 @@ namespace HelixSolver
         uint32_t yLeftIdx, yRightIdx;
 
         #pragma unroll
+        // ? Does it have any effect? "The ivdep pragma is supported in host code only."
         [[intel::ivdep]]
-        for (uint8_t layer = 0; layer < NUM_OF_LAYERS; ++layer) {
-            for (uint32_t j = 0; j < MAX_STUB_NUM; ++j) {
+        for (uint8_t layer = 0; layer < NUM_OF_LAYERS; ++layer)
+        {
+            for (uint32_t j = 0; j < MAX_STUB_NUM; ++j)
+            {
                 if (j >= stubsNum || LAYER[j] != layer) continue; // skip if stub does not belong to layer
 
                 #pragma unroll 22
+                // ? Does it have any effect? "The ivdep pragma is supported in host code only."
                 [[intel::ivdep]]
-                for (uint32_t i = 0; i < ACC_WIDTH; ++i) {
+                for (uint32_t i = 0; i < ACC_WIDTH; ++i)
+                {
                     x = X[i];
                     xLeft = x - dxHalf;
                     xRight = x + dxHalf;
@@ -81,12 +83,9 @@ namespace HelixSolver
                     yLeftIdx = mapToBeanIndex(yLeft);
                     yRightIdx = mapToBeanIndex(yRight);
 
-                    if (yRightIdx < 0 || yLeftIdx >= ACC_HEIGHT)
-                        continue;
+                    if (yRightIdx < 0 || yLeftIdx >= ACC_HEIGHT) continue;
 
-                    for (uint32_t k = yRightIdx; k <= yLeftIdx; ++k) {
-                        ACCUMULATOR[layer][k * ACC_WIDTH + i] = true;
-                    }
+                    for (uint32_t k = yRightIdx; k <= yLeftIdx; ++k) ACCUMULATOR[layer][k * ACC_WIDTH + i] = true;
                 }
             }
         }
@@ -96,7 +95,8 @@ namespace HelixSolver
     {
         #pragma unroll 16
         [[intel::ivdep]]
-        for (uint32_t i = 0; i < ACC_SIZE; ++i) {
+        for (uint32_t i = 0; i < ACC_SIZE; ++i)
+        {
             uint8_t sum = ACCUMULATOR[0][i] +
                         ACCUMULATOR[1][i] +
                         ACCUMULATOR[2][i] +
@@ -105,9 +105,10 @@ namespace HelixSolver
                         ACCUMULATOR[5][i] +
                         ACCUMULATOR[6][i] +
                         ACCUMULATOR[7][i];
-            bool isAboveThreshold = sum > THRESHOLD ? true : false;
+            bool isAboveThreshold = sum > THRESHOLD;
 
-            if (isAboveThreshold) {
+            if (isAboveThreshold)
+            {
                 constexpr float qOverPtMultiplier = (Q_OVER_P_END - Q_OVER_P_BEGIN) / ACC_WIDTH;
                 constexpr float phiMultiplier = (PHI_END - PHI_BEGIN) / ACC_HEIGHT;
 
