@@ -3,31 +3,26 @@
 
 namespace HelixSolver
 {
-    std::vector<float> linspace(std::vector<float> &vec, float start, float end, size_t num) {
-        if (0 != num) {
-            if (1 == num) {
-                vec.push_back(start);
-            } else {
-                float delta = (end - start) / (num - 1);
-
-                for (uint32_t i = 0; i < num - 1; ++i) {
-                    vec.push_back(start + delta * i);
-                }
-                vec.push_back(end);
-            }
+    void linspace(std::vector<float>& vec, float start, float end, size_t numPoints)
+    {
+        float delta = end - start;
+        vec.push_back(start);
+        for (uint32_t i = 1; i < numPoints; ++i)
+        {
+            vec.push_back(start + delta * i / (numPoints - 1));
         }
-
-        return vec;
     }
 
-    std::pair<float, float> cart2pol(float x, float y) {
+    std::pair<float, float> cart2pol(float x, float y)
+    {
         float r = sqrt(x * x + y * y);
         float a = atan2(y, x);
 
         return std::make_pair(r, a);
     }
 
-    uint32_t findClosest(const std::vector<float> &vec, float value) {
+    uint32_t findClosest(const std::vector<float> &vec, float value)
+    {
         auto begin = vec.begin();
         auto end = vec.end();
         auto it = std::lower_bound(begin, end, value);
@@ -37,7 +32,8 @@ namespace HelixSolver
         return value - *leftIt < *it - value ? std::distance(begin, leftIt) : std::distance(vec.begin(), it);
     }
 
-    OptionalIdxPair findYRange(nlohmann::json &config, std::vector<float> &Y, float yLeft, float yRight) {
+    OptionalIdxPair findYRange(nlohmann::json &config, std::vector<float> &Y, float yLeft, float yRight)
+    {
         float yEnd = config["y_end"].get<float>();
         float yBegin = config["y_begin"].get<float>();
         uint32_t yDpi = config["y_dpi"].get<uint32_t>();

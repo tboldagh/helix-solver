@@ -22,7 +22,7 @@ namespace HelixSolver
 
         void fill();
         void fillOnDevice();
-        void printInfo(sycl::queue queue);
+        void printInfo(const std::unique_ptr<sycl::queue>& queue) const;
         VectorIdxPair getCellsAboveThreshold(uint8_t threshold) const;
         void printMainAcc() const;
         // TODO: make inline
@@ -32,6 +32,7 @@ namespace HelixSolver
 
     private:
         void prepareLinspaces();
+        sycl::queue* getFpgaQueue();
 
         nlohmann::json& config;
         Event& event;
