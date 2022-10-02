@@ -2,7 +2,6 @@
 #include <limits>
 #include <cmath>
 
-
 #include "HelixSolver/HoughTransformKernel.h"
 #include "HelixSolver/KernelExecutionContainer.h"
 #include "HelixSolver/AccumulatorHelper.h"
@@ -24,14 +23,7 @@ namespace HelixSolver
 
     void KernelExecutionContainer::fillOnDevice()
     {
-        #if defined(FPGA_EMULATOR)
-            sycl::ext::intel::fpga_emulator_selector device_selector;
-        #else
-            sycl::ext::intel::fpga_selector device_selector;
-        #endif
-
-        auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
-        sycl::queue fpgaQueue(device_selector, NULL, propertyList);
+        std::unique_ptr<sycl::queue> fpgaQueue(getFpgaQueue());
 
         printInfo(fpgaQueue);
 
@@ -39,18 +31,13 @@ namespace HelixSolver
         tempMap.fill(SolutionCircle{});
         sycl::buffer<SolutionCircle, 1> mapBuffer(tempMap.begin(), tempMap.end());
 
-        std::vector<float> rVec = event.getR();
-        std::vector<float> phiVec = event.getPhi();
-        std::vector<uint8_t> layers = event.getLayers();
-
-        sycl::buffer<float, 1> rBuffer(rVec.begin(), rVec.end());
-        sycl::buffer<float, 1> phiBuffer(phiVec.begin(), phiVec.end());
-        sycl::buffer<uint8_t, 1> layersBuffer(layers.begin(), layers.end());
-
+        sycl::buffer<float, 1> rBuffer(event.getR().begin(), event.getR().end());
+        sycl::buffer<float, 1> phiBuffer(event.getPhi().begin(), event.getPhi().end());
+        sycl::buffer<uint8_t, 1> layersBuffer(event.getLayers().begin(), event.getLayers().end());
         sycl::buffer<float, 1> xLinspaceBuf(xs.begin(), xs.end());
         sycl::buffer<float, 1> yLinspaceBuf(ys.begin(), ys.end());
 
-        sycl::event qEvent = fpgaQueue.submit([&](sycl::handler &handler)
+        sycl::event qEvent = fpgaQueue->submit([&](sycl::handler &handler)
         {
             HoughTransformKernel kernel(handler, mapBuffer, rBuffer, phiBuffer, layersBuffer, xLinspaceBuf, yLinspaceBuf);
 
@@ -69,10 +56,10 @@ namespace HelixSolver
         for (uint32_t i = 0; i < ACC_SIZE; ++i) map[i] = hostMapAccessor[i];
     }
 
-    void KernelExecutionContainer::printInfo(sycl::queue queue)
+    void KernelExecutionContainer::printInfo(const std::unique_ptr<sycl::queue>& queue) const 
     {
-        sycl::platform platform = queue.get_context().get_platform();
-        sycl::device device = queue.get_device();
+        sycl::platform platform = queue->get_context().get_platform();
+        sycl::device device = queue->get_device();
         std::cout << "Platform: " <<  platform.get_info<sycl::info::platform::name>().c_str() << std::endl;
         std::cout << "Device: " <<  device.get_info<sycl::info::device::name>().c_str() << std::endl;
     }
@@ -110,6 +97,18 @@ namespace HelixSolver
     {
         linspace(xs, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
         linspace(ys, PHI_BEGIN, PHI_END, ACC_HEIGHT);
+    }
+
+    sycl::queue* KernelExecutionContainer::getFpgaQueue()
+    {
+        #if defined(FPGA_EMULATOR)
+            sycl::ext::intel::fpga_emulator_selector device_selector;
+        #else
+            sycl::ext::intel::fpga_selector device_selector;
+        #endif
+
+        auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
+        return new sycl::queue(device_selector, NULL, propertyList);
     }
 
     void KernelExecutionContainer::printMainAcc() const

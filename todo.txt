@@ -1,2 +1,3 @@
 Add missing pragma once in .h files
 Suppress build errors in root library
+Fix include errors in VS Code

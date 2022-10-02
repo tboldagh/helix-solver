@@ -16,11 +16,10 @@ namespace HelixSolver
         const std::vector<Stub>& getStubs() const;
         const std::vector<std::function<float(float)>>& getStubsFuncs() const;
         
-        // TODO: change getters to return references
         // TODO: fix building process and make getters inline
         std::vector<float>& getR();
-        std::vector<float> getPhi() const;
-        std::vector<uint8_t> getLayers() const;
+        std::vector<float>& getPhi();
+        std::vector<uint8_t>& getLayers();
 
         void buildStubsFunctions();
 

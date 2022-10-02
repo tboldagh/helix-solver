@@ -22,12 +22,12 @@ namespace HelixSolver
         }
     }
 
-    const std::vector<Stub> &Event::getStubs() const
+    const std::vector<Stub>& Event::getStubs() const
     {
         return stubs;
     }
 
-    const std::vector<std::function<float(float)>> &Event::getStubsFuncs() const
+    const std::vector<std::function<float(float)>>&  Event::getStubsFuncs() const
     {
         return stubsFunctions;
     }
@@ -54,12 +54,12 @@ namespace HelixSolver
         return rs;
     }
     
-    std::vector<float> Event::getPhi() const
+    std::vector<float>& Event::getPhi()
     {
         return phis;
     }
 
-    std::vector<uint8_t> Event::getLayers() const
+    std::vector<uint8_t>& Event::getLayers()
     {
         return layers;
     }

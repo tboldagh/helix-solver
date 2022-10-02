@@ -9,7 +9,7 @@ namespace HelixSolver {
 
     using OptionalIdxPair = std::optional<std::pair<uint32_t, uint32_t>>;
 
-    std::vector<float> linspace(std::vector<float> &vec, float start, float end, size_t num);
+    void linspace(std::vector<float> &vec, float start, float end, size_t num);
 
     std::pair<float, float> cart2pol(float x, float y);
 
