@@ -4,7 +4,7 @@ namespace HelixSolver
 {
     struct SolutionCircle
     {
-        bool isValid;
+        bool isValid = false;
         float r;
         float phi;
     };

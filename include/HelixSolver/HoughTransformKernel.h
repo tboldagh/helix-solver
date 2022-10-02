@@ -10,8 +10,6 @@ namespace HelixSolver
     class HoughTransformKernel
     {
     public:
-        HoughTransformKernel() = default;
-
         HoughTransformKernel(sycl::handler &h,
                             sycl::buffer<SolutionCircle, 1> &mapBuffer,
                             sycl::buffer<float, 1> &rBuffer,
@@ -42,11 +40,11 @@ namespace HelixSolver
                                     uint8_t* layer) const;
 
         // TODO: remove hungarian notation
-        sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::global_buffer> m_mapAccessor;
-        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::global_buffer> m_rAccessor;
-        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::global_buffer> m_phiAccessor;
-        sycl::accessor<uint8_t, 1, sycl::access::mode::read, sycl::access::target::global_buffer> m_layersAccessor;
-        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::global_buffer> m_xLinspaceAccessor;
-        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::global_buffer> m_yLinspaceAccessor;
+        sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> m_mapAccessor;
+        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> m_rAccessor;
+        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> m_phiAccessor;
+        sycl::accessor<uint8_t, 1, sycl::access::mode::read, sycl::access::target::device> m_layersAccessor;
+        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> m_xLinspaceAccessor;
+        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> m_yLinspaceAccessor;
     };
 } // namespace HelixSolver

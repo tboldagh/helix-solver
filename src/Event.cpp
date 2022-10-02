@@ -32,7 +32,7 @@ namespace HelixSolver
         return stubsFunctions;
     }
 
-    void Event::buildStubsFunctions(const nlohmann::json& config)
+    void Event::buildStubsFunctions()
     {
         for (const auto& stub : stubs)
         {

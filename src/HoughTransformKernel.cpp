@@ -22,7 +22,7 @@ namespace HelixSolver
                                                         float* phi,
                                                         uint8_t* layer) const
     {
-        size_t stubsNum = m_rAccessor.get_count();
+        size_t stubsNum = m_rAccessor.size();
 
         #pragma unroll 64
         [[intel::ivdep]]
@@ -51,7 +51,7 @@ namespace HelixSolver
                                                     uint8_t *LAYER,
                                                     bool ACCUMULATOR[][ACC_SIZE]) const
     {
-        size_t stubsNum = m_rAccessor.get_count();
+        size_t stubsNum = m_rAccessor.size();
 
         float dx = X[1] - X[0];
         float dxHalf = dx / 2.0;
