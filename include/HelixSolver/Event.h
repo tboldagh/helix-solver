@@ -22,7 +22,7 @@ namespace HelixSolver
         std::vector<float> getPhi() const;
         std::vector<uint8_t> getLayers() const;
 
-        void buildStubsFunctions(const nlohmann::json& config);
+        void buildStubsFunctions();
 
         void print() const;
 

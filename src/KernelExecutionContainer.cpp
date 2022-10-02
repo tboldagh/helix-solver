@@ -19,15 +19,15 @@ namespace HelixSolver
         dxHalf = dx / 2;
         dy = ys[1] - ys[0];
 
-        map.fill(SolutionCircle{0});
+        map.fill(SolutionCircle{});
     }
 
     void KernelExecutionContainer::fillOnDevice()
     {
         #if defined(FPGA_EMULATOR)
-            sycl::intel::fpga_emulator_selector device_selector;
+            sycl::ext::intel::fpga_emulator_selector device_selector;
         #else
-            sycl::intel::fpga_selector device_selector;
+            sycl::ext::intel::fpga_selector device_selector;
         #endif
 
         auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
@@ -36,7 +36,7 @@ namespace HelixSolver
         printInfo(fpgaQueue);
 
         std::array<SolutionCircle, ACC_SIZE> tempMap;
-        tempMap.fill(SolutionCircle{0});
+        tempMap.fill(SolutionCircle{});
         sycl::buffer<SolutionCircle, 1> mapBuffer(tempMap.begin(), tempMap.end());
 
         std::vector<float> rVec = event.getR();

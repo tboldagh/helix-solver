@@ -19,7 +19,6 @@ namespace HelixSolver
         nlohmann::json& config;
         // TODO: rename
         const double B{0};
-        Event& event;
         KernelExecutionContainer kernelExecutionContainer;
     };
 } // HelixSolver

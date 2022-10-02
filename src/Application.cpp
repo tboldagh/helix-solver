@@ -21,7 +21,7 @@ namespace HelixSolver
     {
         Event event;
         loadEvent(event);
-        event.buildStubsFunctions(config);
+        event.buildStubsFunctions();
         TrackFindingAlgorithm algorithm(config, event);
         algorithm.run();
     }
