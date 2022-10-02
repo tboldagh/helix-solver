@@ -2,7 +2,6 @@
 #include <limits>
 #include <cmath>
 
-#include <sycl/ext/intel/fpga_extensions.hpp>
 
 #include "HelixSolver/HoughTransformKernel.h"
 #include "HelixSolver/KernelExecutionContainer.h"
@@ -34,10 +33,7 @@ namespace HelixSolver
         auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
         sycl::queue fpgaQueue(device_selector, NULL, propertyList);
 
-        sycl::platform platform = fpgaQueue.get_context().get_platform();
-        sycl::device device = fpgaQueue.get_device();
-        std::cout << "Platform: " <<  platform.get_info<sycl::info::platform::name>().c_str() << std::endl;
-        std::cout << "Device: " <<  device.get_info<sycl::info::device::name>().c_str() << std::endl;
+        printInfo(fpgaQueue);
 
         std::array<SolutionCircle, ACC_SIZE> tempMap;
         tempMap.fill(SolutionCircle{0});
@@ -54,12 +50,11 @@ namespace HelixSolver
         sycl::buffer<float, 1> xLinspaceBuf(xs.begin(), xs.end());
         sycl::buffer<float, 1> yLinspaceBuf(ys.begin(), ys.end());
 
-
-        sycl::event qEvent = fpgaQueue.submit([&](sycl::handler &h)
+        sycl::event qEvent = fpgaQueue.submit([&](sycl::handler &handler)
         {
-            HoughTransformKernel kernel(h, mapBuffer, rBuffer, phiBuffer, layersBuffer, xLinspaceBuf, yLinspaceBuf);
+            HoughTransformKernel kernel(handler, mapBuffer, rBuffer, phiBuffer, layersBuffer, xLinspaceBuf, yLinspaceBuf);
 
-            h.single_task<HoughTransformKernel>(kernel);
+            handler.single_task<HoughTransformKernel>(kernel);
         });
 
         qEvent.wait();
@@ -72,6 +67,14 @@ namespace HelixSolver
 
         sycl::host_accessor hostMapAccessor(mapBuffer, sycl::read_only);
         for (uint32_t i = 0; i < ACC_SIZE; ++i) map[i] = hostMapAccessor[i];
+    }
+
+    void KernelExecutionContainer::printInfo(sycl::queue queue)
+    {
+        sycl::platform platform = queue.get_context().get_platform();
+        sycl::device device = queue.get_device();
+        std::cout << "Platform: " <<  platform.get_info<sycl::info::platform::name>().c_str() << std::endl;
+        std::cout << "Device: " <<  device.get_info<sycl::info::device::name>().c_str() << std::endl;
     }
 
     void KernelExecutionContainer::fill()

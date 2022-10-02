@@ -35,11 +35,11 @@ namespace HelixSolver
 
         static uint32_t mapToBeanIndex(float y);
 
-        void transferDataToBoardMemory(float *X,
-                                    float *Y,
-                                    float *R,
-                                    float *PHI,
-                                    uint8_t *LAYER) const;
+        void transferDataToBoardMemory(float* x,
+                                    float* y,
+                                    float* r,
+                                    float* phi,
+                                    uint8_t* layer) const;
 
         // TODO: remove hungarian notation
         sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::global_buffer> m_mapAccessor;

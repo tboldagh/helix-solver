@@ -9,6 +9,7 @@
 #include "HelixSolver/Event.h"
 #include "HelixSolver/Constants.h"
 #include "HelixSolver/SolutionCircle.h"
+#include <sycl/ext/intel/fpga_extensions.hpp>
 
 namespace HelixSolver
 {
@@ -21,6 +22,7 @@ namespace HelixSolver
 
         void fill();
         void fillOnDevice();
+        void printInfo(sycl::queue queue);
         VectorIdxPair getCellsAboveThreshold(uint8_t threshold) const;
         void printMainAcc() const;
         // TODO: make inline
