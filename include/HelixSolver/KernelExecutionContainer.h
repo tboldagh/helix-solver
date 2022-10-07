@@ -27,22 +27,12 @@ namespace HelixSolver
         void printMainAcc() const;
         // TODO: make inline
         const std::array<SolutionCircle, ACC_SIZE>& getSolution() const;
-        // TODO: make inline
-        std::pair<double, double> getValuesOfIndexes(uint32_t x, uint32_t y) const;
 
     private:
-        void prepareLinspaces();
         sycl::queue* getFpgaQueue();
 
         nlohmann::json& config;
         Event& event;
-
-        std::vector<float> xs;
-        std::vector<float> ys;
-
-        double dx;
-        double dy;
-        double dxHalf;
 
         std::array<SolutionCircle, ACC_SIZE> map;
     };

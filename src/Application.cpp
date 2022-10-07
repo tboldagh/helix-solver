@@ -21,6 +21,7 @@ namespace HelixSolver
     {
         Event event;
         loadEvent(event);
+        // TODO: Move calculating stub functions to accelerator device
         event.buildStubsFunctions();
         TrackFindingAlgorithm algorithm(config, event);
         algorithm.run();
