@@ -12,12 +12,6 @@ namespace HelixSolver
     : config(p_config)
     , event(event)
     {
-        prepareLinspaces();
-
-        dx = xs[1] - xs[0];
-        dxHalf = dx / 2;
-        dy = ys[1] - ys[0];
-
         map.fill(SolutionCircle{});
     }
 
@@ -31,14 +25,20 @@ namespace HelixSolver
         tempMap.fill(SolutionCircle{});
         sycl::buffer<SolutionCircle, 1> mapBuffer(tempMap.begin(), tempMap.end());
 
+        std::vector<float> xLinespace;
+        std::vector<float> yLinespace;
+        linspace(xLinespace, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
+        linspace(yLinespace, PHI_BEGIN, PHI_END, ACC_HEIGHT);
+
         sycl::buffer<float, 1> rBuffer(event.getR().begin(), event.getR().end());
         sycl::buffer<float, 1> phiBuffer(event.getPhi().begin(), event.getPhi().end());
         sycl::buffer<uint8_t, 1> layersBuffer(event.getLayers().begin(), event.getLayers().end());
-        sycl::buffer<float, 1> xLinspaceBuf(xs.begin(), xs.end());
-        sycl::buffer<float, 1> yLinspaceBuf(ys.begin(), ys.end());
+        sycl::buffer<float, 1> xLinspaceBuf(xLinespace.begin(), xLinespace.end());
+        sycl::buffer<float, 1> yLinspaceBuf(yLinespace.begin(), yLinespace.end());
 
         sycl::event qEvent = fpgaQueue->submit([&](sycl::handler &handler)
         {
+            // ? Is it necessary to create linspaces on the host device? Consider moving it to accelerator to increase speed and save host - accelerator transfer capacity
             HoughTransformKernel kernel(handler, mapBuffer, rBuffer, phiBuffer, layersBuffer, xLinspaceBuf, yLinspaceBuf);
 
             handler.single_task<HoughTransformKernel>(kernel);
@@ -66,19 +66,26 @@ namespace HelixSolver
 
     void KernelExecutionContainer::fill()
     {
+        std::vector<float> xLinespace;
+        std::vector<float> yLinespace;
+        linspace(xLinespace, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
+        linspace(yLinespace, PHI_BEGIN, PHI_END, ACC_HEIGHT);
+        double dx = xLinespace[1] - xLinespace[0];
+        double dxHalf = dx / 2;
+
         for (const auto& stubFunc : event.getStubsFuncs())
         {
-            for (uint32_t i = 0; i < xs.size(); ++i)
+            for (uint32_t i = 0; i < xLinespace.size(); ++i)
             {
-                float x = xs[i];
+                float x = xLinespace[i];
                 float xLeft = x - dxHalf;
                 float xRight = x + dxHalf;
                 
                 float yLeft = stubFunc(xLeft);
                 float yRight = stubFunc(xRight);
 
-                float yLeftIdx = findClosest(ys, yLeft);
-                float yRightIdx = findClosest(ys, yRight);
+                float yLeftIdx = findClosest(yLinespace, yLeft);
+                float yRightIdx = findClosest(yLinespace, yRight);
 
                 for (uint32_t j = yRightIdx; j <= yLeftIdx; ++j)
                 {
@@ -91,12 +98,6 @@ namespace HelixSolver
     const std::array<SolutionCircle, ACC_SIZE> &KernelExecutionContainer::getSolution() const
     {
         return map;
-    }
-
-    void KernelExecutionContainer::prepareLinspaces()
-    {
-        linspace(xs, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
-        linspace(ys, PHI_BEGIN, PHI_END, ACC_HEIGHT);
     }
 
     sycl::queue* KernelExecutionContainer::getFpgaQueue()
@@ -119,10 +120,4 @@ namespace HelixSolver
             std::cout << std::endl;
         }
     }
-
-    std::pair<double, double> KernelExecutionContainer::getValuesOfIndexes(uint32_t x, uint32_t y) const
-    {
-        return std::pair<double, double>(xs[x], ys[y]);
-    }
-
 } // namespace HelixSolver

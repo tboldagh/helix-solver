@@ -10,24 +10,24 @@ namespace HelixSolver
     class HoughTransformKernel
     {
     public:
-        HoughTransformKernel(sycl::handler &h,
-                            sycl::buffer<SolutionCircle, 1> &mapBuffer,
-                            sycl::buffer<float, 1> &rBuffer,
-                            sycl::buffer<float, 1> &phiBuffer,
-                            sycl::buffer<uint8_t, 1> &layersBuffer,
-                            sycl::buffer<float, 1> &xLinspaceBuf,
-                            sycl::buffer<float, 1> &yLinspaceBuf);
+        HoughTransformKernel(sycl::handler& h,
+                            sycl::buffer<SolutionCircle, 1>& mapBuffer,
+                            sycl::buffer<float, 1>& rBuffer,
+                            sycl::buffer<float, 1>& phiBuffer,
+                            sycl::buffer<uint8_t, 1>& layersBuffer,
+                            sycl::buffer<float, 1>& xLinspaceBuf,
+                            sycl::buffer<float, 1>& yLinspaceBuf);
 
         SYCL_EXTERNAL void operator()() const;
 
     private:
-        void fillBoardAccumulator(float *X,
-                                float *R,
-                                float *PHI,
-                                uint8_t *LAYER,
-                                bool ACCUMULATOR[][ACC_SIZE]) const;
+        void fillBoardAccumulator(float* xs,
+                                float* rs,
+                                float* phis,
+                                uint8_t* layers,
+                                bool accumulator[][ACC_SIZE]) const;
 
-        void transferSolutionToHostDevice(bool ACCUMULATOR[][ACC_SIZE]) const;
+        void transferSolutionToHostDevice(bool accumulator[][ACC_SIZE]) const;
 
         static float calculateAngle(float r, float x, float phi);
 

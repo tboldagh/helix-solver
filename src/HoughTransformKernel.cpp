@@ -2,35 +2,35 @@
 
 namespace HelixSolver
 {
-    HoughTransformKernel::HoughTransformKernel(sycl::handler &h,
-                                            sycl::buffer<SolutionCircle, 1> &mapBuffer,
-                                            sycl::buffer<float, 1> &rBuffer,
-                                            sycl::buffer<float, 1> &phiBuffer,
-                                            sycl::buffer<uint8_t, 1> &layersBuffer,
-                                            sycl::buffer<float, 1> &XLinspaceBuf,
-                                            sycl::buffer<float, 1> &YLinspaceBuf) 
+    HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
+                                            sycl::buffer<SolutionCircle, 1>& mapBuffer,
+                                            sycl::buffer<float, 1>& rBuffer,
+                                            sycl::buffer<float, 1>& phiBuffer,
+                                            sycl::buffer<uint8_t, 1>& layersBuffer,
+                                            sycl::buffer<float, 1>& xLinspaceBuf,
+                                            sycl::buffer<float, 1>& yLinspaceBuf) 
     : m_mapAccessor(mapBuffer, h, sycl::write_only)
     , m_rAccessor(rBuffer, h, sycl::read_only)
     , m_phiAccessor(phiBuffer, h, sycl::read_only)
     , m_layersAccessor(layersBuffer, h, sycl::read_only)
-    , m_xLinspaceAccessor(XLinspaceBuf, h, sycl::read_only)
-    , m_yLinspaceAccessor(YLinspaceBuf, h, sycl::read_only) {}
+    , m_xLinspaceAccessor(xLinspaceBuf, h, sycl::read_only)
+    , m_yLinspaceAccessor(yLinspaceBuf, h, sycl::read_only) {}
 
-    void HoughTransformKernel::transferDataToBoardMemory(float* x,
-                                                        float* y,
-                                                        float* r,
-                                                        float* phi,
-                                                        uint8_t* layer) const
+    void HoughTransformKernel::transferDataToBoardMemory(float* xs,
+                                                        float* ys,
+                                                        float* rs,
+                                                        float* phis,
+                                                        uint8_t* layers) const
     {
         size_t stubsNum = m_rAccessor.size();
 
         #pragma unroll 64
         [[intel::ivdep]]
-        for (uint32_t i = 0; i < ACC_WIDTH; ++i) x[i] = m_xLinspaceAccessor[i];
+        for (uint32_t i = 0; i < ACC_WIDTH; ++i) xs[i] = m_xLinspaceAccessor[i];
 
         #pragma unroll 64
         [[intel::ivdep]]
-        for (uint32_t i = 0; i < ACC_HEIGHT; ++i) y[i] = m_yLinspaceAccessor[i];
+        for (uint32_t i = 0; i < ACC_HEIGHT; ++i) ys[i] = m_yLinspaceAccessor[i];
 
         #pragma unroll 64
         [[intel::ivdep]]
@@ -38,22 +38,22 @@ namespace HelixSolver
         {
             if (i < stubsNum)
             {
-                r[i] = m_rAccessor[i];
-                phi[i] = m_phiAccessor[i];
-                layer[i] = m_layersAccessor[i];
+                rs[i] = m_rAccessor[i];
+                phis[i] = m_phiAccessor[i];
+                layers[i] = m_layersAccessor[i];
             }
         }
     }
 
-    void HoughTransformKernel::fillBoardAccumulator(float *X,
-                                                    float *R,
-                                                    float *PHI,
-                                                    uint8_t *LAYER,
-                                                    bool ACCUMULATOR[][ACC_SIZE]) const
+    void HoughTransformKernel::fillBoardAccumulator(float* xs,
+                                                    float* rs,
+                                                    float* phis,
+                                                    uint8_t* layers,
+                                                    bool accumulator[][ACC_SIZE]) const
     {
         size_t stubsNum = m_rAccessor.size();
 
-        float dx = X[1] - X[0];
+        float dx = xs[1] - xs[0];
         float dxHalf = dx / 2.0;
 
         float x, xLeft, xRight, yLeft, yRight;
@@ -64,47 +64,47 @@ namespace HelixSolver
         [[intel::ivdep]]
         for (uint8_t layer = 0; layer < NUM_OF_LAYERS; ++layer)
         {
-            for (uint32_t j = 0; j < MAX_STUB_NUM; ++j)
+            for (uint32_t j = 0; j < stubsNum; ++j)
             {
-                if (j >= stubsNum || LAYER[j] != layer) continue; // skip if stub does not belong to layer
+                if (layers[j] != layer) continue; // skip if stub does not belong to layer
 
                 #pragma unroll 22
                 // ? Does it have any effect? "The ivdep pragma is supported in host code only."
                 [[intel::ivdep]]
                 for (uint32_t i = 0; i < ACC_WIDTH; ++i)
                 {
-                    x = X[i];
+                    x = xs[i];
                     xLeft = x - dxHalf;
                     xRight = x + dxHalf;
 
-                    yLeft = calculateAngle(R[j], xLeft, PHI[j]);
-                    yRight = calculateAngle(R[j], xRight, PHI[j]);
+                    yLeft = calculateAngle(rs[j], xLeft, phis[j]);
+                    yRight = calculateAngle(rs[j], xRight, phis[j]);
 
                     yLeftIdx = mapToBeanIndex(yLeft);
                     yRightIdx = mapToBeanIndex(yRight);
 
                     if (yRightIdx < 0 || yLeftIdx >= ACC_HEIGHT) continue;
 
-                    for (uint32_t k = yRightIdx; k <= yLeftIdx; ++k) ACCUMULATOR[layer][k * ACC_WIDTH + i] = true;
+                    for (uint32_t k = yRightIdx; k <= yLeftIdx; ++k) accumulator[layer][k * ACC_WIDTH + i] = true;
                 }
             }
         }
     }
 
-    void HoughTransformKernel::transferSolutionToHostDevice(bool ACCUMULATOR[][ACC_SIZE]) const
+    void HoughTransformKernel::transferSolutionToHostDevice(bool accumulator[][ACC_SIZE]) const
     {
         #pragma unroll 16
         [[intel::ivdep]]
         for (uint32_t i = 0; i < ACC_SIZE; ++i)
         {
-            uint8_t sum = ACCUMULATOR[0][i] +
-                        ACCUMULATOR[1][i] +
-                        ACCUMULATOR[2][i] +
-                        ACCUMULATOR[3][i] +
-                        ACCUMULATOR[4][i] +
-                        ACCUMULATOR[5][i] +
-                        ACCUMULATOR[6][i] +
-                        ACCUMULATOR[7][i];
+            uint8_t sum = accumulator[0][i] +
+                        accumulator[1][i] +
+                        accumulator[2][i] +
+                        accumulator[3][i] +
+                        accumulator[4][i] +
+                        accumulator[5][i] +
+                        accumulator[6][i] +
+                        accumulator[7][i];
             bool isAboveThreshold = sum > THRESHOLD;
 
             if (isAboveThreshold)
@@ -140,26 +140,29 @@ namespace HelixSolver
     void HoughTransformKernel::operator()() const
     {
         [[intel::numbanks(4)]]
-        float X[ACC_WIDTH];
+        float xs[ACC_WIDTH];
 
         [[intel::numbanks(4)]]
-        float Y[ACC_HEIGHT];
+        float ys[ACC_HEIGHT];
 
         [[intel::numbanks(4)]]
-        float R[MAX_STUB_NUM];
+        float rs[MAX_STUB_NUM];
 
         [[intel::numbanks(4)]]
-        float PHI[MAX_STUB_NUM];
+        float phis[MAX_STUB_NUM];
 
         [[intel::numbanks(4)]]
-        uint8_t LAYER[MAX_STUB_NUM];
+        uint8_t layers[MAX_STUB_NUM];
 
         [[intel::numbanks(4)]]
-        bool ACCUMULATOR[NUM_OF_LAYERS][ACC_SIZE];
+        bool accumulator[NUM_OF_LAYERS][ACC_SIZE];
 
-        transferDataToBoardMemory(X, Y, R, PHI, LAYER);
-        fillBoardAccumulator(X, R, PHI, LAYER, ACCUMULATOR);
-        transferSolutionToHostDevice(ACCUMULATOR);
+        // ? All the data is alredy in sycl buffers. What is the reason behind duplicating the data in transferDataToBoardMemory?
+        // TODO: Chck if data duplication is necessary. Skip if possible
+        transferDataToBoardMemory(xs, ys, rs, phis, layers);
+        fillBoardAccumulator(xs, rs, phis, layers, accumulator);
+        // This is not transfering solution. It's the last step in calculating it. Refactor
+        transferSolutionToHostDevice(accumulator);
     }
 
 } // namespace HelixSolver
