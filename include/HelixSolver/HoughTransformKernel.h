@@ -21,7 +21,14 @@ namespace HelixSolver
         SYCL_EXTERNAL void operator()() const;
 
     private:
+        // ! Deprecated
         void fillBoardAccumulator(float* xs,
+                                float* rs,
+                                float* phis,
+                                uint8_t* layers,
+                                bool accumulator[][ACC_SIZE]) const;
+
+        void fillAccumulator(float* xs,
                                 float* rs,
                                 float* phis,
                                 uint8_t* layers,
@@ -29,6 +36,7 @@ namespace HelixSolver
 
         void transferSolutionToHostDevice(bool accumulator[][ACC_SIZE]) const;
 
+        // ! Deprecated
         static float calculateAngle(float r, float x, float phi);
 
         static uint32_t mapToBeanIndex(float y);
