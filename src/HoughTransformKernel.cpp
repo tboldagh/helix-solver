@@ -2,19 +2,37 @@
 
 namespace HelixSolver
 {
+    #ifdef DEBUG
     HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
-                                            sycl::buffer<SolutionCircle, 1>& mapBuffer,
-                                            sycl::buffer<float, 1>& rBuffer,
-                                            sycl::buffer<float, 1>& phiBuffer,
-                                            sycl::buffer<uint8_t, 1>& layersBuffer,
-                                            sycl::buffer<float, 1>& xLinspaceBuf,
-                                            sycl::buffer<float, 1>& yLinspaceBuf) 
+                        sycl::buffer<SolutionCircle, 1>& mapBuffer,
+                        sycl::buffer<float, 1>& rBuffer,
+                        sycl::buffer<float, 1>& phiBuffer,
+                        sycl::buffer<uint8_t, 1>& layersBuffer,
+                        sycl::buffer<float, 1>& xLinspaceBuf,
+                        sycl::buffer<float, 1>& yLinspaceBuf,
+                        sycl::buffer<uint8_t, 1>& accumulatorSumBuf)
+    : m_mapAccessor(mapBuffer, h, sycl::write_only)
+    , m_rAccessor(rBuffer, h, sycl::read_only)
+    , m_phiAccessor(phiBuffer, h, sycl::read_only)
+    , m_layersAccessor(layersBuffer, h, sycl::read_only)
+    , m_xLinspaceAccessor(xLinspaceBuf, h, sycl::read_only)
+    , m_yLinspaceAccessor(yLinspaceBuf, h, sycl::read_only)
+    , accumulatorSumBuf(accumulatorSumBuf, h, sycl::write_only) {}
+    #else
+    HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
+                        sycl::buffer<SolutionCircle, 1>& mapBuffer,
+                        sycl::buffer<float, 1>& rBuffer,
+                        sycl::buffer<float, 1>& phiBuffer,
+                        sycl::buffer<uint8_t, 1>& layersBuffer,
+                        sycl::buffer<float, 1>& xLinspaceBuf,
+                        sycl::buffer<float, 1>& yLinspaceBuf) 
     : m_mapAccessor(mapBuffer, h, sycl::write_only)
     , m_rAccessor(rBuffer, h, sycl::read_only)
     , m_phiAccessor(phiBuffer, h, sycl::read_only)
     , m_layersAccessor(layersBuffer, h, sycl::read_only)
     , m_xLinspaceAccessor(xLinspaceBuf, h, sycl::read_only)
     , m_yLinspaceAccessor(yLinspaceBuf, h, sycl::read_only) {}
+    #endif
 
     void HoughTransformKernel::transferDataToBoardMemory(float* xs,
                                                         float* ys,
@@ -126,7 +144,11 @@ namespace HelixSolver
         }
     }
 
+    #ifdef DEBUG
+    void HoughTransformKernel::transferSolutionToHostDevice(bool accumulator[][ACC_SIZE], uint8_t accumulatorSum[ACC_SIZE]) const
+    #else
     void HoughTransformKernel::transferSolutionToHostDevice(bool accumulator[][ACC_SIZE]) const
+    #endif
     {
         #pragma unroll 16
         [[intel::ivdep]]
@@ -141,6 +163,11 @@ namespace HelixSolver
                         accumulator[6][i] +
                         accumulator[7][i];
             bool isAboveThreshold = sum > THRESHOLD;
+
+            #ifdef DEBUG
+            accumulatorSum[i] = sum;
+            accumulatorSumBuf[i] = accumulatorSum[i];
+            #endif
 
             if (isAboveThreshold)
             {
@@ -193,6 +220,10 @@ namespace HelixSolver
         [[intel::numbanks(4)]]
         bool accumulator[NUM_OF_LAYERS][ACC_SIZE];
 
+        #ifdef DEBUG
+        uint8_t accumulatorSum[ACC_SIZE];
+        #endif
+
         // ? All the data is alredy in sycl buffers. What is the reason behind duplicating the data in transferDataToBoardMemory?
         // TODO: Check if data duplication is necessary. Skip if possible
         transferDataToBoardMemory(xs, ys, rs, phis, layers);
@@ -200,7 +231,11 @@ namespace HelixSolver
         // fillBoardAccumulator(xs, rs, phis, layers, accumulator);
         fillAccumulator(xs, rs, phis, layers, accumulator);
         // This is not transfering solution. It's the last step in calculating it. Refactor
+        #ifdef DEBUG
+        transferSolutionToHostDevice(accumulator, accumulatorSum);
+        #else   
         transferSolutionToHostDevice(accumulator);
+        #endif
     }
 
 } // namespace HelixSolver

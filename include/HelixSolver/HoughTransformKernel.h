@@ -5,11 +5,23 @@
 #include "HelixSolver/SolutionCircle.h"
 #include "HelixSolver/Constants.h"
 
+#include "HelixSolver/Debug.h"
+
 namespace HelixSolver
 {
     class HoughTransformKernel
     {
     public:
+        #ifdef DEBUG
+        HoughTransformKernel(sycl::handler& h,
+                            sycl::buffer<SolutionCircle, 1>& mapBuffer,
+                            sycl::buffer<float, 1>& rBuffer,
+                            sycl::buffer<float, 1>& phiBuffer,
+                            sycl::buffer<uint8_t, 1>& layersBuffer,
+                            sycl::buffer<float, 1>& xLinspaceBuf,
+                            sycl::buffer<float, 1>& yLinspaceBuf,
+                            sycl::buffer<uint8_t, 1>& accumulatorSumBuf);        
+        #else
         HoughTransformKernel(sycl::handler& h,
                             sycl::buffer<SolutionCircle, 1>& mapBuffer,
                             sycl::buffer<float, 1>& rBuffer,
@@ -17,6 +29,7 @@ namespace HelixSolver
                             sycl::buffer<uint8_t, 1>& layersBuffer,
                             sycl::buffer<float, 1>& xLinspaceBuf,
                             sycl::buffer<float, 1>& yLinspaceBuf);
+        #endif
 
         SYCL_EXTERNAL void operator()() const;
 
@@ -34,7 +47,12 @@ namespace HelixSolver
                                 uint8_t* layers,
                                 bool accumulator[][ACC_SIZE]) const;
 
+        #ifdef DEBUG
+        void transferSolutionToHostDevice(bool accumulator[][ACC_SIZE], uint8_t accumulatorSum[ACC_SIZE]) const;
+        #else
         void transferSolutionToHostDevice(bool accumulator[][ACC_SIZE]) const;
+        #endif
+        
 
         // ! Deprecated
         static float calculateAngle(float r, float x, float phi);
@@ -54,5 +72,8 @@ namespace HelixSolver
         sycl::accessor<uint8_t, 1, sycl::access::mode::read, sycl::access::target::device> m_layersAccessor;
         sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> m_xLinspaceAccessor;
         sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> m_yLinspaceAccessor;
+        #ifdef DEBUG
+        sycl::accessor<uint8_t, 1, sycl::access::mode::write, sycl::access::target::device> accumulatorSumBuf;
+        #endif
     };
 } // namespace HelixSolver
