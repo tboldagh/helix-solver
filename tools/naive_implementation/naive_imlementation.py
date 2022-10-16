@@ -92,7 +92,7 @@ if __name__ == '__main__':
     accumulator = np.zeros((y_dpi, x_dpi), int)
     fill_accumulator(accumulator, points)
 
-    with open("python_accumulator_dump.log", 'w') as file:
+    with open("logs/naive_accumulator_dump.log", 'w') as file:
         for phi_index in range(y_dpi):
             for q_over_pt_index in range(x_dpi):
                 file.write(f'{accumulator[phi_index][q_over_pt_index]} ')
