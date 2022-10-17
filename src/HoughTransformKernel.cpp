@@ -46,56 +46,7 @@ namespace HelixSolver
         }
     }
 
-    void HoughTransformKernel::fillBoardAccumulator(float* xs,
-                                                    float* rs,
-                                                    float* phis,
-                                                    uint8_t* layers,
-                                                    bool accumulator[][ACC_SIZE]) const
-    {
-        size_t stubsNum = m_rAccessor.size();
-
-        float dx = xs[1] - xs[0];
-        float dxHalf = dx / 2.0;
-
-        float x, xLeft, xRight, yLeft, yRight;
-        uint32_t yLeftIdx, yRightIdx;
-
-        #pragma unroll
-        // ? Does it have any effect? "The ivdep pragma is supported in host code only."
-        [[intel::ivdep]]
-        for (uint8_t layer = 0; layer < NUM_OF_LAYERS; ++layer)
-        {
-            for (uint32_t j = 0; j < stubsNum; ++j)
-            {
-                if (layers[j] != layer) continue; // skip if stub does not belong to layer
-
-                #pragma unroll 22
-                // ? Does it have any effect? "The ivdep pragma is supported in host code only."
-                [[intel::ivdep]]
-                for (uint32_t i = 0; i < ACC_WIDTH; ++i)
-                {
-                    x = xs[i];
-                    xLeft = x - dxHalf;
-                    xRight = x + dxHalf;
-
-                    yLeft = calculateAngle(rs[j], xLeft, phis[j]);
-                    yRight = calculateAngle(rs[j], xRight, phis[j]);
-
-                    yLeftIdx = mapToBeanIndex(yLeft);
-                    yRightIdx = mapToBeanIndex(yRight);
-
-                    if (yRightIdx < 0 || yLeftIdx >= ACC_HEIGHT) continue;
-
-                    for (uint32_t k = yRightIdx; k <= yLeftIdx; ++k) accumulator[layer][k * ACC_WIDTH + i] = true;
-                }
-            }
-        }
-    }
-
-    void HoughTransformKernel::fillAccumulator(
-                        float* rs,
-                        float* phis,
-                        uint8_t* accumulator) const
+    void HoughTransformKernel::fillAccumulator(float* rs, float* phis, uint8_t* accumulator) const
     {
 
         float xs[ACC_WIDTH];
@@ -155,11 +106,6 @@ namespace HelixSolver
             }
         }
     }
-
-    float HoughTransformKernel::calculateAngle(float r, float q_over_pt, float phi)
-    {
-        return -r * q_over_pt + phi;
-    };
 
     // TODO: Rename
     uint32_t HoughTransformKernel::mapToBeanIndex(float y)
