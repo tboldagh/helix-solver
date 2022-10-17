@@ -25,21 +25,13 @@ namespace HelixSolver
         tempMap.fill(SolutionCircle{});
         sycl::buffer<SolutionCircle, 1> mapBuffer(tempMap.begin(), tempMap.end());
 
-        std::vector<float> xLinespace;
-        std::vector<float> yLinespace;
-        linspace(xLinespace, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
-        linspace(yLinespace, PHI_BEGIN, PHI_END, ACC_HEIGHT);
-
         sycl::buffer<float, 1> rBuffer(event.getR().begin(), event.getR().end());
         sycl::buffer<float, 1> phiBuffer(event.getPhi().begin(), event.getPhi().end());
-        sycl::buffer<uint8_t, 1> layersBuffer(event.getLayers().begin(), event.getLayers().end());
-        sycl::buffer<float, 1> xLinspaceBuf(xLinespace.begin(), xLinespace.end());
-        sycl::buffer<float, 1> yLinspaceBuf(yLinespace.begin(), yLinespace.end());
 
         sycl::event qEvent = fpgaQueue->submit([&](sycl::handler &handler)
         {
             // ? Is it necessary to create linspaces on the host device? Consider moving it to accelerator to increase speed and save host - accelerator transfer capacity
-            HoughTransformKernel kernel(handler, mapBuffer, rBuffer, phiBuffer, layersBuffer, xLinspaceBuf, yLinspaceBuf);
+            HoughTransformKernel kernel(handler, mapBuffer, rBuffer, phiBuffer);
 
             handler.single_task<HoughTransformKernel>(kernel);
         });

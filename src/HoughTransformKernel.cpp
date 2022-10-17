@@ -6,43 +6,21 @@ namespace HelixSolver
     HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
                                             sycl::buffer<SolutionCircle, 1>& mapBuffer,
                                             sycl::buffer<float, 1>& rBuffer,
-                                            sycl::buffer<float, 1>& phiBuffer,
-                                            sycl::buffer<uint8_t, 1>& layersBuffer,
-                                            sycl::buffer<float, 1>& xLinspaceBuf,
-                                            sycl::buffer<float, 1>& yLinspaceBuf) 
+                                            sycl::buffer<float, 1>& phiBuffer) 
     : m_mapAccessor(mapBuffer, h, sycl::write_only)
     , m_rAccessor(rBuffer, h, sycl::read_only)
-    , m_phiAccessor(phiBuffer, h, sycl::read_only)
-    , m_layersAccessor(layersBuffer, h, sycl::read_only)
-    , m_xLinspaceAccessor(xLinspaceBuf, h, sycl::read_only)
-    , m_yLinspaceAccessor(yLinspaceBuf, h, sycl::read_only) {}
+    , m_phiAccessor(phiBuffer, h, sycl::read_only) {}
 
-    void HoughTransformKernel::transferDataToBoardMemory(float* xs,
-                                                        float* ys,
-                                                        float* rs,
-                                                        float* phis,
-                                                        uint8_t* layers) const
+    void HoughTransformKernel::transferDataToBoardMemory(float* rs, float* phis) const
     {
         size_t stubsNum = m_rAccessor.size();
 
         #pragma unroll 64
         [[intel::ivdep]]
-        for (uint32_t i = 0; i < ACC_WIDTH; ++i) xs[i] = m_xLinspaceAccessor[i];
-
-        #pragma unroll 64
-        [[intel::ivdep]]
-        for (uint32_t i = 0; i < ACC_HEIGHT; ++i) ys[i] = m_yLinspaceAccessor[i];
-
-        #pragma unroll 64
-        [[intel::ivdep]]
-        for (uint32_t i = 0; i < MAX_STUB_NUM; ++i)
+        for (uint32_t i = 0; i < stubsNum; ++i)
         {
-            if (i < stubsNum)
-            {
-                rs[i] = m_rAccessor[i];
-                phis[i] = m_phiAccessor[i];
-                layers[i] = m_layersAccessor[i];
-            }
+            rs[i] = m_rAccessor[i];
+            phis[i] = m_phiAccessor[i];
         }
     }
 
@@ -118,28 +96,17 @@ namespace HelixSolver
     void HoughTransformKernel::operator()() const
     {
         [[intel::numbanks(4)]]
-        float xs[ACC_WIDTH];
-
-        [[intel::numbanks(4)]]
-        float ys[ACC_HEIGHT];
-
-        [[intel::numbanks(4)]]
         float rs[MAX_STUB_NUM];
 
         [[intel::numbanks(4)]]
         float phis[MAX_STUB_NUM];
 
         [[intel::numbanks(4)]]
-        uint8_t layers[MAX_STUB_NUM];
-
-        [[intel::numbanks(4)]]
         uint8_t accumulator[ACC_SIZE];
 
         // ? All the data is alredy in sycl buffers. What is the reason behind duplicating the data in transferDataToBoardMemory?
         // TODO: Check if data duplication is necessary. Skip if possible
-        transferDataToBoardMemory(xs, ys, rs, phis, layers);
-        // Deprecated
-        // fillBoardAccumulator(xs, rs, phis, layers, accumulator);
+        transferDataToBoardMemory(rs, phis);
         fillAccumulator(rs, phis, accumulator);
         // This is not transfering solution. It's the last step in calculating it. Refactor
         transferSolutionToHostDevice(accumulator);
