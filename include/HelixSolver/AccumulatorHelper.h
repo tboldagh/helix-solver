@@ -5,11 +5,14 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
+#include <CL/sycl.hpp>
+
 namespace HelixSolver {
 
     using OptionalIdxPair = std::optional<std::pair<uint32_t, uint32_t>>;
 
     void linspace(std::vector<float> &vec, float start, float end, size_t num);
+    SYCL_EXTERNAL void linspace(float* array, float start, float end, size_t numPoints);
 
     std::pair<float, float> cart2pol(float x, float y);
 

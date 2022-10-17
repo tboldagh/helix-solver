@@ -1,4 +1,5 @@
 #include "HelixSolver/HoughTransformKernel.h"
+#include "HelixSolver/AccumulatorHelper.h"
 
 namespace HelixSolver
 {
@@ -91,12 +92,15 @@ namespace HelixSolver
         }
     }
 
-    void HoughTransformKernel::fillAccumulator(float* xs,
+    void HoughTransformKernel::fillAccumulator(
                         float* rs,
                         float* phis,
-                        uint8_t* layers,
-                        bool accumulator[][ACC_SIZE]) const
+                        uint8_t* accumulator) const
     {
+
+        float xs[ACC_WIDTH];
+        linspace(xs, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
+
         float deltaX = xs[1] - xs[0];
         uint32_t stubsNum = m_rAccessor.size();
 
@@ -121,26 +125,18 @@ namespace HelixSolver
                 // uint32_t phiTopIndex = phiTop < PHI_END ? mapToBeanIndex(phiTop) : ACC_HEIGHT - 1;
                 // uint32_t phiBottomIndex = phiBottm > PHI_BEGIN ? mapToBeanIndex(phiBottom) : 0;
 
-                for(uint32_t phiIndex = phiBottomIndex; phiIndex <= phiTopIndex; phiIndex++) accumulator[layers[stubIndex]][phiIndex * ACC_WIDTH + xIndex] = true;
+                for(uint32_t phiIndex = phiBottomIndex; phiIndex <= phiTopIndex; phiIndex++) accumulator[phiIndex * ACC_WIDTH + xIndex]++;
             }
         }
     }
 
-    void HoughTransformKernel::transferSolutionToHostDevice(bool accumulator[][ACC_SIZE]) const
+    void HoughTransformKernel::transferSolutionToHostDevice(uint8_t* accumulator) const
     {
         #pragma unroll 16
         [[intel::ivdep]]
         for (uint32_t i = 0; i < ACC_SIZE; ++i)
         {
-            uint8_t sum = accumulator[0][i] +
-                        accumulator[1][i] +
-                        accumulator[2][i] +
-                        accumulator[3][i] +
-                        accumulator[4][i] +
-                        accumulator[5][i] +
-                        accumulator[6][i] +
-                        accumulator[7][i];
-            bool isAboveThreshold = sum > THRESHOLD;
+            bool isAboveThreshold = accumulator[i] > THRESHOLD;
 
             if (isAboveThreshold)
             {
@@ -191,14 +187,14 @@ namespace HelixSolver
         uint8_t layers[MAX_STUB_NUM];
 
         [[intel::numbanks(4)]]
-        bool accumulator[NUM_OF_LAYERS][ACC_SIZE];
+        uint8_t accumulator[ACC_SIZE];
 
         // ? All the data is alredy in sycl buffers. What is the reason behind duplicating the data in transferDataToBoardMemory?
         // TODO: Check if data duplication is necessary. Skip if possible
         transferDataToBoardMemory(xs, ys, rs, phis, layers);
         // Deprecated
         // fillBoardAccumulator(xs, rs, phis, layers, accumulator);
-        fillAccumulator(xs, rs, phis, layers, accumulator);
+        fillAccumulator(rs, phis, accumulator);
         // This is not transfering solution. It's the last step in calculating it. Refactor
         transferSolutionToHostDevice(accumulator);
     }

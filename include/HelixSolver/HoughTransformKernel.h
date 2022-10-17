@@ -28,13 +28,11 @@ namespace HelixSolver
                                 uint8_t* layers,
                                 bool accumulator[][ACC_SIZE]) const;
 
-        void fillAccumulator(float* xs,
-                                float* rs,
-                                float* phis,
-                                uint8_t* layers,
-                                bool accumulator[][ACC_SIZE]) const;
+        void fillAccumulator(float* rs,
+                            float* phis,
+                            uint8_t* accumulator) const;
 
-        void transferSolutionToHostDevice(bool accumulator[][ACC_SIZE]) const;
+        void transferSolutionToHostDevice(uint8_t* accumulator) const;
 
         // ! Deprecated
         static float calculateAngle(float r, float x, float phi);

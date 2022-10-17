@@ -13,6 +13,16 @@ namespace HelixSolver
         }
     }
 
+    void linspace(float* array, float start, float end, size_t numPoints)
+    {
+        float delta = end - start;
+        array[0] = start;
+        for (uint32_t i = 1; i < numPoints; ++i)
+        {
+            array[i] = start + delta * i / (numPoints - 1);
+        }
+    }
+
     std::pair<float, float> cart2pol(float x, float y)
     {
         float r = sqrt(x * x + y * y);
