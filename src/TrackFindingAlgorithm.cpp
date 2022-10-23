@@ -13,7 +13,7 @@ namespace HelixSolver
     void TrackFindingAlgorithm::run()
     {
         kernelExecutionContainer.fillOnDevice();
-        kernelExecutionContainer.printMainAcc();
+        // kernelExecutionContainer.printMainAcc();
         std::ofstream out(config["outputFile"].get<std::string>());
         out << std::setprecision(64);
         for (const auto &solution : kernelExecutionContainer.getSolution())

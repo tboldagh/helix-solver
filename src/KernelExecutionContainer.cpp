@@ -1,6 +1,7 @@
 #include <iostream>
 #include <limits>
 #include <cmath>
+#include <fstream>
 
 #include "HelixSolver/HoughTransformKernel.h"
 #include "HelixSolver/KernelExecutionContainer.h"
@@ -28,13 +29,41 @@ namespace HelixSolver
         sycl::buffer<float, 1> rBuffer(event.getR().begin(), event.getR().end());
         sycl::buffer<float, 1> phiBuffer(event.getPhi().begin(), event.getPhi().end());
 
+        #ifdef DEBUG
+        std::vector<uint8_t> accumulatorSum(ACC_SIZE, 0);
+        sycl::buffer<uint8_t, 1> accumulatorSumBuf(accumulatorSum.begin(), accumulatorSum.end());
+        #endif
+
         sycl::event qEvent = fpgaQueue->submit([&](sycl::handler &handler)
         {
-            // ? Is it necessary to create linspaces on the host device? Consider moving it to accelerator to increase speed and save host - accelerator transfer capacity
+            #ifdef DEBUG
+            HoughTransformKernel kernel(handler, mapBuffer, rBuffer, phiBuffer, accumulatorSumBuf);
+            #else
             HoughTransformKernel kernel(handler, mapBuffer, rBuffer, phiBuffer);
+            #endif
 
             handler.single_task<HoughTransformKernel>(kernel);
         });
+
+        #ifdef DEBUG
+        sycl::host_accessor sumBufAccessor(accumulatorSumBuf, sycl::read_only);
+        for (uint32_t i = 0; i < ACC_SIZE; i++) accumulatorSum[i] = sumBufAccessor[i];
+        
+        try
+        {
+            std::ofstream logFile(ACCUMULATOR_DUMP_FILE_PATH);
+            for (uint32_t phi = 0; phi < ACC_HEIGHT; phi++)
+            {
+                for (uint32_t qOverPt = 0; qOverPt < ACC_WIDTH; qOverPt++) logFile << int(accumulatorSum[phi * ACC_WIDTH + qOverPt]) << " ";
+                logFile<<"\n";
+            }
+        }
+        catch (std::exception &exc)
+        {
+            std::cerr << exc.what() << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        #endif
 
         qEvent.wait();
 

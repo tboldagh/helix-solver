@@ -3,6 +3,17 @@
 
 namespace HelixSolver
 {
+    #ifdef DEBUG
+    HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
+                                            sycl::buffer<SolutionCircle, 1>& mapBuffer,
+                                            sycl::buffer<float, 1>& rBuffer,
+                                            sycl::buffer<float, 1>& phiBuffer,
+                                            sycl::buffer<uint8_t, 1>& accumulatorSumBuf) 
+    : m_mapAccessor(mapBuffer, h, sycl::write_only)
+    , m_rAccessor(rBuffer, h, sycl::read_only)
+    , m_phiAccessor(phiBuffer, h, sycl::read_only)
+    , accumulatorSumBuf(accumulatorSumBuf, h, sycl::write_only) {}
+    #else
     HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
                                             sycl::buffer<SolutionCircle, 1>& mapBuffer,
                                             sycl::buffer<float, 1>& rBuffer,
@@ -10,7 +21,7 @@ namespace HelixSolver
     : m_mapAccessor(mapBuffer, h, sycl::write_only)
     , m_rAccessor(rBuffer, h, sycl::read_only)
     , m_phiAccessor(phiBuffer, h, sycl::read_only) {}
-
+    #endif
     void HoughTransformKernel::transferDataToBoardMemory(float* rs, float* phis) const
     {
         size_t stubsNum = m_rAccessor.size();
@@ -66,6 +77,10 @@ namespace HelixSolver
         for (uint32_t i = 0; i < ACC_SIZE; ++i)
         {
             bool isAboveThreshold = accumulator[i] > THRESHOLD;
+
+            #ifdef DEBUG
+            accumulatorSumBuf[i] = accumulator[i];
+            #endif
 
             if (isAboveThreshold)
             {
