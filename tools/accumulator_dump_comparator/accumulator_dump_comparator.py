@@ -1,3 +1,4 @@
+import datetime
 import sys
 import numpy as np
 from matplotlib import pyplot as plt
@@ -16,14 +17,17 @@ if __name__ == '__main__':
 
     accumulator_dump_difference = [[oneapi_accumulator_dump[i][j] - naive_accumulator_dump[i][j] for j in range(len(oneapi_accumulator_dump[i]))] for i in range(len(oneapi_accumulator_dump))]
 
-    accumulator_dump_difference_path = 'logs/accumulator_dump_difference_path.log'
+    current_time = datetime.datetime.now()
+    name_postfix = f'{current_time.year}_{current_time.month}_{current_time.day}_{current_time.hour}_{current_time.minute}_{current_time.second}'
+
+    accumulator_dump_difference_path = f'logs/accumulator_dump_difference_path_{name_postfix}.log'
     with open(accumulator_dump_difference_path, 'w') as file:
         for i in accumulator_dump_difference:
             for j in i:
                 file.write(f'{j} ')
             file.write('\n')
 
-    accumulator_dump_difference_plot_path = 'logs/accumulator_dump_difference_plot_path.png'
+    accumulator_dump_difference_plot_path = f'logs/accumulator_dump_difference_plot_{name_postfix}.png'
 
     y_length = len(accumulator_dump_difference)
     x_length = len(accumulator_dump_difference[0])
