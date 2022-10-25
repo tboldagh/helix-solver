@@ -37,11 +37,7 @@ namespace HelixSolver
 
     void HoughTransformKernel::fillAccumulator(float* rs, float* phis, uint8_t* accumulator) const
     {
-
-        float xs[ACC_WIDTH];
-        linspace(xs, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
-
-        float deltaX = xs[1] - xs[0];
+        float cellWidth = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 1) - linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 0);
         uint32_t stubsNum = m_rAccessor.size();
 
         for(uint32_t stubIndex = 0; stubIndex < stubsNum; stubIndex++)
@@ -50,9 +46,9 @@ namespace HelixSolver
             // TODO: Change iteration range so as to cut calculation not affecting cells in the accumulator (when phi not in [PHI_BEGIN, PHI_END])
             for(uint32_t xIndex = 0; xIndex < ACC_WIDTH; xIndex++)
             {
-                float x = xs[xIndex];
-                float xLeft = x - deltaX * 0.5;
-                float xRight = x + deltaX * 0.5;
+                float x = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, xIndex);
+                float xLeft = x - cellWidth * 0.5;
+                float xRight = x + cellWidth * 0.5;
 
                 float phiTop = -rs[stubIndex] * xLeft + phis[stubIndex];
                 float phiBottom = -rs[stubIndex] * xRight + phis[stubIndex];

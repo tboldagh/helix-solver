@@ -13,6 +13,10 @@ namespace HelixSolver {
 
     void linspace(std::vector<float> &vec, float start, float end, size_t num);
     SYCL_EXTERNAL void linspace(float* array, float start, float end, size_t numPoints);
+    SYCL_EXTERNAL inline float linspaceElement(float start, float end, size_t numPoints, size_t index)
+    {
+        return start + (end - start) * index / (numPoints - 1);
+    }
 
     std::pair<float, float> cart2pol(float x, float y);
 
