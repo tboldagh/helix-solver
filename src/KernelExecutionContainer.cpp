@@ -123,7 +123,9 @@ namespace HelixSolver
 
     sycl::queue* KernelExecutionContainer::getFpgaQueue()
     {
-        #if defined(FPGA_EMULATOR)
+        #if defined(DEBUG)
+            sycl::host_selector device_selector;
+        #elif defined(FPGA_EMULATOR)
             sycl::ext::intel::fpga_emulator_selector device_selector;
         #else
             sycl::ext::intel::fpga_selector device_selector;

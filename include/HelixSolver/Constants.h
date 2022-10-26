@@ -9,6 +9,14 @@ static constexpr uint32_t ACC_HEIGHT = 256;
 // TODO: rename
 static constexpr uint32_t ACC_SIZE = ACC_WIDTH * ACC_HEIGHT;
 
+
+// * Must be sqare root of ACC_WIDTH
+static constexpr uint8_t Q_OVER_PT_MAX_GRID_DIVISION_LEVEL = 6;
+// * Must be sqare root of ACC_HEIGHT
+static constexpr uint8_t PHI_MAX_GRID_DIVISION_LEVEL = 8;
+// * Must be at least max(Q_OVER_PT_MAX_GRID_DIVISION_LEVEL, PHI_MAX_GRID_DIVISION_LEVEL) * 4
+static constexpr uint16_t ACCUMULATOR_SECTION_STACK_MAX_HEIGHT = PHI_MAX_GRID_DIVISION_LEVEL * 4;
+
 static constexpr uint8_t THRESHOLD = 6;
 static constexpr float Q_OVER_P_BEGIN  = -0.2857142857142857;
 static constexpr float Q_OVER_P_END = 0.2857142857142857;

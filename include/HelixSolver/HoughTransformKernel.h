@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CL/sycl.hpp>
+#include <stack>
 
 #include "HelixSolver/SolutionCircle.h"
 #include "HelixSolver/Constants.h"
@@ -11,6 +12,19 @@ namespace HelixSolver
 {
     class HoughTransformKernel
     {
+    private:
+        class HoughTransformKernelAccumulatorSection
+        {
+        public:
+            HoughTransformKernelAccumulatorSection() = default;
+            HoughTransformKernelAccumulatorSection(uint8_t qOverPtGridDivisionLevel, uint8_t phiGridDivisionLevel, uint16_t qOverPtBeginIndex, uint16_t phiBeginIndex);
+
+            uint8_t qOverPtGridDivisionLevel;
+            uint8_t phiGridDivisionLevel;
+            uint16_t qOverPtBeginIndex;
+            uint16_t phiBeginIndex;
+        };
+        
     public:
         #ifdef DEBUG
         HoughTransformKernel(sycl::handler& h,
@@ -29,6 +43,10 @@ namespace HelixSolver
 
     private:
         void fillAccumulator(float* rs, float* phis, uint8_t* accumulator) const;
+
+        void fillAccumulatorAdaptive(float* rs, float* phis, uint8_t* accumulator) const;
+
+        void fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, float* rs, float* phis) const;
 
         void transferSolutionToHostDevice(uint8_t* accumulator) const;
 
