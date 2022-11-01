@@ -92,36 +92,41 @@ namespace HelixSolver
         {
             fillAccumulatorSectionAdaptive(sectionsStack, sectionsStackHeight, accumulator, rs, phis);
         }
-
-
-        // float cellWidth = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 1) - linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 0);
-        // uint32_t stubsNum = m_rAccessor.size();
-
-
-        // uint8_t qOverPtGridDivisionLevel = 0;
-        // uint8_t phiGridDivisionLevel = 0;
-        // while (qOverPtGridDivisionLevel < Q_OVER_PT_MAX_GRID_DIVISION_LEVEL || phiGridDivisionLevel < PHI_MAX_GRID_DIVISION_LEVEL)
-        // {
-        //     qOverPtGridDivisionLevel += 1 ? qOverPtGridDivisionLevel < Q_OVER_PT_MAX_GRID_DIVISION_LEVEL : 0;
-        //     phiGridDivisionLevel += 1 ? phiGridDivisionLevel < PHI_MAX_GRID_DIVISION_LEVEL : 0;
-
-        //     u_int32_t qOverPtCellsNum = pow(2, qOverPtGridDivisionLevel);
-        //     u_int32_t phiCellsNum = pow(2, phiGridDivisionLevel);
-
-        // }
     }
 
     void HoughTransformKernel::fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, float* rs, float* phis) const
     {
         // * ACC_WIDTH and ACC_HEIGHT must be powers of 2
 
-        // At first fill all the cells. Implement exlusion of sections without hit later.
-
         sectionsStackHeight--;
         HoughTransformKernelAccumulatorSection section = sectionsStack[sectionsStackHeight];
         
         bool divideQOverPt = section.qOverPtGridDivisionLevel < Q_OVER_PT_MAX_GRID_DIVISION_LEVEL;
         bool dividePhi = section.phiGridDivisionLevel < PHI_MAX_GRID_DIVISION_LEVEL;
+
+        float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.qOverPtBeginIndex);
+        float phi = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.phiBeginIndex);
+
+        // TODO: Rename
+        float numCellsQOverPt = pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel);
+        float numCellsPhi = pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel);
+
+        float qOverPtLeft = qOverPt - ACC_CELL_WIDTH * 0.5;
+        float qOverPtRight = qOverPt + ACC_CELL_WIDTH * (numCellsQOverPt - 0.5);
+        float phiBottom = phi - ACC_CELL_HEIGHT * 0.5;
+        float phiTop = phi + ACC_CELL_HEIGHT * (numCellsPhi - 0.5);
+
+        uint8_t hitCount = 0;
+        size_t stubsNum = m_rAccessor.size();
+        for(uint32_t stubIndex = 0; stubIndex < stubsNum; stubIndex++)
+        {
+            float phiLeft = -rs[stubIndex] * qOverPtLeft + phis[stubIndex];
+            float phiRight = -rs[stubIndex] * qOverPtRight + phis[stubIndex];
+
+            hitCount += phiLeft >= phiBottom && phiRight <= phiTop ? 1 : 0;
+            if (hitCount >= THRESHOLD) break;
+        }
+        if(hitCount < THRESHOLD) return;
 
         if (divideQOverPt)
         {
@@ -153,25 +158,7 @@ namespace HelixSolver
                 // TODO: Cannot divide further. Calculate accumulator cell value.
                 // ? Is it worth to skip subs after reaching threshold? Consider it.
 
-                float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.qOverPtBeginIndex);
-                float phi = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.phiBeginIndex);
-                // TODO: Make cell width and height constexpr
-                float cellWidth = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 1) - linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 0);
-                float cellHeight = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, 1) - linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, 0);
-
-                float qOverPtLeft = qOverPt - cellWidth * 0.5;
-                float qOverPtRight = qOverPt + cellWidth * 0.5;
-                float phiBottom = phi - cellHeight * 0.5;
-                float phiTop = phi + cellHeight * 0.5;
-
-                size_t stubsNum = m_rAccessor.size();
-                for(uint32_t stubIndex = 0; stubIndex < stubsNum; stubIndex++)
-                {
-                    float phiLeft = -rs[stubIndex] * qOverPtLeft + phis[stubIndex];
-                    float phiRight = -rs[stubIndex] * qOverPtRight + phis[stubIndex];
-  
-                    accumulator[section.phiBeginIndex * ACC_WIDTH + section.qOverPtBeginIndex] += phiLeft >= phiBottom && phiRight <= phiTop ? 1 : 0;
-                }
+                accumulator[section.phiBeginIndex * ACC_WIDTH + section.qOverPtBeginIndex] = hitCount;
             }
         }
     }

@@ -20,7 +20,7 @@ if __name__ == '__main__':
     current_time = datetime.datetime.now()
     name_postfix = f'{current_time.year}_{current_time.month}_{current_time.day}_{current_time.hour}_{current_time.minute}_{current_time.second}'
 
-    accumulator_dump_difference_path = f'logs/accumulator_dump_difference_path_{name_postfix}.log'
+    accumulator_dump_difference_path = f'logs/accumulator_dump_difference_{name_postfix}.log'
     with open(accumulator_dump_difference_path, 'w') as file:
         for i in accumulator_dump_difference:
             for j in i:

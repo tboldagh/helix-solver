@@ -1,3 +1,5 @@
 Add missing pragma once in .h files
 Suppress build errors in root library
 Fix include errors in VS Code
+Add noexcept to functions. This may help optimizers
+Move logic from transferSolutionToHostDevice and remove the accumulator

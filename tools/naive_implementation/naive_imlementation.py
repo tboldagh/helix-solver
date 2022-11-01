@@ -49,8 +49,8 @@ def fill_accumulator(accumulator, points):
     def fill_one_point(point_r, point_phi):
         for q_over_pt_index in range(x_dpi):
             for phi_index in range(y_dpi):
-                q_over_pt = lerp(x_begin, x_end, q_over_pt_index / x_dpi)
-                phi = lerp(y_begin, y_end, phi_index / y_dpi)
+                q_over_pt = lerp(x_begin, x_end, q_over_pt_index / (x_dpi - 1))
+                phi = lerp(y_begin, y_end, phi_index / (y_dpi - 1))
                 q_over_pt_left = q_over_pt - delta_x * 0.5
                 q_over_pt_right = q_over_pt + delta_x * 0.5
                 phi_bottom = phi - delta_y * 0.5
