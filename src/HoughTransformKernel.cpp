@@ -78,56 +78,42 @@ namespace HelixSolver
 
     void HoughTransformKernel::fillAccumulatorAdaptive(float* rs, float* phis, uint8_t* accumulator) const
     {
-        // * ACC_WIDTH and ACC_HEIGHT must be powers of 2
+        // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
 
-        // TODO: Reserve stack capacity to avoid reallocations
+        uint32_t stubIndexes[MAX_STUB_NUM * (NUM_OF_LAYERS + 2)];
+        uint32_t stubCounts[NUM_OF_LAYERS + 2];
+        stubCounts[0] = 0;
+        uint32_t stubsNum = m_rAccessor.size();
+        for(; stubCounts[0] < stubsNum; ++stubCounts[0])
+        {
+            stubIndexes[stubCounts[0]] = stubCounts[0];
+        }
+
         // Cannot use std::stack
         HoughTransformKernelAccumulatorSection sectionsStack[ACCUMULATOR_SECTION_STACK_MAX_HEIGHT];
         uint8_t sectionsStackHeight = 0;
-        // std::stack<HoughTransformKernelAccumulatorSection> sections;
         sectionsStack[sectionsStackHeight] = HoughTransformKernelAccumulatorSection(0, 0, 0, 0);
         sectionsStackHeight++;
-        // sections.push(HoughTransformKernelAccumulatorSection(0, 0, 0, 0));
         while (sectionsStackHeight)
         {
-            fillAccumulatorSectionAdaptive(sectionsStack, sectionsStackHeight, accumulator, rs, phis);
+            fillAccumulatorSectionAdaptive(sectionsStack, sectionsStackHeight, accumulator, rs, phis, stubIndexes, stubCounts);
         }
     }
 
-    void HoughTransformKernel::fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, float* rs, float* phis) const
+    void HoughTransformKernel::fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, float* rs, float* phis, uint32_t* stubIndexes, uint32_t* stubCounts) const
     {
-        // * ACC_WIDTH and ACC_HEIGHT must be powers of 2
+        // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
 
         sectionsStackHeight--;
         HoughTransformKernelAccumulatorSection section = sectionsStack[sectionsStackHeight];
+
+        uint8_t divisionLevel = section.qOverPtGridDivisionLevel > section.phiGridDivisionLevel ? section.qOverPtGridDivisionLevel : section.phiGridDivisionLevel;
+        fillHits(stubIndexes, stubCounts, divisionLevel, section, rs, phis);
+        if (stubCounts[divisionLevel + 1] - stubCounts[divisionLevel] < THRESHOLD) return;
         
+
         bool divideQOverPt = section.qOverPtGridDivisionLevel < Q_OVER_PT_MAX_GRID_DIVISION_LEVEL;
         bool dividePhi = section.phiGridDivisionLevel < PHI_MAX_GRID_DIVISION_LEVEL;
-
-        float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.qOverPtBeginIndex);
-        float phi = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.phiBeginIndex);
-
-        // TODO: Rename
-        float numCellsQOverPt = pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel);
-        float numCellsPhi = pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel);
-
-        float qOverPtLeft = qOverPt - ACC_CELL_WIDTH * 0.5;
-        float qOverPtRight = qOverPt + ACC_CELL_WIDTH * (numCellsQOverPt - 0.5);
-        float phiBottom = phi - ACC_CELL_HEIGHT * 0.5;
-        float phiTop = phi + ACC_CELL_HEIGHT * (numCellsPhi - 0.5);
-
-        uint8_t hitCount = 0;
-        size_t stubsNum = m_rAccessor.size();
-        for(uint32_t stubIndex = 0; stubIndex < stubsNum; stubIndex++)
-        {
-            float phiLeft = -rs[stubIndex] * qOverPtLeft + phis[stubIndex];
-            float phiRight = -rs[stubIndex] * qOverPtRight + phis[stubIndex];
-
-            hitCount += phiLeft >= phiBottom && phiRight <= phiTop ? 1 : 0;
-            if (hitCount >= THRESHOLD) break;
-        }
-        if(hitCount < THRESHOLD) return;
-
         if (divideQOverPt)
         {
             if(dividePhi)
@@ -155,13 +141,41 @@ namespace HelixSolver
             }
             else
             {
-                // TODO: Cannot divide further. Calculate accumulator cell value.
-                // ? Is it worth to skip subs after reaching threshold? Consider it.
-
-                accumulator[section.phiBeginIndex * ACC_WIDTH + section.qOverPtBeginIndex] = hitCount;
+                accumulator[section.phiBeginIndex * ACC_WIDTH + section.qOverPtBeginIndex] = stubCounts[divisionLevel + 1] - stubCounts[divisionLevel];
             }
         }
     }
+
+    void HoughTransformKernel::fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const HoughTransformKernelAccumulatorSection& section, float* rs, float* phis) const
+    {
+        float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.qOverPtBeginIndex);
+        float phi = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.phiBeginIndex);
+
+        // TODO: Rename
+        float numCellsQOverPt = pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel);
+        float numCellsPhi = pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel);
+
+        float qOverPtLeft = qOverPt - ACC_CELL_WIDTH * 0.5;
+        float qOverPtRight = qOverPt + ACC_CELL_WIDTH * (numCellsQOverPt - 0.5);
+        float phiBottom = phi - ACC_CELL_HEIGHT * 0.5;
+        float phiTop = phi + ACC_CELL_HEIGHT * (numCellsPhi - 0.5);
+
+        stubCounts[divisionLevel + 1] = stubCounts[divisionLevel];
+        uint32_t startStubIndex = divisionLevel ? stubCounts[divisionLevel - 1] : 0;
+        for(uint32_t stubIndex = startStubIndex; stubIndex < stubCounts[divisionLevel]; ++stubIndex)
+        {
+            float phiLeft = -rs[stubIndexes[stubIndex]] * qOverPtLeft + phis[stubIndexes[stubIndex]];
+            float phiRight = -rs[stubIndexes[stubIndex]] * qOverPtRight + phis[stubIndexes[stubIndex]];
+
+            if (phiLeft >= phiBottom && phiRight <= phiTop)
+            {
+                stubIndexes[stubCounts[divisionLevel + 1]] = stubIndexes[stubIndex];
+                stubCounts[divisionLevel + 1]++;
+            }            
+        }
+    }
+
+
 
     void HoughTransformKernel::transferSolutionToHostDevice(uint8_t* accumulator) const
     {
@@ -210,7 +224,11 @@ namespace HelixSolver
         float phis[MAX_STUB_NUM];
 
         // [[intel::numbanks(4)]]
-        uint8_t accumulator[ACC_SIZE];
+        uint8_t accumulator[ACC_SIZE] = {0};
+        // for (uint32_t i = 0; i < ACC_SIZE; i++)
+        // {
+        //     accumulator[i] = 0;
+        // }
 
         // ? All the data is alredy in sycl buffers. What is the reason behind duplicating the data in transferDataToBoardMemory?
         // TODO: Check if data duplication is necessary. Skip if possible

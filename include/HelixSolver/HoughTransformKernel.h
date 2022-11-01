@@ -46,7 +46,9 @@ namespace HelixSolver
 
         void fillAccumulatorAdaptive(float* rs, float* phis, uint8_t* accumulator) const;
 
-        void fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, float* rs, float* phis) const;
+        void fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, float* rs, float* phis, uint32_t* stubIndexes, uint32_t* stubCounts) const;
+
+        void fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const HoughTransformKernelAccumulatorSection& section, float* rs, float* phis) const;
 
         void transferSolutionToHostDevice(uint8_t* accumulator) const;
 
