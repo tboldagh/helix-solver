@@ -33,38 +33,7 @@ namespace HelixSolver
     , phis(phiBuffer, h, sycl::read_only) {}
     #endif
 
-    void HoughTransformKernel::fillAccumulator(float* rs, float* phis, uint8_t* accumulator) const
-    {
-        float cellWidth = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 1) - linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 0);
-        uint32_t stubsNum = this->rs.size();
-
-        for(uint32_t stubIndex = 0; stubIndex < stubsNum; stubIndex++)
-        {
-            // TODO: Check if x is q over pt. Rename x prefix in variable names to qOverPt if so.
-            // TODO: Change iteration range so as to cut calculation not affecting cells in the accumulator (when phi not in [PHI_BEGIN, PHI_END])
-            for(uint32_t xIndex = 0; xIndex < ACC_WIDTH; xIndex++)
-            {
-                float x = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, xIndex);
-                float xLeft = x - cellWidth * 0.5;
-                float xRight = x + cellWidth * 0.5;
-
-                float phiTop = -rs[stubIndex] * xLeft + phis[stubIndex];
-                float phiBottom = -rs[stubIndex] * xRight + phis[stubIndex];
-
-                // * The if statement probably causes votes at the ends of phi dimension not to be counted. Commented lines are intended to fix the bug
-                // TODO: Check if the comment above is true and switch to new solution
-                uint32_t phiTopIndex = mapToBeanIndex(phiTop);
-                uint32_t phiBottomIndex = mapToBeanIndex(phiBottom);
-                if (phiBottomIndex < 0 || phiTopIndex >= ACC_HEIGHT) continue;
-                // uint32_t phiTopIndex = phiTop < PHI_END ? mapToBeanIndex(phiTop) : ACC_HEIGHT - 1;
-                // uint32_t phiBottomIndex = phiBottm > PHI_BEGIN ? mapToBeanIndex(phiBottom) : 0;
-
-                for(uint32_t phiIndex = phiBottomIndex; phiIndex <= phiTopIndex; phiIndex++) accumulator[phiIndex * ACC_WIDTH + xIndex]++;
-            }
-        }
-    }
-
-    void HoughTransformKernel::fillAccumulatorAdaptive() const
+    void HoughTransformKernel::fillAccumulator() const
     {
         // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
 
@@ -84,11 +53,11 @@ namespace HelixSolver
         sectionsStackHeight++;
         while (sectionsStackHeight)
         {
-            fillAccumulatorSectionAdaptive(sectionsStack, sectionsStackHeight, stubIndexes, stubCounts);
+            fillAccumulatorSection(sectionsStack, sectionsStackHeight, stubIndexes, stubCounts);
         }
     }
 
-    void HoughTransformKernel::fillAccumulatorSectionAdaptive(AccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const
+    void HoughTransformKernel::fillAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const
     {
         // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
 
@@ -189,28 +158,14 @@ namespace HelixSolver
         solutions[index].phi = phi_0 + M_PI_2;
     }
 
-
-    // TODO: Rename
-    uint32_t HoughTransformKernel::mapToBeanIndex(float y)
-    {
-        constexpr float temp = (ACC_HEIGHT - 1) / (PHI_END - PHI_BEGIN);
-        float x = temp * (y - PHI_BEGIN);
-        return static_cast<uint32_t>(x + 0.5);
-    }
-
     void HoughTransformKernel::operator()() const
     {
-        // [[intel::numbanks(4)]]
-        // uint8_t accumulator[ACC_SIZE] = {0};
         for (uint32_t i = 0; i < ACC_SIZE; i++)
         {
             accumulator[i] = 0;
         }
 
-        // ? All the data is alredy in sycl buffers. What is the reason behind duplicating the data in transferDataToBoardMemory?
-        // TODO: Check if data duplication is necessary. Skip if possible
-        // fillAccumulator(rs, phis, accumulator);
-        fillAccumulatorAdaptive();
+        fillAccumulator();
         // This is not transfering solution. It's the last step in calculating it. Refactor
         transferSolutionToHostDevice();
     }

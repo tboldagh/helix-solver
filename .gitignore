@@ -59,6 +59,6 @@ detected-circles.txt
 .ipynb_checkpoints/
 
 # job execution and output logs
-
 *.sh.o*
 *.sh.e*
+logs/

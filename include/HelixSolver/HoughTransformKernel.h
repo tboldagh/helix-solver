@@ -42,9 +42,9 @@ namespace HelixSolver
         SYCL_EXTERNAL void operator()() const;
 
     private:
-        void fillAccumulatorAdaptive() const;
+        void fillAccumulator() const;
 
-        void fillAccumulatorSectionAdaptive(AccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
+        void fillAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
 
         void fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const AccumulatorSection& section) const;
 
@@ -52,8 +52,6 @@ namespace HelixSolver
 
         // TODO: Rename
         void addSolutionCircle(uint32_t qOverPtIndex, uint32_t phiIndex) const;;
-
-        static uint32_t mapToBeanIndex(float y);
 
         sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions;
         sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs;
