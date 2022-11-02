@@ -5,7 +5,7 @@
 
 namespace HelixSolver
 {
-    HoughTransformKernel::HoughTransformKernelAccumulatorSection::HoughTransformKernelAccumulatorSection(uint8_t qOverPtGridDivisionLevel, uint8_t phiGridDivisionLevel, uint16_t qOverPtBeginIndex, uint16_t phiBeginIndex)
+    HoughTransformKernel::AccumulatorSection::AccumulatorSection(uint8_t qOverPtGridDivisionLevel, uint8_t phiGridDivisionLevel, uint16_t qOverPtBeginIndex, uint16_t phiBeginIndex)
     : qOverPtGridDivisionLevel(qOverPtGridDivisionLevel)
     , phiGridDivisionLevel(phiGridDivisionLevel)
     , qOverPtBeginIndex(qOverPtBeginIndex)
@@ -19,24 +19,24 @@ namespace HelixSolver
                                             sycl::buffer<float, 1>& rBuffer,
                                             sycl::buffer<float, 1>& phiBuffer,
                                             sycl::buffer<uint8_t, 1>& accumulatorSumBuf) 
-    : m_mapAccessor(mapBuffer, h, sycl::write_only)
-    , m_rAccessor(rBuffer, h, sycl::read_only)
-    , m_phiAccessor(phiBuffer, h, sycl::read_only)
-    , accumulatorSumBuf(accumulatorSumBuf, h, sycl::write_only) {}
+    : solutions(mapBuffer, h, sycl::write_only)
+    , rs(rBuffer, h, sycl::read_only)
+    , phis(phiBuffer, h, sycl::read_only)
+    , accumulator(accumulatorSumBuf, h, sycl::write_only) {}
     #else
     HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
                                             sycl::buffer<SolutionCircle, 1>& mapBuffer,
                                             sycl::buffer<float, 1>& rBuffer,
                                             sycl::buffer<float, 1>& phiBuffer) 
-    : m_mapAccessor(mapBuffer, h, sycl::write_only)
-    , m_rAccessor(rBuffer, h, sycl::read_only)
-    , m_phiAccessor(phiBuffer, h, sycl::read_only) {}
+    : solutions(mapBuffer, h, sycl::write_only)
+    , rs(rBuffer, h, sycl::read_only)
+    , phis(phiBuffer, h, sycl::read_only) {}
     #endif
 
     void HoughTransformKernel::fillAccumulator(float* rs, float* phis, uint8_t* accumulator) const
     {
         float cellWidth = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 1) - linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, 0);
-        uint32_t stubsNum = m_rAccessor.size();
+        uint32_t stubsNum = this->rs.size();
 
         for(uint32_t stubIndex = 0; stubIndex < stubsNum; stubIndex++)
         {
@@ -64,36 +64,36 @@ namespace HelixSolver
         }
     }
 
-    void HoughTransformKernel::fillAccumulatorAdaptive(uint8_t* accumulator) const
+    void HoughTransformKernel::fillAccumulatorAdaptive() const
     {
         // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
 
         uint32_t stubIndexes[MAX_STUB_NUM * (NUM_OF_LAYERS + 2)];
         uint32_t stubCounts[NUM_OF_LAYERS + 2];
         stubCounts[0] = 0;
-        uint32_t stubsNum = m_rAccessor.size();
+        uint32_t stubsNum = rs.size();
         for(; stubCounts[0] < stubsNum; ++stubCounts[0])
         {
             stubIndexes[stubCounts[0]] = stubCounts[0];
         }
 
         // Cannot use std::stack
-        HoughTransformKernelAccumulatorSection sectionsStack[ACCUMULATOR_SECTION_STACK_MAX_HEIGHT];
+        AccumulatorSection sectionsStack[ACCUMULATOR_SECTION_STACK_MAX_HEIGHT];
         uint8_t sectionsStackHeight = 0;
-        sectionsStack[sectionsStackHeight] = HoughTransformKernelAccumulatorSection(0, 0, 0, 0);
+        sectionsStack[sectionsStackHeight] = AccumulatorSection(0, 0, 0, 0);
         sectionsStackHeight++;
         while (sectionsStackHeight)
         {
-            fillAccumulatorSectionAdaptive(sectionsStack, sectionsStackHeight, accumulator, stubIndexes, stubCounts);
+            fillAccumulatorSectionAdaptive(sectionsStack, sectionsStackHeight, stubIndexes, stubCounts);
         }
     }
 
-    void HoughTransformKernel::fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, uint32_t* stubIndexes, uint32_t* stubCounts) const
+    void HoughTransformKernel::fillAccumulatorSectionAdaptive(AccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const
     {
         // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
 
         sectionsStackHeight--;
-        HoughTransformKernelAccumulatorSection section = sectionsStack[sectionsStackHeight];
+        AccumulatorSection section = sectionsStack[sectionsStackHeight];
 
         uint8_t divisionLevel = section.qOverPtGridDivisionLevel > section.phiGridDivisionLevel ? section.qOverPtGridDivisionLevel : section.phiGridDivisionLevel;
         fillHits(stubIndexes, stubCounts, divisionLevel, section);
@@ -106,16 +106,16 @@ namespace HelixSolver
         {
             if(dividePhi)
             {
-                sectionsStack[sectionsStackHeight] = HoughTransformKernelAccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex);
-                sectionsStack[sectionsStackHeight + 1] = HoughTransformKernelAccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
-                sectionsStack[sectionsStackHeight + 2] = HoughTransformKernelAccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex);
-                sectionsStack[sectionsStackHeight + 3] = HoughTransformKernelAccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
+                sectionsStack[sectionsStackHeight] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex);
+                sectionsStack[sectionsStackHeight + 1] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
+                sectionsStack[sectionsStackHeight + 2] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex);
+                sectionsStack[sectionsStackHeight + 3] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
                 sectionsStackHeight += 4;
             }
             else
             {
-                sectionsStack[sectionsStackHeight] = HoughTransformKernelAccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel, section.qOverPtBeginIndex, section.phiBeginIndex);
-                sectionsStack[sectionsStackHeight + 1] = HoughTransformKernelAccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex);
+                sectionsStack[sectionsStackHeight] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel, section.qOverPtBeginIndex, section.phiBeginIndex);
+                sectionsStack[sectionsStackHeight + 1] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex);
                 sectionsStackHeight += 2;
             }
         }
@@ -123,8 +123,8 @@ namespace HelixSolver
         {
             if(dividePhi)
             {
-                sectionsStack[sectionsStackHeight] = HoughTransformKernelAccumulatorSection(section.qOverPtGridDivisionLevel, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex);
-                sectionsStack[sectionsStackHeight + 1] = HoughTransformKernelAccumulatorSection(section.qOverPtGridDivisionLevel, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
+                sectionsStack[sectionsStackHeight] = AccumulatorSection(section.qOverPtGridDivisionLevel, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex);
+                sectionsStack[sectionsStackHeight + 1] = AccumulatorSection(section.qOverPtGridDivisionLevel, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
                 sectionsStackHeight += 2;   
             }
             else
@@ -134,7 +134,7 @@ namespace HelixSolver
         }
     }
 
-    void HoughTransformKernel::fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const HoughTransformKernelAccumulatorSection& section) const
+    void HoughTransformKernel::fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const AccumulatorSection& section) const
     {
         float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.qOverPtBeginIndex);
         float phi = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.phiBeginIndex);
@@ -152,8 +152,8 @@ namespace HelixSolver
         uint32_t startStubIndex = divisionLevel ? stubCounts[divisionLevel - 1] : 0;
         for(uint32_t stubIndex = startStubIndex; stubIndex < stubCounts[divisionLevel]; ++stubIndex)
         {
-            float phiLeft = -m_rAccessor[stubIndexes[stubIndex]] * qOverPtLeft + m_phiAccessor[stubIndexes[stubIndex]];
-            float phiRight = -m_rAccessor[stubIndexes[stubIndex]] * qOverPtRight + m_phiAccessor[stubIndexes[stubIndex]];
+            float phiLeft = -rs[stubIndexes[stubIndex]] * qOverPtLeft + phis[stubIndexes[stubIndex]];
+            float phiRight = -rs[stubIndexes[stubIndex]] * qOverPtRight + phis[stubIndexes[stubIndex]];
 
             if (phiLeft >= phiBottom && phiRight <= phiTop)
             {
@@ -163,19 +163,13 @@ namespace HelixSolver
         }
     }
 
-    void HoughTransformKernel::transferSolutionToHostDevice(uint8_t* accumulator) const
+    void HoughTransformKernel::transferSolutionToHostDevice() const
     {
         #pragma unroll 16
         // [[intel::ivdep]]
         for (uint32_t i = 0; i < ACC_SIZE; ++i)
         {
-            bool isAboveThreshold = accumulator[i] > THRESHOLD;
-
-            #ifdef DEBUG
-            accumulatorSumBuf[i] = accumulator[i];
-            #endif
-
-            if (isAboveThreshold)
+            if (accumulator[i] > THRESHOLD)
             {
                 uint32_t qOverPtIndex = i % ACC_WIDTH;
                 uint32_t phiIndex = i / ACC_WIDTH;
@@ -190,9 +184,9 @@ namespace HelixSolver
         float phi_0 = linspaceElement(PHI_BEGIN, Q_OVER_P_END, ACC_HEIGHT, phiIndex);
         
         uint32_t index = phiIndex * ACC_WIDTH + qOverPtIndex;
-        m_mapAccessor[index].isValid = true;
-        m_mapAccessor[index].r = ((1 / qOverPt) / B) * 1000;
-        m_mapAccessor[index].phi = phi_0 + M_PI_2;
+        solutions[index].isValid = true;
+        solutions[index].r = ((1 / qOverPt) / B) * 1000;
+        solutions[index].phi = phi_0 + M_PI_2;
     }
 
 
@@ -207,18 +201,18 @@ namespace HelixSolver
     void HoughTransformKernel::operator()() const
     {
         // [[intel::numbanks(4)]]
-        uint8_t accumulator[ACC_SIZE] = {0};
-        // for (uint32_t i = 0; i < ACC_SIZE; i++)
-        // {
-        //     accumulator[i] = 0;
-        // }
+        // uint8_t accumulator[ACC_SIZE] = {0};
+        for (uint32_t i = 0; i < ACC_SIZE; i++)
+        {
+            accumulator[i] = 0;
+        }
 
         // ? All the data is alredy in sycl buffers. What is the reason behind duplicating the data in transferDataToBoardMemory?
         // TODO: Check if data duplication is necessary. Skip if possible
         // fillAccumulator(rs, phis, accumulator);
-        fillAccumulatorAdaptive(accumulator);
+        fillAccumulatorAdaptive();
         // This is not transfering solution. It's the last step in calculating it. Refactor
-        transferSolutionToHostDevice(accumulator);
+        transferSolutionToHostDevice();
     }
 
 } // namespace HelixSolver
