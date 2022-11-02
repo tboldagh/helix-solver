@@ -52,6 +52,9 @@ namespace HelixSolver
 
         void transferSolutionToHostDevice(uint8_t* accumulator) const;
 
+        // TODO: Rename
+        void addSolutionCircle(uint32_t qOverPtIndex, uint32_t phiIndex) const;;
+
         static uint32_t mapToBeanIndex(float y);
 
         // TODO: remove hungarian notation

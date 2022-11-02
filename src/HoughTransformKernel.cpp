@@ -163,8 +163,6 @@ namespace HelixSolver
         }
     }
 
-
-
     void HoughTransformKernel::transferSolutionToHostDevice(uint8_t* accumulator) const
     {
         #pragma unroll 16
@@ -179,21 +177,24 @@ namespace HelixSolver
 
             if (isAboveThreshold)
             {
-                constexpr float qOverPtMultiplier = (Q_OVER_P_END - Q_OVER_P_BEGIN) / ACC_WIDTH;
-                constexpr float phiMultiplier = (PHI_END - PHI_BEGIN) / ACC_HEIGHT;
-
-                uint32_t qOverPtIdx = i % ACC_WIDTH;
-                uint32_t phiIdx = i / ACC_WIDTH;
-
-                float qOverPt = qOverPtIdx * qOverPtMultiplier + Q_OVER_P_BEGIN;
-                float phi_0 = phiIdx * phiMultiplier + PHI_BEGIN;
-                
-                m_mapAccessor[i].isValid = true;
-                m_mapAccessor[i].r = ((1 / qOverPt) / B) * 1000;
-                m_mapAccessor[i].phi = phi_0 + M_PI_2;
+                uint32_t qOverPtIndex = i % ACC_WIDTH;
+                uint32_t phiIndex = i / ACC_WIDTH;
+                addSolutionCircle(qOverPtIndex, phiIndex);
             }
         }
     }
+
+    void HoughTransformKernel::addSolutionCircle(uint32_t qOverPtIndex, uint32_t phiIndex) const
+    {
+        float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, qOverPtIndex);
+        float phi_0 = linspaceElement(PHI_BEGIN, Q_OVER_P_END, ACC_HEIGHT, phiIndex);
+        
+        uint32_t index = phiIndex * ACC_WIDTH + qOverPtIndex;
+        m_mapAccessor[index].isValid = true;
+        m_mapAccessor[index].r = ((1 / qOverPt) / B) * 1000;
+        m_mapAccessor[index].phi = phi_0 + M_PI_2;
+    }
+
 
     // TODO: Rename
     uint32_t HoughTransformKernel::mapToBeanIndex(float y)
