@@ -17,12 +17,12 @@ namespace HelixSolver
         {
         public:
             AccumulatorSection() = default;
-            AccumulatorSection(uint8_t qOverPtGridDivisionLevel, uint8_t phiGridDivisionLevel, uint16_t qOverPtBeginIndex, uint16_t phiBeginIndex);
+            AccumulatorSection(uint16_t width, uint16_t height, uint16_t xBegin, uint16_t yBegin);
 
-            uint8_t qOverPtGridDivisionLevel;
-            uint8_t phiGridDivisionLevel;
-            uint16_t qOverPtBeginIndex;
-            uint16_t phiBeginIndex;
+            uint16_t width;
+            uint16_t height;
+            uint16_t xBegin;
+            uint16_t yBegin;
         };
         
     public:
@@ -31,7 +31,7 @@ namespace HelixSolver
                             sycl::buffer<SolutionCircle, 1>& mapBuffer,
                             sycl::buffer<float, 1>& rBuffer,
                             sycl::buffer<float, 1>& phiBuffer,
-                            sycl::buffer<uint8_t, 1>& accumulatorSumBuf);
+                            sycl::buffer<uint8_t, 1>& accumulatorBuffer);
         #else
         HoughTransformKernel(sycl::handler& h,
                             sycl::buffer<SolutionCircle, 1>& mapBuffer,
@@ -44,7 +44,7 @@ namespace HelixSolver
     private:
         void fillAccumulator() const;
 
-        void fillAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
+        void fillAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
 
         void fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const AccumulatorSection& section) const;
 
@@ -52,6 +52,8 @@ namespace HelixSolver
 
         // TODO: Rename
         void addSolutionCircle(uint32_t qOverPtIndex, uint32_t phiIndex) const;;
+
+        static constexpr uint8_t MAX_DIVISION_LEVEL = Q_OVER_PT_MAX_GRID_DIVISION_LEVEL > PHI_MAX_GRID_DIVISION_LEVEL ? Q_OVER_PT_MAX_GRID_DIVISION_LEVEL : PHI_MAX_GRID_DIVISION_LEVEL;
 
         sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions;
         sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs;

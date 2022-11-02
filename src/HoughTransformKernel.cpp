@@ -5,24 +5,22 @@
 
 namespace HelixSolver
 {
-    HoughTransformKernel::AccumulatorSection::AccumulatorSection(uint8_t qOverPtGridDivisionLevel, uint8_t phiGridDivisionLevel, uint16_t qOverPtBeginIndex, uint16_t phiBeginIndex)
-    : qOverPtGridDivisionLevel(qOverPtGridDivisionLevel)
-    , phiGridDivisionLevel(phiGridDivisionLevel)
-    , qOverPtBeginIndex(qOverPtBeginIndex)
-    , phiBeginIndex(phiBeginIndex) {}
-
-
+    HoughTransformKernel::AccumulatorSection::AccumulatorSection(uint16_t width, uint16_t height, uint16_t xBegin, uint16_t yBegin)
+    : width(width)
+    , height(height)
+    , xBegin(xBegin)
+    , yBegin(yBegin) {}
 
     #ifdef DEBUG
     HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
                                             sycl::buffer<SolutionCircle, 1>& mapBuffer,
                                             sycl::buffer<float, 1>& rBuffer,
                                             sycl::buffer<float, 1>& phiBuffer,
-                                            sycl::buffer<uint8_t, 1>& accumulatorSumBuf) 
+                                            sycl::buffer<uint8_t, 1>& accumulatorBuffer) 
     : solutions(mapBuffer, h, sycl::write_only)
     , rs(rBuffer, h, sycl::read_only)
     , phis(phiBuffer, h, sycl::read_only)
-    , accumulator(accumulatorSumBuf, h, sycl::write_only) {}
+    , accumulator(accumulatorBuffer, h, sycl::write_only) {}
     #else
     HoughTransformKernel::HoughTransformKernel(sycl::handler& h,
                                             sycl::buffer<SolutionCircle, 1>& mapBuffer,
@@ -35,99 +33,93 @@ namespace HelixSolver
 
     void HoughTransformKernel::fillAccumulator() const
     {
-        // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
-
-        uint32_t stubIndexes[MAX_STUB_NUM * (NUM_OF_LAYERS + 2)];
-        uint32_t stubCounts[NUM_OF_LAYERS + 2];
-        stubCounts[0] = 0;
+        constexpr uint8_t MAX_STUB_LIST_NUM = NUM_OF_LAYERS + 2;
+        constexpr uint32_t MAX_STUB_LIST_ELEMENT_NUM = MAX_STUB_NUM * MAX_STUB_LIST_NUM;
+        uint32_t stubListSizes[MAX_STUB_LIST_NUM];
+        stubListSizes[0] = 0;
+        uint32_t stubLists[MAX_STUB_LIST_ELEMENT_NUM];
         uint32_t stubsNum = rs.size();
-        for(; stubCounts[0] < stubsNum; ++stubCounts[0])
+        for(; stubListSizes[0] < stubsNum; ++stubListSizes[0])
         {
-            stubIndexes[stubCounts[0]] = stubCounts[0];
+            stubLists[stubListSizes[0]] = stubListSizes[0];
         }
 
         // Cannot use std::stack
-        AccumulatorSection sectionsStack[ACCUMULATOR_SECTION_STACK_MAX_HEIGHT];
-        uint8_t sectionsStackHeight = 0;
-        sectionsStack[sectionsStackHeight] = AccumulatorSection(0, 0, 0, 0);
-        sectionsStackHeight++;
-        while (sectionsStackHeight)
+        constexpr uint8_t MAX_SECTIONS_HEIGHT = MAX_DIVISION_LEVEL * 4;
+        AccumulatorSection sections[MAX_SECTIONS_HEIGHT];
+        uint8_t sectionsHeight = 1;
+
+        sections[0] = AccumulatorSection(ACC_WIDTH, ACC_HEIGHT, 0, 0);
+        while (sectionsHeight)
         {
-            fillAccumulatorSection(sectionsStack, sectionsStackHeight, stubIndexes, stubCounts);
+            fillAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
         }
     }
 
-    void HoughTransformKernel::fillAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const
+    void HoughTransformKernel::fillAccumulatorSection(AccumulatorSection* sections, uint8_t& sectionsHeight, uint32_t* stubLists, uint32_t* stubListSizes) const
     {
-        // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
+        sectionsHeight--;
+        AccumulatorSection section = sections[sectionsHeight];
 
-        sectionsStackHeight--;
-        AccumulatorSection section = sectionsStack[sectionsStackHeight];
-
-        uint8_t divisionLevel = section.qOverPtGridDivisionLevel > section.phiGridDivisionLevel ? section.qOverPtGridDivisionLevel : section.phiGridDivisionLevel;
-        fillHits(stubIndexes, stubCounts, divisionLevel, section);
-        if (stubCounts[divisionLevel + 1] - stubCounts[divisionLevel] < THRESHOLD) return;
+        uint8_t divisionLevel = MAX_DIVISION_LEVEL - static_cast<uint8_t>(round(log2(section.width > section.height ? section.width : section.height)));
+        fillHits(stubLists, stubListSizes, divisionLevel, section);
+        if (stubListSizes[divisionLevel + 1] - stubListSizes[divisionLevel] < THRESHOLD) return;
         
-
-        bool divideQOverPt = section.qOverPtGridDivisionLevel < Q_OVER_PT_MAX_GRID_DIVISION_LEVEL;
-        bool dividePhi = section.phiGridDivisionLevel < PHI_MAX_GRID_DIVISION_LEVEL;
-        if (divideQOverPt)
+        if (section.width > 1)
         {
-            if(dividePhi)
+            uint32_t newWidth = section.width / 2;
+            if(section.height > 1)
             {
-                sectionsStack[sectionsStackHeight] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex);
-                sectionsStack[sectionsStackHeight + 1] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
-                sectionsStack[sectionsStackHeight + 2] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex);
-                sectionsStack[sectionsStackHeight + 3] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
-                sectionsStackHeight += 4;
+                uint32_t newHeight = section.height / 2;
+                sections[sectionsHeight] = AccumulatorSection(newWidth, newHeight, section.xBegin, section.yBegin);
+                sections[sectionsHeight + 1] = AccumulatorSection(newWidth, newHeight, section.xBegin, section.yBegin + newHeight);
+                sections[sectionsHeight + 2] = AccumulatorSection(newWidth, newHeight, section.xBegin + newWidth, section.yBegin);
+                sections[sectionsHeight + 3] = AccumulatorSection(newWidth, newHeight, section.xBegin + newWidth, section.yBegin + newHeight);
+                sectionsHeight += 4;
             }
             else
             {
-                sectionsStack[sectionsStackHeight] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel, section.qOverPtBeginIndex, section.phiBeginIndex);
-                sectionsStack[sectionsStackHeight + 1] = AccumulatorSection(section.qOverPtGridDivisionLevel + 1, section.phiGridDivisionLevel, section.qOverPtBeginIndex + pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel - 1), section.phiBeginIndex);
-                sectionsStackHeight += 2;
+                sections[sectionsHeight] = AccumulatorSection(newWidth, section.height, section.xBegin, section.yBegin);
+                sections[sectionsHeight + 1] = AccumulatorSection(newWidth, section.height, section.xBegin + newWidth, section.yBegin);
+                sectionsHeight += 2;
             }
         }
         else
         {
-            if(dividePhi)
+            if(section.height > 1)
             {
-                sectionsStack[sectionsStackHeight] = AccumulatorSection(section.qOverPtGridDivisionLevel, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex);
-                sectionsStack[sectionsStackHeight + 1] = AccumulatorSection(section.qOverPtGridDivisionLevel, section.phiGridDivisionLevel + 1, section.qOverPtBeginIndex, section.phiBeginIndex + pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel - 1));
-                sectionsStackHeight += 2;   
+                uint32_t newHeight = section.height / 2;
+                sections[sectionsHeight] = AccumulatorSection(section.width, newHeight, section.xBegin, section.yBegin);
+                sections[sectionsHeight + 1] = AccumulatorSection(section.width, newHeight, section.xBegin, section.yBegin + newHeight);
+                sectionsHeight += 2;   
             }
             else
             {
-                accumulator[section.phiBeginIndex * ACC_WIDTH + section.qOverPtBeginIndex] = stubCounts[divisionLevel + 1] - stubCounts[divisionLevel];
+                accumulator[section.yBegin * ACC_WIDTH + section.xBegin] = stubListSizes[divisionLevel + 1] - stubListSizes[divisionLevel];
             }
         }
     }
 
-    void HoughTransformKernel::fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const AccumulatorSection& section) const
+    void HoughTransformKernel::fillHits(uint32_t* stubLists, uint32_t* stubListSizes, uint8_t divisionLevel, const AccumulatorSection& section) const
     {
-        float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.qOverPtBeginIndex);
-        float phi = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.phiBeginIndex);
+        float x = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.xBegin);
+        float y = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.yBegin);
+        float xLeft = x - ACC_CELL_WIDTH * 0.5;
+        float xRight = x + ACC_CELL_WIDTH * (section.width - 0.5);
+        float yBottom = y - ACC_CELL_HEIGHT * 0.5;
+        float yTop = y + ACC_CELL_HEIGHT * (section.height - 0.5);
 
-        // TODO: Rename
-        float numCellsQOverPt = pow(2, Q_OVER_PT_MAX_GRID_DIVISION_LEVEL - section.qOverPtGridDivisionLevel);
-        float numCellsPhi = pow(2, PHI_MAX_GRID_DIVISION_LEVEL - section.phiGridDivisionLevel);
-
-        float qOverPtLeft = qOverPt - ACC_CELL_WIDTH * 0.5;
-        float qOverPtRight = qOverPt + ACC_CELL_WIDTH * (numCellsQOverPt - 0.5);
-        float phiBottom = phi - ACC_CELL_HEIGHT * 0.5;
-        float phiTop = phi + ACC_CELL_HEIGHT * (numCellsPhi - 0.5);
-
-        stubCounts[divisionLevel + 1] = stubCounts[divisionLevel];
-        uint32_t startStubIndex = divisionLevel ? stubCounts[divisionLevel - 1] : 0;
-        for(uint32_t stubIndex = startStubIndex; stubIndex < stubCounts[divisionLevel]; ++stubIndex)
+        stubListSizes[divisionLevel + 1] = stubListSizes[divisionLevel];
+        uint32_t startStubIndex = divisionLevel ? stubListSizes[divisionLevel - 1] : 0;
+        for(uint32_t stubIndex = startStubIndex; stubIndex < stubListSizes[divisionLevel]; ++stubIndex)
         {
-            float phiLeft = -rs[stubIndexes[stubIndex]] * qOverPtLeft + phis[stubIndexes[stubIndex]];
-            float phiRight = -rs[stubIndexes[stubIndex]] * qOverPtRight + phis[stubIndexes[stubIndex]];
+            float yLeft = -rs[stubLists[stubIndex]] * xLeft + phis[stubLists[stubIndex]];
+            float yRight = -rs[stubLists[stubIndex]] * xRight + phis[stubLists[stubIndex]];
 
-            if (phiLeft >= phiBottom && phiRight <= phiTop)
+            if (yLeft >= yBottom && yRight <= yTop)
             {
-                stubIndexes[stubCounts[divisionLevel + 1]] = stubIndexes[stubIndex];
-                stubCounts[divisionLevel + 1]++;
+                stubLists[stubListSizes[divisionLevel + 1]] = stubLists[stubIndex];
+                stubListSizes[divisionLevel + 1]++;
             }            
         }
     }
