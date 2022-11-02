@@ -44,17 +44,15 @@ namespace HelixSolver
     private:
         void fillAccumulator(float* rs, float* phis, uint8_t* accumulator) const;
 
-        void fillAccumulatorAdaptive(float* rs, float* phis, uint8_t* accumulator) const;
+        void fillAccumulatorAdaptive(uint8_t* accumulator) const;
 
-        void fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, float* rs, float* phis, uint32_t* stubIndexes, uint32_t* stubCounts) const;
+        void fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, uint32_t* stubIndexes, uint32_t* stubCounts) const;
 
-        void fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const HoughTransformKernelAccumulatorSection& section, float* rs, float* phis) const;
+        void fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const HoughTransformKernelAccumulatorSection& section) const;
 
         void transferSolutionToHostDevice(uint8_t* accumulator) const;
 
         static uint32_t mapToBeanIndex(float y);
-
-        void transferDataToBoardMemory(float* rs, float* phis) const;
 
         // TODO: remove hungarian notation
         sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> m_mapAccessor;

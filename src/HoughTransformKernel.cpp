@@ -32,18 +32,6 @@ namespace HelixSolver
     , m_rAccessor(rBuffer, h, sycl::read_only)
     , m_phiAccessor(phiBuffer, h, sycl::read_only) {}
     #endif
-    void HoughTransformKernel::transferDataToBoardMemory(float* rs, float* phis) const
-    {
-        size_t stubsNum = m_rAccessor.size();
-
-        #pragma unroll 64
-        // [[intel::ivdep]]
-        for (uint32_t i = 0; i < stubsNum; ++i)
-        {
-            rs[i] = m_rAccessor[i];
-            phis[i] = m_phiAccessor[i];
-        }
-    }
 
     void HoughTransformKernel::fillAccumulator(float* rs, float* phis, uint8_t* accumulator) const
     {
@@ -76,7 +64,7 @@ namespace HelixSolver
         }
     }
 
-    void HoughTransformKernel::fillAccumulatorAdaptive(float* rs, float* phis, uint8_t* accumulator) const
+    void HoughTransformKernel::fillAccumulatorAdaptive(uint8_t* accumulator) const
     {
         // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
 
@@ -96,11 +84,11 @@ namespace HelixSolver
         sectionsStackHeight++;
         while (sectionsStackHeight)
         {
-            fillAccumulatorSectionAdaptive(sectionsStack, sectionsStackHeight, accumulator, rs, phis, stubIndexes, stubCounts);
+            fillAccumulatorSectionAdaptive(sectionsStack, sectionsStackHeight, accumulator, stubIndexes, stubCounts);
         }
     }
 
-    void HoughTransformKernel::fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, float* rs, float* phis, uint32_t* stubIndexes, uint32_t* stubCounts) const
+    void HoughTransformKernel::fillAccumulatorSectionAdaptive(HoughTransformKernelAccumulatorSection* sectionsStack, uint8_t& sectionsStackHeight, uint8_t* accumulator, uint32_t* stubIndexes, uint32_t* stubCounts) const
     {
         // * ACC_WIDTH and ACC_HEIGHT must be a power of 2
 
@@ -108,7 +96,7 @@ namespace HelixSolver
         HoughTransformKernelAccumulatorSection section = sectionsStack[sectionsStackHeight];
 
         uint8_t divisionLevel = section.qOverPtGridDivisionLevel > section.phiGridDivisionLevel ? section.qOverPtGridDivisionLevel : section.phiGridDivisionLevel;
-        fillHits(stubIndexes, stubCounts, divisionLevel, section, rs, phis);
+        fillHits(stubIndexes, stubCounts, divisionLevel, section);
         if (stubCounts[divisionLevel + 1] - stubCounts[divisionLevel] < THRESHOLD) return;
         
 
@@ -146,7 +134,7 @@ namespace HelixSolver
         }
     }
 
-    void HoughTransformKernel::fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const HoughTransformKernelAccumulatorSection& section, float* rs, float* phis) const
+    void HoughTransformKernel::fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const HoughTransformKernelAccumulatorSection& section) const
     {
         float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.qOverPtBeginIndex);
         float phi = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.phiBeginIndex);
@@ -164,8 +152,8 @@ namespace HelixSolver
         uint32_t startStubIndex = divisionLevel ? stubCounts[divisionLevel - 1] : 0;
         for(uint32_t stubIndex = startStubIndex; stubIndex < stubCounts[divisionLevel]; ++stubIndex)
         {
-            float phiLeft = -rs[stubIndexes[stubIndex]] * qOverPtLeft + phis[stubIndexes[stubIndex]];
-            float phiRight = -rs[stubIndexes[stubIndex]] * qOverPtRight + phis[stubIndexes[stubIndex]];
+            float phiLeft = -m_rAccessor[stubIndexes[stubIndex]] * qOverPtLeft + m_phiAccessor[stubIndexes[stubIndex]];
+            float phiRight = -m_rAccessor[stubIndexes[stubIndex]] * qOverPtRight + m_phiAccessor[stubIndexes[stubIndex]];
 
             if (phiLeft >= phiBottom && phiRight <= phiTop)
             {
@@ -218,12 +206,6 @@ namespace HelixSolver
     void HoughTransformKernel::operator()() const
     {
         // [[intel::numbanks(4)]]
-        float rs[MAX_STUB_NUM];
-
-        // [[intel::numbanks(4)]]
-        float phis[MAX_STUB_NUM];
-
-        // [[intel::numbanks(4)]]
         uint8_t accumulator[ACC_SIZE] = {0};
         // for (uint32_t i = 0; i < ACC_SIZE; i++)
         // {
@@ -232,9 +214,8 @@ namespace HelixSolver
 
         // ? All the data is alredy in sycl buffers. What is the reason behind duplicating the data in transferDataToBoardMemory?
         // TODO: Check if data duplication is necessary. Skip if possible
-        transferDataToBoardMemory(rs, phis);
         // fillAccumulator(rs, phis, accumulator);
-        fillAccumulatorAdaptive(rs, phis, accumulator);
+        fillAccumulatorAdaptive(accumulator);
         // This is not transfering solution. It's the last step in calculating it. Refactor
         transferSolutionToHostDevice(accumulator);
     }
