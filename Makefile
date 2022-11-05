@@ -1,5 +1,5 @@
 CC := dpcpp
-CFLAGS := -std=c++17
+CFLAGS := -std=c++17 -g -O0 -Og
 WFLAGS := -Wall -Wextra
 
 INPUT_ARGS := config.json
@@ -40,6 +40,13 @@ STRATIX_FLAGS_FOR_REPORT := -fintelfpga -Xshardware -fsycl-link=early -Xsboard=i
 ARRIA_FLAGS := -fintelfpga -Xshardware -Xsboard=intel_a10gx_pac:pac_a10
 STRATIX_FLAGS := -fintelfpga -Xshardware -Xsboard=intel_s10sx_pac:pac_s10
 
+FPGA_FLAGS := -fintelfpga -DFPGA_EMULATOR
+CPU_FLAGS := 
+GPU_FLAGS :=
+PLATFOMR_FLAGS := $(CPU_FLAGS)
+# PLATFOMR_FLAGS := $(FPGA_FLAGS)
+# PLATFOMR_FLAGS := $(GPU_FLAGS)
+
 fpga_hw:
 	$(CC) $(CFLAGS) $(STRATIX_FLAGS) $(INC) $(SRCDIR)/*.cpp -o bin/fpga_out.fpga
 
@@ -53,12 +60,11 @@ build: $(TARGET)
 
 $(TARGET): $(OBJ)
 	mkdir -p $(BINDIR)
-	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(ROOT_CONFIG) $(INC) $(LINKBOOST) $^ -o $@
+	$(CC) $(CFLAGS) $(PLATFOMR_FLAGS) $(ROOT_CONFIG) $(INC) $(LINKBOOST) $^ -o $@
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	mkdir -p $(BUILDDIR)
-	# $(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(ROOT_CONFIG) $(INC) $< -c -o $@ $(WFLAGS)
-	$(CC) $(CFLAGS) -fintelfpga -DFPGA_EMULATOR $(INC) $< -c -o $@ $(WFLAGS)
+	$(CC) $(CFLAGS) $(PLATFOMR_FLAGS) $(INC) $< -c -o $@ $(WFLAGS)
 
 test: $(TESTTARGET)
 	./$<
