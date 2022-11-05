@@ -9,16 +9,28 @@
 
 namespace HelixSolver
 {
-    KernelExecutionContainer::KernelExecutionContainer(nlohmann::json& p_config, Event& event)
-    : config(p_config)
+    KernelExecutionContainer::KernelExecutionContainer(nlohmann::json& config, Event& event)
+    : config(config["main_accumulator_config"])
     , event(event)
     {
+        std::string platformStr = config["platform"].get<std::string>();
+        platform = platformStr == "cpu" ? Platform::CPU
+                : platformStr == "gpu" ? Platform::GPU
+                : platformStr == "fpga" ? Platform::FPGA
+                : platformStr == "fpga_emulator" ? Platform::FPGA_EMULATOR
+                : platform = Platform::BAD_PLATFORM;
+        if (platform == Platform::BAD_PLATFORM)
+        {
+            // TODO: Add BAD_PLATFORM handling
+            return;
+        }
+
         map.fill(SolutionCircle{});
     }
 
     void KernelExecutionContainer::fillOnDevice()
     {
-        std::unique_ptr<sycl::queue> fpgaQueue(getFpgaQueue());
+        std::unique_ptr<sycl::queue> fpgaQueue(getQueue());
 
         printInfo(fpgaQueue);
 
@@ -121,18 +133,23 @@ namespace HelixSolver
         return map;
     }
 
-    sycl::queue* KernelExecutionContainer::getFpgaQueue()
+    sycl::queue* KernelExecutionContainer::getQueue()
     {
-        #if defined(DEBUG)
-            sycl::host_selector device_selector;
-        #elif defined(FPGA_EMULATOR)
-            sycl::ext::intel::fpga_emulator_selector device_selector;
-        #else
-            sycl::ext::intel::fpga_selector device_selector;
-        #endif
-
         auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
-        return new sycl::queue(device_selector, NULL, propertyList);
+        
+        switch (platform)
+        {
+            case Platform::BAD_PLATFORM:
+                return nullptr;
+            case Platform::CPU:
+                return new sycl::queue(sycl::host_selector{}, NULL, propertyList);
+            case Platform::GPU:
+                return new sycl::queue(sycl::gpu_selector{}, NULL, propertyList);
+            case Platform::FPGA:
+                return new sycl::queue(sycl::ext::intel::fpga_selector{}, NULL, propertyList);
+            case Platform::FPGA_EMULATOR:
+                return new sycl::queue(sycl::ext::intel::fpga_emulator_selector{}, NULL, propertyList);
+        }
     }
 
     void KernelExecutionContainer::printMainAcc() const

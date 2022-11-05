@@ -18,6 +18,15 @@ namespace HelixSolver
     class KernelExecutionContainer
     {
     public:
+        enum class Platform
+        {
+            BAD_PLATFORM,
+            CPU,
+            GPU,
+            FPGA,
+            FPGA_EMULATOR
+        };
+
         KernelExecutionContainer(nlohmann::json& config, Event& event);
 
         void fill();
@@ -29,12 +38,13 @@ namespace HelixSolver
         const std::array<SolutionCircle, ACC_SIZE>& getSolution() const;
 
     private:
-        sycl::queue* getFpgaQueue();
+        sycl::queue* getQueue();
 
         nlohmann::json& config;
         Event& event;
 
         std::array<SolutionCircle, ACC_SIZE> map;
+        Platform platform;
     };
 
 } // namespace HelixSolver

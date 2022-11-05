@@ -40,12 +40,15 @@ STRATIX_FLAGS_FOR_REPORT := -fintelfpga -Xshardware -fsycl-link=early -Xsboard=i
 ARRIA_FLAGS := -fintelfpga -Xshardware -Xsboard=intel_a10gx_pac:pac_a10
 STRATIX_FLAGS := -fintelfpga -Xshardware -Xsboard=intel_s10sx_pac:pac_s10
 
-FPGA_FLAGS := -fintelfpga -DFPGA_EMULATOR
-CPU_FLAGS := 
+CPU_FLAGS :=
 GPU_FLAGS :=
+FPGA_FLAGS :=
+FPGA_EMULATOR_FLAGS := -fintelfpga
+
 PLATFOMR_FLAGS := $(CPU_FLAGS)
-# PLATFOMR_FLAGS := $(FPGA_FLAGS)
 # PLATFOMR_FLAGS := $(GPU_FLAGS)
+# PLATFOMR_FLAGS := $(FPGA_FLAGS)
+# PLATFOMR_FLAGS := $(FPGA_EMULATOR_FLAGS)
 
 fpga_hw:
 	$(CC) $(CFLAGS) $(STRATIX_FLAGS) $(INC) $(SRCDIR)/*.cpp -o bin/fpga_out.fpga
