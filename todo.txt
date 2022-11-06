@@ -4,3 +4,6 @@ Fix include errors in VS Code
 Add noexcept to functions. This may help optimizers
 Move logic from transferSolutionToHostDevice and remove the accumulator
 Optimize by applying move semantics
+Move file reading logic from Event
+Replace buffers in EventBuffer with Unified Shared Memory for explicit data movement
+Replace push_back with emplace_back where possible

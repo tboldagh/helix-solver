@@ -104,7 +104,7 @@ namespace HelixSolver
 
     sycl::queue* KernelExecutionContainer::getQueue()
     {
-        auto propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
+        sycl::property_list propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
         
         switch (platform)
         {

@@ -19,12 +19,13 @@ namespace HelixSolver
 
     void Application::Run()
     {
-        Event event;
-        loadEvent(event);
+        std::shared_ptr<Event> event = std::make_shared<Event>();
+        loadEvent(*event);
         // TODO: Move calculating stub functions to accelerator device
-        event.buildStubsFunctions();
+        event->buildStubsFunctions();
         TrackFindingAlgorithm algorithm(config, event);
-        algorithm.run();
+        // algorithm.run();
+        algorithm.runOnGpu();
     }
 
     Application::~Application()

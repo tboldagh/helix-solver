@@ -11,6 +11,8 @@ namespace HelixSolver
     class Event
     {
     public:
+        using EventId = uint32_t;
+
         void loadFromFile(std::string& path, std::string& fileType);
 
         const std::vector<Stub>& getStubs() const;
@@ -26,6 +28,7 @@ namespace HelixSolver
         void print() const;
 
     private:
+        EventId id;
         std::vector<Stub> stubs;
         std::vector<std::function<float(float)>> stubsFunctions;
         std::vector<float> rs;
