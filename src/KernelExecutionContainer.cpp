@@ -30,9 +30,9 @@ namespace HelixSolver
 
     void KernelExecutionContainer::fillOnDevice()
     {
-        std::unique_ptr<sycl::queue> fpgaQueue(getQueue());
+        std::unique_ptr<sycl::queue> queue(getQueue());
 
-        printInfo(fpgaQueue);
+        printInfo(queue);
 
         std::array<SolutionCircle, ACC_SIZE> tempMap;
         tempMap.fill(SolutionCircle{});
@@ -46,7 +46,7 @@ namespace HelixSolver
         sycl::buffer<uint8_t, 1> accumulatorSumBuf(accumulatorSum.begin(), accumulatorSum.end());
         #endif
 
-        sycl::event qEvent = fpgaQueue->submit([&](sycl::handler &handler)
+        sycl::event qEvent = queue->submit([&](sycl::handler &handler)
         {
             #ifdef DEBUG
             HoughTransformKernel kernel(handler, mapBuffer, rBuffer, phiBuffer, accumulatorSumBuf);
@@ -95,37 +95,6 @@ namespace HelixSolver
         sycl::device device = queue->get_device();
         std::cout << "Platform: " <<  platform.get_info<sycl::info::platform::name>().c_str() << std::endl;
         std::cout << "Device: " <<  device.get_info<sycl::info::device::name>().c_str() << std::endl;
-    }
-
-    void KernelExecutionContainer::fill()
-    {
-        std::vector<float> xLinespace;
-        std::vector<float> yLinespace;
-        linspace(xLinespace, Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH);
-        linspace(yLinespace, PHI_BEGIN, PHI_END, ACC_HEIGHT);
-        double dx = xLinespace[1] - xLinespace[0];
-        double dxHalf = dx / 2;
-
-        for (const auto& stubFunc : event.getStubsFuncs())
-        {
-            for (uint32_t i = 0; i < xLinespace.size(); ++i)
-            {
-                float x = xLinespace[i];
-                float xLeft = x - dxHalf;
-                float xRight = x + dxHalf;
-                
-                float yLeft = stubFunc(xLeft);
-                float yRight = stubFunc(xRight);
-
-                float yLeftIdx = findClosest(yLinespace, yLeft);
-                float yRightIdx = findClosest(yLinespace, yRight);
-
-                for (uint32_t j = yRightIdx; j <= yLeftIdx; ++j)
-                {
-                    map[j * ACC_WIDTH + i].isValid = true;
-                }
-            }
-        }
     }
 
     const std::array<SolutionCircle, ACC_SIZE> &KernelExecutionContainer::getSolution() const

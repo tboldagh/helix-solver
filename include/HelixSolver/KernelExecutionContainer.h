@@ -29,7 +29,6 @@ namespace HelixSolver
 
         KernelExecutionContainer(nlohmann::json& config, Event& event);
 
-        void fill();
         void fillOnDevice();
         void printInfo(const std::unique_ptr<sycl::queue>& queue) const;
         VectorIdxPair getCellsAboveThreshold(uint8_t threshold) const;
