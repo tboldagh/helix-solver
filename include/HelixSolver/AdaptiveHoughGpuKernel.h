@@ -34,14 +34,9 @@ namespace HelixSolver
             uint16_t yBegin;
         };
 
-        void fillAccumulator() const;
-
-        void fillAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
-
+        void processAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
         void fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const AccumulatorSection& section) const;
-
-        // TODO: Rename
-        void addSolutionCircle(uint32_t qOverPtIndex, uint32_t phiIndex) const;;
+        void addSolution(uint32_t qOverPtIndex, uint32_t phiIndex) const;;
 
         static constexpr uint8_t MAX_DIVISION_LEVEL = Q_OVER_PT_MAX_GRID_DIVISION_LEVEL > PHI_MAX_GRID_DIVISION_LEVEL ? Q_OVER_PT_MAX_GRID_DIVISION_LEVEL : PHI_MAX_GRID_DIVISION_LEVEL;
 

@@ -14,17 +14,6 @@ namespace HelixSolver
 
     void AdaptiveHoughGpuKernel::operator()() const
     {
-        fillAccumulator();
-    }
-
-    AdaptiveHoughGpuKernel::AccumulatorSection::AccumulatorSection(uint16_t width, uint16_t height, uint16_t xBegin, uint16_t yBegin)
-    : width(width)
-    , height(height)
-    , xBegin(xBegin)
-    , yBegin(yBegin) {}
-
-    void AdaptiveHoughGpuKernel::fillAccumulator() const
-    {
         constexpr uint8_t MAX_STUB_LIST_NUM = NUM_OF_LAYERS + 2;
         uint32_t stubListSizes[MAX_STUB_LIST_NUM];
         stubListSizes[0] = 0;
@@ -44,11 +33,17 @@ namespace HelixSolver
         sections[0] = AccumulatorSection(ACC_WIDTH, ACC_HEIGHT, 0, 0);
         while (sectionsHeight)
         {
-            fillAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
+            processAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
         }
     }
 
-    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection* sections, uint8_t& sectionsHeight, uint32_t* stubLists, uint32_t* stubListSizes) const
+    AdaptiveHoughGpuKernel::AccumulatorSection::AccumulatorSection(uint16_t width, uint16_t height, uint16_t xBegin, uint16_t yBegin)
+    : width(width)
+    , height(height)
+    , xBegin(xBegin)
+    , yBegin(yBegin) {}
+
+    void AdaptiveHoughGpuKernel::processAccumulatorSection(AccumulatorSection* sections, uint8_t& sectionsHeight, uint32_t* stubLists, uint32_t* stubListSizes) const
     {
         sectionsHeight--;
         AccumulatorSection section = sections[sectionsHeight];
@@ -87,7 +82,7 @@ namespace HelixSolver
             }
             else
             {
-                addSolutionCircle(section.xBegin, section.yBegin);
+                addSolution(section.xBegin, section.yBegin);
             }
         }
     }
@@ -116,7 +111,7 @@ namespace HelixSolver
         }
     }
 
-    void AdaptiveHoughGpuKernel::addSolutionCircle(uint32_t qOverPtIndex, uint32_t phiIndex) const
+    void AdaptiveHoughGpuKernel::addSolution(uint32_t qOverPtIndex, uint32_t phiIndex) const
     {
         float qOverPt = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, qOverPtIndex);
         float phi_0 = linspaceElement(PHI_BEGIN, Q_OVER_P_END, ACC_HEIGHT, phiIndex);
