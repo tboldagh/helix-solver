@@ -9,20 +9,7 @@ namespace HelixSolver
     TrackFindingAlgorithm::TrackFindingAlgorithm(nlohmann::json& config, std::shared_ptr<Event> event)
     : config(config)
     , B(config["B"].get<double>())
-    , event(event)
-    , kernelExecutionContainer(config, *event) {}
-
-    void TrackFindingAlgorithm::run()
-    {
-        kernelExecutionContainer.fillOnDevice();
-        // kernelExecutionContainer.printMainAcc();
-        std::ofstream out(config["outputFile"].get<std::string>());
-        out << std::setprecision(64);
-        for (const auto &solution : kernelExecutionContainer.getSolution())
-        {
-            if (solution.isValid) out << solution.r << " " << solution.phi << std::endl;
-        }
-    }
+    , event(event) {}
 
     void TrackFindingAlgorithm::runOnGpu()
     {
