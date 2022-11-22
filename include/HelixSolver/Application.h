@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 
 #include "HelixSolver/Event.h"
+#include "HelixSolver/ComputingWorker.h"
 
 namespace HelixSolver
 {
@@ -11,14 +12,17 @@ namespace HelixSolver
     public:
         explicit Application(std::vector<std::string>& argv);
 
-        void Run();
-
-        ~Application();
+        void run();
 
     private:
         nlohmann::json config;
 
-        void loadEvent(Event& event);
+        std::unique_ptr<std::vector<std::shared_ptr<Event>>> loadEvents(const std::string& path) const;
+        void runOnCpu() const;
+
+        static ComputingWorker::Platform getPlatformFromString(const std::string& platformStr);
+        static std::unique_ptr<std::vector<std::shared_ptr<Event>>> loadEventsFromSpacepointsRootFile(const std::string& path);
+
         void loadConfig(const std::string& configFilePath);
     };
 } // HelixSolver

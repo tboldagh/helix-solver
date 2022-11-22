@@ -13,11 +13,8 @@ namespace HelixSolver
     public:
         using EventId = uint32_t;
 
-        Event(EventId id, const std::vector<Stub>& stubs);
+        Event(EventId id, std::unique_ptr<std::vector<Stub>> stubs);
 
-        void loadFromFile(std::string& path, std::string& fileType);
-
-        const std::vector<Stub>& getStubs() const;
         const std::vector<std::function<float(float)>>& getStubsFuncs() const;
         
         // TODO: fix building process and make getters inline
@@ -32,14 +29,12 @@ namespace HelixSolver
 
     private:
         EventId id;
-        std::vector<Stub> stubs;
+        
+        std::unique_ptr<std::vector<Stub>> stubs;
         std::vector<std::function<float(float)>> stubsFunctions;
         std::vector<float> rs;
         std::vector<float> phis;
         std::vector<uint8_t> layers;
-
-        void loadFromTxtFile(std::string filePath); 
-        void loadFromRootFile(std::string path); 
     };
 
 } // HelixSolver

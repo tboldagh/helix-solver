@@ -2,7 +2,7 @@
 #include <fstream>
 
 #include "HelixSolver/Application.h"
-#include "HelixSolver/TrackFindingAlgorithm.h"
+#include "HelixSolver/ComputingManager.h"
 
 #include <TFile.h>
 #include <TTree.h>
@@ -20,48 +20,95 @@ namespace HelixSolver
         loadConfig(argv[1]);
     }
 
-    void Application::Run()
+    void Application::run()
     {
-        std::string path = config["inputRootFile"];
-        std::string fileType = config.contains("inputFileType") ? std::string(config["inputFileType"]) : std::string("txt");
+        ComputingWorker::Platform platform = getPlatformFromString(config["platform"]);
+        switch (platform)
+        {
+            case ComputingWorker::Platform::CPU:
+                runOnCpu();
+                break;
+            default:
+                return;
+        }
+    }
 
+    void Application::runOnCpu() const
+    {
+        std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = loadEvents(config["inputFile"]);
+
+        ComputingManager computingManager(ComputingWorker::Platform::CPU, 10, 5);
+
+        for(std::shared_ptr<Event>& event : *events)
+        {
+            while(!computingManager.addEvent(event)) computingManager.update();
+        }
+        computingManager.waitUntillAllTasksCompleted();
+        std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventAndSolutions = computingManager.transferSolutions();
+
+        std::ofstream outputFile(config["outputFile"].get<std::string>());
+        for (const auto& eventAndSolution : *eventAndSolutions)
+        {
+            outputFile << "EventId: " << eventAndSolution.first->getId() << "\n";
+
+            for (const SolutionCircle& solution : *eventAndSolution.second)
+            {
+                if (solution.isValid) outputFile << "\t" << solution.r << "\t" << solution.phi << std::endl;
+            }
+
+            outputFile << "\n";
+        }
+    }
+
+    ComputingWorker::Platform Application::getPlatformFromString(const std::string& platformStr)
+    {
+        if(platformStr == "cpu") return ComputingWorker::Platform::CPU;
+        else if(platformStr == "gpu") return ComputingWorker::Platform::GPU;
+        else if(platformStr == "FPGA") return ComputingWorker::Platform::FPGA;
+        else if(platformStr == "FPGA_EMULATOR") return ComputingWorker::Platform::FPGA_EMULATOR;
+
+        return ComputingWorker::Platform::BAD_PLATFORM;
+    }
+
+    std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEvents(const std::string& path) const
+    {
+        if(config["inputFileType"] == "root_spacepoints") return loadEventsFromSpacepointsRootFile(path);
+        else
+        {
+            // * Reading other file types are not implemented yet.
+            return std::unique_ptr<std::vector<std::shared_ptr<Event>>>();
+        }
+    }
+
+    std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEventsFromSpacepointsRootFile(const std::string& path)
+    {
         std::unique_ptr<TFile> file(TFile::Open(path.c_str()));
         std::unique_ptr<TTree> hitsTree(file->Get<TTree>("spacepoints"));
-
+        
+        uint32_t eventId;
         float x;
         float y;
         float z;
-        uint32_t layer = 0;
-        uint32_t eventId;
+        uint8_t layer = 0;
+
         hitsTree->SetBranchAddress("event_id", &eventId);
         hitsTree->SetBranchAddress("x", &x);
         hitsTree->SetBranchAddress("y", &y);
         hitsTree->SetBranchAddress("z", &z);
-        // hitsTree->SetBranchAddress("layer_id", &layer);
-        std::map<Event::EventId, std::vector<Stub>> stubsMap;
+
+        std::map<Event::EventId, std::unique_ptr<std::vector<Stub>>> stubs;
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
-            stubsMap[eventId].push_back(Stub{x, y, z, static_cast<uint8_t>(layer)});
+
+            stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
+
+            stubs[eventId]->push_back(Stub{x, y, z, layer});
         }
 
-        std::vector<std::shared_ptr<Event>> events;
-        for(auto stubs : stubsMap) events.push_back(std::make_shared<Event>(stubs.first, stubs.second));
-
-        TrackFindingAlgorithm algorithm(config);
-        algorithm.runOnGpu(events);
-    }
-
-    Application::~Application()
-    {
-
-    }
-
-    void Application::loadEvent(Event& event)
-    {
-        std::string path = config["inputFile"];
-        std::string fileType = config.contains("inputFileType") ? std::string(config["inputFileType"]) : std::string("txt");
-        event.loadFromFile(path, fileType);
+        std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
+        for(auto& idAndStubs : stubs) events->push_back(std::make_shared<Event>(idAndStubs.first, std::move(idAndStubs.second)));
+        return events;
     }
 
     void Application::loadConfig(const std::string& configFilePath)
