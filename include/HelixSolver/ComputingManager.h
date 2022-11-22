@@ -9,16 +9,7 @@ namespace HelixSolver
     class ComputingManager
     {
     public:
-        enum class Platform
-        {
-            BAD_PLATFORM,
-            CPU,
-            GPU,
-            FPGA,
-            FPGA_EMULATOR
-        };
-
-        ComputingManager(Platform platform, uint32_t numBuffers, uint32_t numWorkers);
+        ComputingManager(ComputingWorker::Platform platform, uint32_t numBuffers, uint32_t numWorkers);
 
         bool addEvent(std::shared_ptr<Event> event);
         void waitUntillAllTasksCompleted();
@@ -30,7 +21,7 @@ namespace HelixSolver
         void transferSolutionsFromCompletedWorkers();
         std::unique_ptr<sycl::queue> getNewQueue() const;
 
-        Platform platform;
+        ComputingWorker::Platform platform;
         std::vector<std::shared_ptr<EventBuffer>> eventBuffers;
         std::vector<std::shared_ptr<ComputingWorker>> computingWorkers;
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> solutions;

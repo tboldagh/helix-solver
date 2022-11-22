@@ -4,7 +4,7 @@
 
 namespace HelixSolver
 {
-    ComputingManager::ComputingManager(Platform platform, uint32_t numBuffers, uint32_t numWorkers)
+    ComputingManager::ComputingManager(ComputingWorker::Platform platform, uint32_t numBuffers, uint32_t numWorkers)
     : platform(platform)
     {
         for(uint32_t i = 0; i < numBuffers; i++)
@@ -109,15 +109,15 @@ namespace HelixSolver
         
         switch (platform)
         {
-            case Platform::BAD_PLATFORM:
+            case ComputingWorker::Platform::BAD_PLATFORM:
                 return std::unique_ptr<sycl::queue>();
-            case Platform::CPU:
+            case ComputingWorker::Platform::CPU:
                 return std::make_unique<sycl::queue>(sycl::queue(sycl::host_selector{}, NULL, propertyList));
-            case Platform::GPU:
+            case ComputingWorker::Platform::GPU:
                 return std::make_unique<sycl::queue>(sycl::queue(sycl::gpu_selector{}, NULL, propertyList));
-            case Platform::FPGA:
+            case ComputingWorker::Platform::FPGA:
                 return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_selector{}, NULL, propertyList));
-            case Platform::FPGA_EMULATOR:
+            case ComputingWorker::Platform::FPGA_EMULATOR:
                 return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_emulator_selector{}, NULL, propertyList));
         }
     }

@@ -7,3 +7,5 @@ Optimize by applying move semantics
 Move file reading logic from Event
 Replace buffers in EventBuffer with Unified Shared Memory for explicit data movement
 Replace push_back with emplace_back where possible
+Make kerenl in ComputingWorker::scheduleTasksToQueue selectible (add to ComputingWorker constructor)
+Make aliases for complex types used by EventBuffer, ComputingWorker, and ComputingManager

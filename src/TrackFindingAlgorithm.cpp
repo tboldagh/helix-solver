@@ -17,7 +17,7 @@ namespace HelixSolver
 
     void TrackFindingAlgorithm::runOnGpu()
     {
-        ComputingManager computingManager(ComputingManager::Platform::CPU, 1, 1);
+        ComputingManager computingManager(ComputingWorker::Platform::CPU, 1, 1);
 
         computingManager.addEvent(event);
         computingManager.waitUntillAllTasksCompleted();
@@ -34,7 +34,7 @@ namespace HelixSolver
 
     void TrackFindingAlgorithm::runOnGpu(std::vector<std::shared_ptr<Event>>& events)
     {
-        ComputingManager computingManager(ComputingManager::Platform::CPU, 10, 5);
+        ComputingManager computingManager(ComputingWorker::Platform::CPU, 10, 5);
 
         for (auto e : events)
         {

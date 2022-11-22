@@ -15,6 +15,15 @@ namespace HelixSolver
             COMPLETED
         };
 
+        enum class Platform
+        {
+            BAD_PLATFORM,
+            CPU,
+            GPU,
+            FPGA,
+            FPGA_EMULATOR
+        };
+
         ComputingWorker(std::unique_ptr<sycl::queue>&& queue);
         ComputingWorkerState updateAndGetState();
         void setState(ComputingWorkerState state);
