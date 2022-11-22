@@ -7,8 +7,8 @@ static constexpr float PHI_BEGIN = 0.1;
 static constexpr float PHI_END = 0.6;
 
 static constexpr uint8_t NUM_OF_LAYERS = 8;
-// static constexpr uint32_t MAX_STUB_NUM = 100000;
-static constexpr uint32_t MAX_STUB_NUM = 8;
+static constexpr uint32_t MAX_STUB_NUM = 100000;
+// static constexpr uint32_t MAX_STUB_NUM = 8;
 // TODO: rename
 // * Must be a power of 2
 static constexpr uint32_t ACC_WIDTH = 64;

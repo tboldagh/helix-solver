@@ -23,9 +23,9 @@ namespace HelixSolver
         bool addEvent(std::shared_ptr<Event> event);
         void waitUntillAllTasksCompleted();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> transferSolutions();
+        void update();
 
     private:
-        void update();
         void startProcessingReadyBuffers();
         void transferSolutionsFromCompletedWorkers();
         std::unique_ptr<sycl::queue> getNewQueue() const;

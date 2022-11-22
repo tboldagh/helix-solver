@@ -8,6 +8,14 @@
 
 namespace HelixSolver
 {
+    Event::Event(EventId id, const std::vector<Stub>& stubs)
+    : id(id)
+    {
+        for (const auto& stub : stubs) this->stubs.push_back(stub);
+        buildStubsFunctions();
+    }
+    
+    
     void Event::loadFromFile(std::string& path, std::string& fileType)
     {
         if(fileType == std::string("root")) loadFromRootFile(path);
@@ -47,6 +55,11 @@ namespace HelixSolver
             auto fun = [r, phi](float x) { return -r * x + phi; };
             stubsFunctions.push_back(fun);
         }
+    }
+
+    Event::EventId Event::getId() const
+    {
+        return id;
     }
 
     std::vector<float>& Event::getR()

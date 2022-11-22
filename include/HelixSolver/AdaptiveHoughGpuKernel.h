@@ -34,7 +34,7 @@ namespace HelixSolver
             uint16_t yBegin;
         };
 
-        void processAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
+        void fillAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
         void fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const AccumulatorSection& section) const;
         void addSolution(uint32_t qOverPtIndex, uint32_t phiIndex) const;;
 

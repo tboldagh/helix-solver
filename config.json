@@ -2,7 +2,7 @@
     "platform": "fpga_emulator",
     "inputFileType": "txt",
     "inputFile": "inputs/entries-8-event-1760.txt",
-    "inputRootFile": "inputs/root/hits.root",
+    "inputRootFile": "inputs/odd_output/spacepoints.root",
     "outputFile": "detected-circles.txt",
     "B": 2,
     "R": 600,

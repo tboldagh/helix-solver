@@ -14,7 +14,7 @@ namespace HelixSolver
 
     void AdaptiveHoughGpuKernel::operator()() const
     {
-        constexpr uint8_t MAX_STUB_LIST_NUM = NUM_OF_LAYERS + 2;
+        constexpr uint8_t MAX_STUB_LIST_NUM = MAX_DIVISION_LEVEL + 2;
         uint32_t stubListSizes[MAX_STUB_LIST_NUM];
         stubListSizes[0] = 0;
         constexpr uint32_t MAX_STUB_LIST_ELEMENT_NUM = MAX_STUB_NUM * MAX_STUB_LIST_NUM;
@@ -33,7 +33,7 @@ namespace HelixSolver
         sections[0] = AccumulatorSection(ACC_WIDTH, ACC_HEIGHT, 0, 0);
         while (sectionsHeight)
         {
-            processAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
+            fillAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
         }
     }
 
@@ -43,7 +43,7 @@ namespace HelixSolver
     , xBegin(xBegin)
     , yBegin(yBegin) {}
 
-    void AdaptiveHoughGpuKernel::processAccumulatorSection(AccumulatorSection* sections, uint8_t& sectionsHeight, uint32_t* stubLists, uint32_t* stubListSizes) const
+    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection* sections, uint8_t& sectionsHeight, uint32_t* stubLists, uint32_t* stubListSizes) const
     {
         sectionsHeight--;
         AccumulatorSection section = sections[sectionsHeight];
