@@ -28,6 +28,7 @@ namespace HelixSolver
         ComputingWorkerState updateAndGetState();
         void setState(ComputingWorkerState state);
         bool assignBuffer(std::shared_ptr<EventBuffer> eventBuffer);
+        const sycl::queue* getQueue() const;
         std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>> transferSolutions();
         void waitUntillCompleted();
 

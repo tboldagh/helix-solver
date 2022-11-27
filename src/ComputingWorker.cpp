@@ -28,6 +28,11 @@ namespace HelixSolver
         return true;
     }
 
+    const sycl::queue* ComputingWorker::getQueue() const
+    {
+        return queue.get();
+    }
+
     std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>> ComputingWorker::transferSolutions()
     {
         if (state != ComputingWorkerState::COMPLETED) return std::make_pair(std::shared_ptr<Event>(), std::unique_ptr<std::vector<SolutionCircle>>());

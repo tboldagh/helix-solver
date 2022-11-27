@@ -1,4 +1,5 @@
 #include "HelixSolver/ComputingManager.h"
+#include "HelixSolver/Debug.h"
 
 #include <sycl/ext/intel/fpga_extensions.hpp>
 
@@ -18,6 +19,18 @@ namespace HelixSolver
             computingWorkers.push_back(std::make_shared<ComputingWorker>(getNewQueue()));
             waitingComputingWorkers.push(i);
         }
+
+        #ifdef PRINT_PLATFORM
+        // * Expects at leas one worker
+        sycl::platform syclPlatform = computingWorkers[0]->getQueue()->get_context().get_platform();
+        std::cout << "Platform: " <<  syclPlatform.get_info<sycl::info::platform::name>().c_str() << std::endl;
+        #endif
+
+        #ifdef PRINT_PLATFORM
+        // * Expects at leas one worker
+        sycl::device device = computingWorkers[0]->getQueue()->get_device();
+        std::cout << "Device: " <<  device.get_info<sycl::info::device::name>().c_str() << std::endl;
+        #endif
     }
 
     bool ComputingManager::addEvent(std::shared_ptr<Event> event)
