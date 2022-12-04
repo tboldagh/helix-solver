@@ -19,14 +19,15 @@ TESTTARGET := $(BINDIR)/$(TESTEXEC)
 SRCEXT := cpp
 
 LINKBOOST := -lboost_program_options
-JSON_SINGLE_INCLUDE := $(LIBS)/root/include
+ROOT_INCLUDE := $(LIBS)/root/include
 ROOT_CONFIG := $(shell root-config --glibs --libs)
+NLOHMAN_INCLUDE := $(LIBS)/nlohmann/include
 
 SRC := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJ := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SRC:.$(SRCEXT)=.o))
 
-INC := -I $(INCDIR) -I $(JSON_SINGLE_INCLUDE)
-# INC := -I $(INCDIR) -I $(JSON_SINGLE_INCLUDE) -I $(shell root-config --incdir)
+INC := -I $(INCDIR) -I $(ROOT_INCLUDE)
+# INC := -I $(INCDIR) -I $(ROOT_INCLUDE) -I $(shell root-config --incdir)
 
 TESTSRC := $(shell find $(TESTSRCDIR) -type f -name *.$(SRCEXT))
 TESTOBJ := $(patsubst $(TESTSRCDIR)/%,$(TESTBUILDDIR)/%,$(TESTSRC:.$(SRCEXT)=.o))
