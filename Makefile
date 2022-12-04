@@ -41,7 +41,7 @@ ARRIA_FLAGS := -fintelfpga -Xshardware -Xsboard=intel_a10gx_pac:pac_a10
 STRATIX_FLAGS := -fintelfpga -Xshardware -Xsboard=intel_s10sx_pac:pac_s10
 
 CPU_FLAGS :=
-GPU_FLAGS :=
+GPU_FLAGS := 
 FPGA_FLAGS :=
 FPGA_EMULATOR_FLAGS := -fintelfpga
 

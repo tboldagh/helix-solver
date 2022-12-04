@@ -28,6 +28,9 @@ namespace HelixSolver
             case ComputingWorker::Platform::CPU:
                 runOnCpu();
                 break;
+            case ComputingWorker::Platform::GPU:
+                runOnGpu();
+                break;
             default:
                 return;
         }
@@ -44,20 +47,25 @@ namespace HelixSolver
             while(!computingManager.addEvent(event)) computingManager.update();
         }
         computingManager.waitUntillAllTasksCompleted();
-        std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventAndSolutions = computingManager.transferSolutions();
+        std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
+        
+        printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
+    }
 
-        std::ofstream outputFile(config["outputFile"].get<std::string>());
-        for (const auto& eventAndSolution : *eventAndSolutions)
+    void Application::runOnGpu() const
+    {
+        std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = loadEvents(config["inputFile"]);
+
+        ComputingManager computingManager(ComputingWorker::Platform::GPU, 10, 5);
+
+        for(std::shared_ptr<Event>& event : *events)
         {
-            outputFile << "EventId: " << eventAndSolution.first->getId() << "\n";
-
-            for (const SolutionCircle& solution : *eventAndSolution.second)
-            {
-                if (solution.isValid) outputFile << "\t" << solution.r << "\t" << solution.phi << std::endl;
-            }
-
-            outputFile << "\n";
+            while(!computingManager.addEvent(event)) computingManager.update();
         }
+        computingManager.waitUntillAllTasksCompleted();
+        std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
+        
+        printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
     }
 
     ComputingWorker::Platform Application::getPlatformFromString(const std::string& platformStr)
@@ -109,6 +117,22 @@ namespace HelixSolver
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
         for(auto& idAndStubs : stubs) events->push_back(std::make_shared<Event>(idAndStubs.first, std::move(idAndStubs.second)));
         return events;
+    }
+
+    void Application::printEventsAndSolutionsToFile(const std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>>& eventsAndSolutions, const std::string& path)
+    {
+        std::ofstream outputFile(path);
+        for (const auto& eventAndSolution : *eventsAndSolutions)
+        {
+            outputFile << "EventId: " << eventAndSolution.first->getId() << "\n";
+
+            for (const SolutionCircle& solution : *eventAndSolution.second)
+            {
+                if (solution.isValid) outputFile << "\t" << solution.r << "\t" << solution.phi << std::endl;
+            }
+
+            outputFile << "\n";
+        }
     }
 
     void Application::loadConfig(const std::string& configFilePath)
