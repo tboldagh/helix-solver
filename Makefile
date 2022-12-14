@@ -21,12 +21,12 @@ SRCEXT := cpp
 LINKBOOST := -lboost_program_options
 ROOT_INCLUDE := $(LIBS)/root/include
 ROOT_CONFIG := $(shell root-config --glibs --libs)
-NLOHMAN_INCLUDE := $(LIBS)/nlohmann/include
+NLOHMAN_INCLUDE := $(LIBS)/nlohmann
 
 SRC := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJ := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SRC:.$(SRCEXT)=.o))
 
-INC := -I $(INCDIR) -I $(ROOT_INCLUDE)
+INC := -I $(INCDIR) -I $(ROOT_INCLUDE) -I $(NLOHMAN_INCLUDE)
 # INC := -I $(INCDIR) -I $(ROOT_INCLUDE) -I $(shell root-config --incdir)
 
 TESTSRC := $(shell find $(TESTSRCDIR) -type f -name *.$(SRCEXT))
@@ -46,8 +46,8 @@ GPU_FLAGS :=
 FPGA_FLAGS :=
 FPGA_EMULATOR_FLAGS := -fintelfpga
 
-PLATFOMR_FLAGS := $(CPU_FLAGS)
-# PLATFOMR_FLAGS := $(GPU_FLAGS)
+# PLATFOMR_FLAGS := $(CPU_FLAGS)
+PLATFOMR_FLAGS := $(GPU_FLAGS)
 # PLATFOMR_FLAGS := $(FPGA_FLAGS)
 # PLATFOMR_FLAGS := $(FPGA_EMULATOR_FLAGS)
 

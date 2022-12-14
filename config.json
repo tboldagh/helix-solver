@@ -1,5 +1,5 @@
 {
-    "platform": "cpu",
+    "platform": "gpu",
     "inputFileType": "root_spacepoints",
     "inputFile": "inputs/odd_output/spacepoints.root",
     "outputFile": "detected-circles.txt",
