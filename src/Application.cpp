@@ -3,6 +3,7 @@
 
 #include "HelixSolver/Application.h"
 #include "HelixSolver/ComputingManager.h"
+#include "HelixSolver/Debug.h"
 
 #include <TFile.h>
 #include <TTree.h>
@@ -40,7 +41,25 @@ namespace HelixSolver
     {
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = loadEvents(config["inputFile"]);
 
-        ComputingManager computingManager(ComputingWorker::Platform::CPU, 10, 5);
+        #ifdef MULTIPLY_EVENTS
+        std::unique_ptr<std::vector<std::shared_ptr<Event>>> newEvents = std::make_unique<std::vector<std::shared_ptr<Event>>>();
+        
+        for(unsigned int i = 0; i < config["multiplyEvents"]; i++)
+        {
+            for(auto event : *events)
+            {
+                newEvents->push_back(std::shared_ptr<Event>(new Event(*event)));
+            }
+        }
+
+        events.swap(newEvents);
+        #endif
+
+        ComputingManager computingManager(ComputingWorker::Platform::CPU, config["gpuEventBuffers"], config["gpuComputingWorkers"]);
+
+        #ifdef PRINT_EXECUTION_TIME
+        auto executionTimeStart = std::chrono::high_resolution_clock::now();
+        #endif
 
         for(std::shared_ptr<Event>& event : *events)
         {
@@ -49,14 +68,38 @@ namespace HelixSolver
         computingManager.waitUntillAllTasksCompleted();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
         
+        #ifdef PRINT_EXECUTION_TIME
+        auto executionTimeEnd = std::chrono::high_resolution_clock::now();
+        auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
+        std::cout<<"Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds"<<std::endl;
+        #endif
+
         printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
     }
 
     void Application::runOnGpu() const
     {
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = loadEvents(config["inputFile"]);
+        
+        #ifdef MULTIPLY_EVENTS
+        std::unique_ptr<std::vector<std::shared_ptr<Event>>> newEvents = std::make_unique<std::vector<std::shared_ptr<Event>>>();
+        
+        for(unsigned int i = 0; i < config["multiplyEvents"]; i++)
+        {
+            for(auto event : *events)
+            {
+                newEvents->push_back(std::shared_ptr<Event>(new Event(*event)));
+            }
+        }
 
+        events.swap(newEvents);
+        #endif
+        
         ComputingManager computingManager(ComputingWorker::Platform::GPU, 10, 5);
+
+        #ifdef PRINT_EXECUTION_TIME
+        auto executionTimeStart = std::chrono::high_resolution_clock::now();
+        #endif
 
         for(std::shared_ptr<Event>& event : *events)
         {
@@ -65,6 +108,12 @@ namespace HelixSolver
         computingManager.waitUntillAllTasksCompleted();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
         
+        #ifdef PRINT_EXECUTION_TIME
+        auto executionTimeEnd = std::chrono::high_resolution_clock::now();
+        auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
+        std::cout<<"Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds"<<std::endl;
+        #endif
+
         printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
     }
 

@@ -14,6 +14,17 @@ namespace HelixSolver
     {
         buildStubsFunctions();
     }
+
+    Event::Event(const Event& other)
+    : id(other.id)
+    {
+        stubs = std::make_unique<std::vector<Stub>>();
+        for(const Stub& stub : *other.stubs)
+        {
+            stubs->push_back(stub);
+        }
+        buildStubsFunctions();
+    }
     
     void Event::print() const
     {

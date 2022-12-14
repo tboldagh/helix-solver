@@ -14,6 +14,7 @@ namespace HelixSolver
         using EventId = uint32_t;
 
         Event(EventId id, std::unique_ptr<std::vector<Stub>> stubs);
+        Event(const Event& other);
 
         const std::vector<std::function<float(float)>>& getStubsFuncs() const;
         
