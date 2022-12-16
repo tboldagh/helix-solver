@@ -57,8 +57,17 @@ namespace HelixSolver
                 computingWorkers[processingComputingWorkers.front()]->waitUntillCompleted();
                 update();
             }
+            update();
         }
     }
+
+    void ComputingManager::waitForWaitingWorker()
+    {
+        if(processingComputingWorkers.empty()) return;
+
+        computingWorkers[processingComputingWorkers.front()]->waitUntillCompleted();
+    }
+
 
     std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> ComputingManager::transferSolutions()
     {

@@ -13,6 +13,7 @@ namespace HelixSolver
 
         bool addEvent(std::shared_ptr<Event> event);
         void waitUntillAllTasksCompleted();
+        void waitForWaitingWorker();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> transferSolutions();
         void update();
 

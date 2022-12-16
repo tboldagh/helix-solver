@@ -14,12 +14,14 @@ namespace HelixSolver
     class AdaptiveHoughGpuKernel
     {
     public:
-        AdaptiveHoughGpuKernel(sycl::handler& handler,
-                sycl::buffer<float, 1>& rsBuffer,
-                sycl::buffer<float, 1>& phisBuffer,
-                sycl::buffer<SolutionCircle, 1>& solutionsBuffer);
+        AdaptiveHoughGpuKernel(sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs,
+                sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis,
+                sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solution);
 
-        SYCL_EXTERNAL void operator()() const;
+        SYCL_EXTERNAL void operator()(sycl::id<2> idx) const;
+
+        static constexpr uint8_t INITIAL_DIVISION_LEVEL = 2;
+        static constexpr uint8_t INITIAL_DIVISIONS = 4;
 
     private:
         class AccumulatorSection

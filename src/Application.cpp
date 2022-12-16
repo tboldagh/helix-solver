@@ -7,6 +7,7 @@
 
 #include <TFile.h>
 #include <TTree.h>
+#include <thread>
 
 namespace HelixSolver
 {
@@ -55,7 +56,7 @@ namespace HelixSolver
         events.swap(newEvents);
         #endif
 
-        ComputingManager computingManager(ComputingWorker::Platform::CPU, config["gpuEventBuffers"], config["gpuComputingWorkers"]);
+        ComputingManager computingManager(ComputingWorker::Platform::CPU, config["cpuEventBuffers"], config["cpuComputingWorkers"]);
 
         #ifdef PRINT_EXECUTION_TIME
         auto executionTimeStart = std::chrono::high_resolution_clock::now();
@@ -63,7 +64,11 @@ namespace HelixSolver
 
         for(std::shared_ptr<Event>& event : *events)
         {
-            while(!computingManager.addEvent(event)) computingManager.update();
+            while(!computingManager.addEvent(event))
+            {
+                computingManager.waitForWaitingWorker();
+                computingManager.update();
+            }
         }
         computingManager.waitUntillAllTasksCompleted();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
@@ -95,7 +100,7 @@ namespace HelixSolver
         events.swap(newEvents);
         #endif
         
-        ComputingManager computingManager(ComputingWorker::Platform::GPU, 10, 5);
+        ComputingManager computingManager(ComputingWorker::Platform::GPU, config["gpuEventBuffers"], config["gpuComputingWorkers"]);
 
         #ifdef PRINT_EXECUTION_TIME
         auto executionTimeStart = std::chrono::high_resolution_clock::now();

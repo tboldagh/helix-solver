@@ -4,44 +4,42 @@
 
 namespace HelixSolver
 {
-    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(sycl::handler& handler,
-            sycl::buffer<float, 1>& rsBuffer,
-            sycl::buffer<float, 1>& phisBuffer,
-            sycl::buffer<SolutionCircle, 1>& solutionsBuffer)
-    : rs(rsBuffer, handler, sycl::read_only)
-    , phis(phisBuffer, handler, sycl::read_only)
-    , solutions(solutionsBuffer, handler, sycl::write_only) {}
+    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs,
+            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis,
+            sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions)
+    : rs(rs)
+    , phis(phis)
+    , solutions(solutions) {}
 
-    void AdaptiveHoughGpuKernel::operator()() const
+    void AdaptiveHoughGpuKernel::operator()(sycl::id<2> idx) const
     {
         constexpr uint8_t MAX_STUB_LIST_NUM = MAX_DIVISION_LEVEL + 2;
-        uint32_t stubListSizes[MAX_STUB_LIST_NUM];
-        stubListSizes[0] = 0;
         constexpr uint32_t MAX_STUB_LIST_ELEMENT_NUM = MAX_STUB_NUM * MAX_STUB_LIST_NUM;
+
+        uint16_t xBegin = ACC_WIDTH * idx[0] / INITIAL_DIVISIONS;
+        uint16_t yBegin = ACC_HEIGHT * idx[1] / INITIAL_DIVISIONS;
+
+        uint32_t stubListSizes[MAX_STUB_LIST_NUM];
+        for(uint32_t k = 0; k < MAX_STUB_LIST_NUM; ++k) stubListSizes[k] = 0;
         uint32_t stubLists[MAX_STUB_LIST_ELEMENT_NUM];
         uint32_t stubsNum = rs.size();
-        for(; stubListSizes[0] < stubsNum; ++stubListSizes[0])
+        stubListSizes[INITIAL_DIVISION_LEVEL] = stubsNum;
+        for(uint32_t k = 0; k < stubsNum; ++k)
         {
-            stubLists[stubListSizes[0]] = stubListSizes[0];
+            stubLists[k] = k;
         }
 
-        // Cannot use std::stack
         constexpr uint8_t MAX_SECTIONS_HEIGHT = MAX_DIVISION_LEVEL * 4;
         AccumulatorSection sections[MAX_SECTIONS_HEIGHT];
         uint8_t sectionsHeight = 1;
 
-        sections[0] = AccumulatorSection(ACC_WIDTH, ACC_HEIGHT, 0, 0);
+        sections[0] = AccumulatorSection(ACC_WIDTH / INITIAL_DIVISIONS, ACC_HEIGHT / INITIAL_DIVISIONS, xBegin, yBegin);
         while (sectionsHeight)
         {
             fillAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
-        }
+        }    
     }
 
-    AdaptiveHoughGpuKernel::AccumulatorSection::AccumulatorSection(uint16_t width, uint16_t height, uint16_t xBegin, uint16_t yBegin)
-    : width(width)
-    , height(height)
-    , xBegin(xBegin)
-    , yBegin(yBegin) {}
 
     void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection* sections, uint8_t& sectionsHeight, uint32_t* stubLists, uint32_t* stubListSizes) const
     {
@@ -121,4 +119,10 @@ namespace HelixSolver
         solutions[index].r = ((1 / qOverPt) / B) * 1000;
         solutions[index].phi = phi_0 + M_PI_2;
     }
+
+    AdaptiveHoughGpuKernel::AccumulatorSection::AccumulatorSection(uint16_t width, uint16_t height, uint16_t xBegin, uint16_t yBegin)
+    : width(width)
+    , height(height)
+    , xBegin(xBegin)
+    , yBegin(yBegin) {}
 } // namespace HelixSolver
