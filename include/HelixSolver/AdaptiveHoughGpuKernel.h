@@ -35,7 +35,8 @@ namespace HelixSolver
 
         void fillAccumulatorSection(AccumulatorSection* sectionsStack, uint8_t& sectionsHeight, uint32_t* stubIndexes, uint32_t* stubCounts) const;
         void fillHits(uint32_t* stubIndexes, uint32_t* stubCounts, uint8_t divisionLevel, const AccumulatorSection& section) const;
-        void addSolution(uint32_t qOverPtIndex, uint32_t phiIndex) const;;
+        void addSolution(uint32_t qOverPtIndex, uint32_t phiIndex) const;
+        static inline float linspaceElement(float start, float end, uint32_t numPoints, uint16_t index);
 
         static constexpr uint8_t MAX_DIVISION_LEVEL = Q_OVER_PT_MAX_GRID_DIVISION_LEVEL > PHI_MAX_GRID_DIVISION_LEVEL ? Q_OVER_PT_MAX_GRID_DIVISION_LEVEL : PHI_MAX_GRID_DIVISION_LEVEL;
 
@@ -43,4 +44,10 @@ namespace HelixSolver
         sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis;
         sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions;
     };
+
+    inline float AdaptiveHoughGpuKernel::linspaceElement(float start, float end, uint32_t numPoints, uint16_t index)
+    {
+        return start + (end - start) * index / (numPoints - 1);
+    }
+
 } // namespace HelixSolver

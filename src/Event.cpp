@@ -43,9 +43,8 @@ namespace HelixSolver
     {
         for (const Stub& stub : *stubs)
         {
-            const auto[rad, ang] = cart2pol(stub.x, stub.y);
-            const float r = rad / 1000.0;
-            const float phi = ang;
+            const float r = sqrt(stub.x * stub.x + stub.y * stub.y) / 1000.0;
+            const float phi = atan2(stub.y, stub.x);
 
             rs.push_back(r);
             phis.push_back(phi);
