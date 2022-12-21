@@ -69,7 +69,7 @@ namespace HelixSolver
     }
 
 
-    std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> ComputingManager::transferSolutions()
+    std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>> ComputingManager::transferSolutions()
     {
         update();
 

@@ -33,7 +33,7 @@ namespace HelixSolver
         return queue.get();
     }
 
-    std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>> ComputingWorker::transferSolutions()
+    ComputingWorker::EventSoutionsPair ComputingWorker::transferSolutions()
     {
         if (state != ComputingWorkerState::COMPLETED) return std::make_pair(std::shared_ptr<Event>(), std::unique_ptr<std::vector<SolutionCircle>>());
         state = ComputingWorkerState::WAITING;

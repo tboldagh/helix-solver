@@ -24,12 +24,14 @@ namespace HelixSolver
             FPGA_EMULATOR
         };
 
+        using EventSoutionsPair = std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>;
+
         ComputingWorker(std::unique_ptr<sycl::queue>&& queue);
         ComputingWorkerState updateAndGetState();
         void setState(ComputingWorkerState state);
         bool assignBuffer(std::shared_ptr<EventBuffer> eventBuffer);
         const sycl::queue* getQueue() const;
-        std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>> transferSolutions();
+        EventSoutionsPair transferSolutions();
         void waitUntillCompleted();
 
     private:

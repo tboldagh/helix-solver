@@ -173,7 +173,7 @@ namespace HelixSolver
         return events;
     }
 
-    void Application::printEventsAndSolutionsToFile(const std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>>& eventsAndSolutions, const std::string& path)
+    void Application::printEventsAndSolutionsToFile(const std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>>& eventsAndSolutions, const std::string& path)
     {
         std::ofstream outputFile(path);
         for (const auto& eventAndSolution : *eventsAndSolutions)

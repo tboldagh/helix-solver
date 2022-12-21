@@ -14,7 +14,7 @@ namespace HelixSolver
         bool addEvent(std::shared_ptr<Event> event);
         void waitUntillAllTasksCompleted();
         void waitForWaitingWorker();
-        std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> transferSolutions();
+        std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>> transferSolutions();
         void update();
 
     private:
@@ -25,7 +25,7 @@ namespace HelixSolver
         ComputingWorker::Platform platform;
         std::vector<std::shared_ptr<EventBuffer>> eventBuffers;
         std::vector<std::shared_ptr<ComputingWorker>> computingWorkers;
-        std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> solutions;
+        std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>> solutions;
         std::queue<uint32_t> freeEventBuffers;
         std::queue<uint32_t> readyEventBuffers;
         std::vector<uint32_t> processedEventBuffers;
