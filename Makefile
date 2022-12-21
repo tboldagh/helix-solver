@@ -1,5 +1,6 @@
 CC := dpcpp
-CFLAGS := -std=c++17 -g -O0 -Og
+# CFLAGS := -std=c++17 -g -O0 -Og
+CFLAGS := -std=c++17 -O3
 WFLAGS := -Wall -Wextra
 
 INPUT_ARGS := config.json

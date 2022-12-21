@@ -23,6 +23,10 @@ static constexpr float ACC_CELL_WIDTH = (Q_OVER_P_END - Q_OVER_P_BEGIN) / (ACC_W
 static constexpr float ACC_CELL_HEIGHT = (PHI_END - PHI_BEGIN) / (ACC_HEIGHT - 1);
 
 
+static constexpr uint8_t ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL = 2;
+// * Must be 2 to power ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL
+static constexpr uint8_t ADAPTIVE_KERNEL_INITIAL_DIVISIONS = 4;
+
 // * Must be sqare root of ACC_WIDTH
 static constexpr uint8_t Q_OVER_PT_MAX_GRID_DIVISION_LEVEL = 6;
 // * Must be sqare root of ACC_HEIGHT

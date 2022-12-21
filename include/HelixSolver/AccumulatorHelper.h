@@ -20,10 +20,6 @@ namespace HelixSolver {
 
     std::pair<float, float> cart2pol(float x, float y);
 
-    uint32_t findClosest(const std::vector<float> &vec, float value);
-
-    OptionalIdxPair findYRange(nlohmann::json &config, std::vector<float> &Y, float yLeft, float yRight);
-
     template<typename T>
     void Swap(T &first, T &second) {
         T temp = first;

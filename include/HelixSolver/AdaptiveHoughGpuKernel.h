@@ -20,9 +20,6 @@ namespace HelixSolver
 
         SYCL_EXTERNAL void operator()(sycl::id<2> idx) const;
 
-        static constexpr uint8_t INITIAL_DIVISION_LEVEL = 2;
-        static constexpr uint8_t INITIAL_DIVISIONS = 4;
-
     private:
         class AccumulatorSection
         {

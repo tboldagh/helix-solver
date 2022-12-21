@@ -13,31 +13,26 @@ namespace HelixSolver
 
     void AdaptiveHoughGpuKernel::operator()(sycl::id<2> idx) const
     {
-        constexpr uint8_t MAX_STUB_LIST_NUM = MAX_DIVISION_LEVEL + 2;
-        constexpr uint32_t MAX_STUB_LIST_ELEMENT_NUM = MAX_STUB_NUM * MAX_STUB_LIST_NUM;
+        constexpr uint8_t MAX_STUB_LISTS_NUM = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL + 2;
+        constexpr uint32_t MAX_STUB_LIST_ELEMENTS_NUM = MAX_STUB_NUM * MAX_STUB_LISTS_NUM;
 
-        uint16_t xBegin = ACC_WIDTH * idx[0] / INITIAL_DIVISIONS;
-        uint16_t yBegin = ACC_HEIGHT * idx[1] / INITIAL_DIVISIONS;
+        uint16_t xBegin = ACC_WIDTH * idx[0] / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        uint16_t yBegin = ACC_HEIGHT * idx[1] / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
 
-        uint32_t stubListSizes[MAX_STUB_LIST_NUM];
-        for(uint32_t k = 0; k < MAX_STUB_LIST_NUM; ++k) stubListSizes[k] = 0;
-        uint32_t stubLists[MAX_STUB_LIST_ELEMENT_NUM];
+        uint32_t stubListSizes[MAX_STUB_LISTS_NUM];
+        for(uint32_t i = 0; i < MAX_STUB_LISTS_NUM; ++i) stubListSizes[i] = 0;
+
+        uint32_t stubLists[MAX_STUB_LIST_ELEMENTS_NUM];
         uint32_t stubsNum = rs.size();
-        stubListSizes[INITIAL_DIVISION_LEVEL] = stubsNum;
-        for(uint32_t k = 0; k < stubsNum; ++k)
-        {
-            stubLists[k] = k;
-        }
+        stubListSizes[0] = stubsNum;
+        for(uint32_t i = 0; i < stubsNum; ++i) stubLists[i] = i;
 
-        constexpr uint8_t MAX_SECTIONS_HEIGHT = MAX_DIVISION_LEVEL * 4;
+        constexpr uint8_t MAX_SECTIONS_HEIGHT = (MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL) * 4;
         AccumulatorSection sections[MAX_SECTIONS_HEIGHT];
         uint8_t sectionsHeight = 1;
 
-        sections[0] = AccumulatorSection(ACC_WIDTH / INITIAL_DIVISIONS, ACC_HEIGHT / INITIAL_DIVISIONS, xBegin, yBegin);
-        while (sectionsHeight)
-        {
-            fillAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
-        }    
+        sections[0] = AccumulatorSection(ACC_WIDTH / ADAPTIVE_KERNEL_INITIAL_DIVISIONS, ACC_HEIGHT / ADAPTIVE_KERNEL_INITIAL_DIVISIONS, xBegin, yBegin);
+        while (sectionsHeight) fillAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
     }
 
 
@@ -46,7 +41,7 @@ namespace HelixSolver
         sectionsHeight--;
         AccumulatorSection section = sections[sectionsHeight];
 
-        uint8_t divisionLevel = MAX_DIVISION_LEVEL - static_cast<uint8_t>(round(log2(section.width > section.height ? section.width : section.height)));
+        uint8_t divisionLevel = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL - static_cast<uint8_t>(round(log2(section.width > section.height ? section.width : section.height)));
         fillHits(stubLists, stubListSizes, divisionLevel, section);
         if (stubListSizes[divisionLevel + 1] - stubListSizes[divisionLevel] < THRESHOLD) return;
         

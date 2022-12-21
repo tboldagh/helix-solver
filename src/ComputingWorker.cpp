@@ -69,7 +69,8 @@ namespace HelixSolver
             sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs(*eventBuffer->getRBuffer(), handler, sycl::read_only);
             sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis(*eventBuffer->getPhiBuffer(), handler, sycl::read_only);
             sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions(*solutionsBuffer, handler, sycl::write_only);
-            handler.parallel_for(sycl::range<2>(AdaptiveHoughGpuKernel::INITIAL_DIVISIONS, AdaptiveHoughGpuKernel::INITIAL_DIVISIONS), AdaptiveHoughGpuKernel(rs, phis, solutions));
+            AdaptiveHoughGpuKernel kernel(rs, phis, solutions);
+            handler.parallel_for(sycl::range<2>(ADAPTIVE_KERNEL_INITIAL_DIVISIONS, ADAPTIVE_KERNEL_INITIAL_DIVISIONS), kernel);
         });
         
         state = ComputingWorkerState::PROCESSING;
