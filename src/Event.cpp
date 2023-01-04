@@ -3,7 +3,6 @@
 #include <TFile.h>
 #include <TTree.h>
 
-#include "HelixSolver/AccumulatorHelper.h"
 #include "HelixSolver/Event.h"
 
 namespace HelixSolver
