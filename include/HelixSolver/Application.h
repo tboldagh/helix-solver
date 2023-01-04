@@ -23,6 +23,7 @@ namespace HelixSolver
 
         static ComputingWorker::Platform getPlatformFromString(const std::string& platformStr);
         static std::unique_ptr<std::vector<std::shared_ptr<Event>>> loadEventsFromSpacepointsRootFile(const std::string& path);
+        static std::unique_ptr<std::vector<std::shared_ptr<Event>>> loadEventsFromSpacepointsTxtFile(const std::string& path);
         static void printEventsAndSolutionsToFile(const std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>>& eventsAndSolutions, const std::string& path);
 
         void loadConfig(const std::string& configFilePath);

@@ -5,9 +5,9 @@
 #include "HelixSolver/ComputingManager.h"
 #include "HelixSolver/Debug.h"
 
-#include <TFile.h>
-#include <TTree.h>
-#include <thread>
+// #include <TFile.h>
+// #include <TTree.h>
+// #include <thread>
 
 namespace HelixSolver
 {
@@ -135,6 +135,7 @@ namespace HelixSolver
     std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEvents(const std::string& path) const
     {
         if(config["inputFileType"] == "root_spacepoints") return loadEventsFromSpacepointsRootFile(path);
+        if(config["inputFileType"] == "txt_spacepoints") return loadEventsFromSpacepointsTxtFile(path);
         else
         {
             // * Reading other file types are not implemented yet.
@@ -144,8 +145,46 @@ namespace HelixSolver
 
     std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEventsFromSpacepointsRootFile(const std::string& path)
     {
-        std::unique_ptr<TFile> file(TFile::Open(path.c_str()));
-        std::unique_ptr<TTree> hitsTree(file->Get<TTree>("spacepoints"));
+        // std::unique_ptr<TFile> file(TFile::Open(path.c_str()));
+        // std::unique_ptr<TTree> hitsTree(file->Get<TTree>("spacepoints"));
+        
+        // uint32_t eventId;
+        // float x;
+        // float y;
+        // float z;
+        // uint8_t layer = 0;
+
+        // hitsTree->SetBranchAddress("event_id", &eventId);
+        // hitsTree->SetBranchAddress("x", &x);
+        // hitsTree->SetBranchAddress("y", &y);
+        // hitsTree->SetBranchAddress("z", &z);
+
+        // std::ofstream txtFile;
+        // txtFile.open("spacepoints.txt", std::ios::out);
+
+        std::map<Event::EventId, std::unique_ptr<std::vector<Stub>>> stubs;
+        // for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
+        // {
+        //     hitsTree->GetEntry(i);
+
+        //     stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
+
+        //     stubs[eventId]->push_back(Stub{x, y, z, layer});
+        //     // txtFile<<eventId<<", "<<x<<", "<<y<<", "<<z<<"\n";
+        // }
+
+        // // txtFile.close();
+
+        std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
+        for(auto& idAndStubs : stubs) events->push_back(std::make_shared<Event>(idAndStubs.first, std::move(idAndStubs.second)));
+        return events;
+    }
+
+    std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEventsFromSpacepointsTxtFile(const std::string& path)
+    {
+
+        std::ifstream file;
+        file.open(path, std::ios::in);
         
         uint32_t eventId;
         float x;
@@ -153,20 +192,31 @@ namespace HelixSolver
         float z;
         uint8_t layer = 0;
 
-        hitsTree->SetBranchAddress("event_id", &eventId);
-        hitsTree->SetBranchAddress("x", &x);
-        hitsTree->SetBranchAddress("y", &y);
-        hitsTree->SetBranchAddress("z", &z);
-
         std::map<Event::EventId, std::unique_ptr<std::vector<Stub>>> stubs;
-        for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
+        std::string line;
+        while (std::getline(file, line))
         {
-            hitsTree->GetEntry(i);
+            std::stringstream ss(line);
+
+            std::string token;
+            std::getline(ss, token, ',');
+            std::stringstream(token)>>eventId;
+            std::getline(ss, token, ',');
+            std::stringstream(token)>>x;
+            std::getline(ss, token, ',');
+            std::stringstream(token)>>y;
+            std::getline(ss, token, ',');
+            std::stringstream(token)>>z;
+
+            // std::cout<<eventId<<", "<<x<<", "<<y<<", "<<z<<"\n";
 
             stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
 
             stubs[eventId]->push_back(Stub{x, y, z, layer});
+            // txtFile<<eventId<<", "<<x<<", "<<y<<", "<<z<<"\n";
         }
+
+        // txtFile.close();
 
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
         for(auto& idAndStubs : stubs) events->push_back(std::make_shared<Event>(idAndStubs.first, std::move(idAndStubs.second)));
