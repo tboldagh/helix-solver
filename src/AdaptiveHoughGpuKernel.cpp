@@ -83,10 +83,10 @@ namespace HelixSolver
     {
         const float x = linspaceElement(Q_OVER_P_BEGIN, Q_OVER_P_END, ACC_WIDTH, section.xBegin);
         const float y = linspaceElement(PHI_BEGIN, PHI_END, ACC_HEIGHT, section.yBegin);
-        const float xLeft = x - ACC_CELL_WIDTH * 0.5;
-        const float xRight = x + ACC_CELL_WIDTH * (section.width - 0.5);
-        const float yBottom = y - ACC_CELL_HEIGHT * 0.5;
-        const float yTop = y + ACC_CELL_HEIGHT * (section.height - 0.5);
+        const float xLeft = x - ACC_CELL_WIDTH * 0.5f;
+        const float xRight = x + ACC_CELL_WIDTH * (section.width - 0.5f);
+        const float yBottom = y - ACC_CELL_HEIGHT * 0.5f;
+        const float yTop = y + ACC_CELL_HEIGHT * (section.height - 0.5f);
 
         stubListSizes[divisionLevel + 1] = stubListSizes[divisionLevel];
         const uint32_t startStubIndexInList = divisionLevel ? stubListSizes[divisionLevel - 1] : 0;
@@ -111,8 +111,8 @@ namespace HelixSolver
         
         const uint32_t index = phiIndex * ACC_WIDTH + qOverPtIndex;
         solutions[index].isValid = true;
-        solutions[index].r = 1000 / (qOverPt * B);
-        solutions[index].phi = phi_0 + M_PI_2;
+        solutions[index].r = 1000.0f / (qOverPt * B);
+        solutions[index].phi = phi_0 + float(M_PI_2); // float czy double
     }
 
     AdaptiveHoughGpuKernel::AccumulatorSection::AccumulatorSection(uint16_t width, uint16_t height, uint16_t xBegin, uint16_t yBegin)
