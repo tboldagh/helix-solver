@@ -1,8 +1,11 @@
 #include "HelixSolver/ComputingManager.h"
 #include "HelixSolver/Debug.h"
+#include <stdexcept>
+#include <string>
 
+#ifdef USE_SYCL
 #include <sycl/ext/intel/fpga_extensions.hpp>
-
+#endif
 namespace HelixSolver
 {
     ComputingManager::ComputingManager(ComputingWorker::Platform platform, uint32_t numBuffers, uint32_t numWorkers)
@@ -19,17 +22,14 @@ namespace HelixSolver
             computingWorkers.push_back(std::make_shared<ComputingWorker>(getNewQueue()));
             waitingComputingWorkers.push(i);
         }
-
-        #ifdef PRINT_PLATFORM
+        #ifdef USE_SYCL
         // * Expects at leas one worker
         sycl::platform syclPlatform = computingWorkers[0]->getQueue()->get_context().get_platform();
-        std::cout << "Platform: " <<  syclPlatform.get_info<sycl::info::platform::name>().c_str() << std::endl;
-        #endif
+        INFO( "Platform: " <<  syclPlatform.get_info<sycl::info::platform::name>().c_str() );
 
-        #ifdef PRINT_PLATFORM
         // * Expects at leas one worker
         sycl::device device = computingWorkers[0]->getQueue()->get_device();
-        std::cout << "Device: " <<  device.get_info<sycl::info::device::name>().c_str() << std::endl;
+        INFO( "Device: " <<  device.get_info<sycl::info::device::name>().c_str() );
         #endif
     }
 
@@ -124,15 +124,13 @@ namespace HelixSolver
         processingComputingWorkers.swap(stillProcessingComputingWorkers);
         processedEventBuffers.swap(stillProceessedEventBuffers);
     }
-
-    std::unique_ptr<sycl::queue> ComputingManager::getNewQueue() const
+    std::unique_ptr<Queue> ComputingManager::getNewQueue() const
     {
+#ifdef USE_SYCL
         sycl::property_list propertyList = sycl::property_list{sycl::property::queue::enable_profiling()};
         
         switch (platform)
         {
-            case ComputingWorker::Platform::BAD_PLATFORM:
-                return std::unique_ptr<sycl::queue>();
             case ComputingWorker::Platform::CPU:
                 return std::make_unique<sycl::queue>(sycl::queue(sycl::host_selector{}, NULL, propertyList));
             case ComputingWorker::Platform::GPU:
@@ -141,7 +139,17 @@ namespace HelixSolver
                 return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_selector{}, NULL, propertyList));
             case ComputingWorker::Platform::FPGA_EMULATOR:
                 return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_emulator_selector{}, NULL, propertyList));
+            default:
+                throw std::runtime_error("Bad platform" + platform);
         }
+#else        
+        switch (platform)
+        {
+            case ComputingWorker::Platform::CPU_NO_SYCL:
+                return std::make_unique<Queue>();
+            default:
+                throw std::runtime_error("Bad platform: " + std::to_string(static_cast<int>(platform))+ " in " + __FILE__);
+        }
+#endif
     }
-
 } // namespace HelixSolver

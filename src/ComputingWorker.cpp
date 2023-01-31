@@ -3,7 +3,7 @@
 
 namespace HelixSolver
 {
-    ComputingWorker::ComputingWorker(std::unique_ptr<sycl::queue>&& queue)
+    ComputingWorker::ComputingWorker(std::unique_ptr<Queue>&& queue)
     : queue(std::move(queue)) {}
 
     ComputingWorker::ComputingWorkerState ComputingWorker::updateAndGetState()
@@ -28,7 +28,7 @@ namespace HelixSolver
         return true;
     }
 
-    const sycl::queue* ComputingWorker::getQueue() const
+    const Queue* ComputingWorker::getQueue() const
     {
         return queue.get();
     }
@@ -37,11 +37,13 @@ namespace HelixSolver
     {
         if (state != ComputingWorkerState::COMPLETED) return std::make_pair(std::shared_ptr<Event>(), std::unique_ptr<std::vector<SolutionCircle>>());
         state = ComputingWorkerState::WAITING;
-
+#ifdef USE_SYCL
         // TODO: Move to scheduleTasksToQueue
         sycl::host_accessor solutionsAccessor(*solutionsBuffer, sycl::read_only);
         for (uint32_t i = 0; i < ACC_SIZE; ++i) (*solutions)[i] = solutionsAccessor[i];
-
+#else
+    /// TODO come back to this, maybe no need to make the copy
+#endif
         return std::make_pair(eventBuffer->getEvent(), std::move(solutions));
     }
 
@@ -52,14 +54,16 @@ namespace HelixSolver
 
     void ComputingWorker::updateState()
     {
+#ifdef USE_SYCL
         if (state == ComputingWorkerState::WAITING) return;
-
         sycl::info::event_command_status status = computingEvent.get_info<sycl::info::event::command_execution_status>();
-        state = status == sycl::info::event_command_status::complete ? ComputingWorkerState::COMPLETED : ComputingWorkerState::PROCESSING;
+        state = status == sycl::info::event_command_status::complete ? ComputingWorkerState::COMPLETED : ComputingWorkerState::PROCESSING;        
+#endif
     }
 
     void ComputingWorker::scheduleTasksToQueue()
     {
+#ifdef USE_SYCL        
         solutions = std::make_unique<std::vector<SolutionCircle>>();
         solutions->insert(solutions->begin(), ACC_SIZE, SolutionCircle{});
         solutionsBuffer = std::make_unique<sycl::buffer<SolutionCircle, 1>>(sycl::buffer<SolutionCircle, 1>(solutions->begin(), solutions->end()));
@@ -75,6 +79,17 @@ namespace HelixSolver
         
         state = ComputingWorkerState::PROCESSING;
         eventBuffer->setState(EventBuffer::EventBufferState::PROCESSED);
+#else
+    // in pure CPU code we do not wait for anything
+    solutions = std::make_unique<std::vector<SolutionCircle>>(ACC_SIZE);
+    AdaptiveHoughGpuKernel kernel(*eventBuffer->getRBuffer(), *eventBuffer->getPhiBuffer(), *solutions);
+    for ( uint8_t div1 = 0; div1 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div1 ) {
+        for ( uint8_t div2 = 0; div2 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div2 ) {
+            kernel({div1, div2});
+        }
+    }
+    state = ComputingWorkerState::COMPLETED;
+#endif        
     }
 
 } // namespace HelixSolver

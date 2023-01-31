@@ -30,6 +30,9 @@ namespace HelixSolver
             case ComputingWorker::Platform::CPU:
                 runOnCpu();
                 break;
+            case ComputingWorker::Platform::CPU_NO_SYCL:
+                runOnCpu();
+                break;
             case ComputingWorker::Platform::GPU:
                 runOnGpu();
                 break;
@@ -56,11 +59,11 @@ namespace HelixSolver
         events.swap(newEvents);
         #endif
 
-        ComputingManager computingManager(ComputingWorker::Platform::CPU, config["cpuEventBuffers"], config["cpuComputingWorkers"]);
+        ComputingManager computingManager(getPlatformFromString(config["platform"]), 
+                                          config["cpuEventBuffers"],
+                                          config["cpuComputingWorkers"]);
 
-        #ifdef PRINT_EXECUTION_TIME
         auto executionTimeStart = std::chrono::high_resolution_clock::now();
-        #endif
 
         for(std::shared_ptr<Event>& event : *events)
         {
@@ -73,11 +76,9 @@ namespace HelixSolver
         computingManager.waitUntillAllTasksCompleted();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
         
-        #ifdef PRINT_EXECUTION_TIME
         auto executionTimeEnd = std::chrono::high_resolution_clock::now();
         auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
-        std::cout<<"Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds"<<std::endl;
-        #endif
+        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
 
         printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
     }
@@ -102,9 +103,7 @@ namespace HelixSolver
         
         ComputingManager computingManager(ComputingWorker::Platform::GPU, config["gpuEventBuffers"], config["gpuComputingWorkers"]);
 
-        #ifdef PRINT_EXECUTION_TIME
         auto executionTimeStart = std::chrono::high_resolution_clock::now();
-        #endif
 
         for(std::shared_ptr<Event>& event : *events)
         {
@@ -113,17 +112,16 @@ namespace HelixSolver
         computingManager.waitUntillAllTasksCompleted();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
         
-        #ifdef PRINT_EXECUTION_TIME
         auto executionTimeEnd = std::chrono::high_resolution_clock::now();
         auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
-        std::cout<<"Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds"<<std::endl;
-        #endif
+        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
 
         printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
     }
 
     ComputingWorker::Platform Application::getPlatformFromString(const std::string& platformStr)
     {
+        if(platformStr == "cpu_no_sycl") return ComputingWorker::Platform::CPU_NO_SYCL;
         if(platformStr == "cpu") return ComputingWorker::Platform::CPU;
         else if(platformStr == "gpu") return ComputingWorker::Platform::GPU;
         else if(platformStr == "FPGA") return ComputingWorker::Platform::FPGA;
@@ -145,8 +143,11 @@ namespace HelixSolver
     std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEventsFromSpacepointsRootFile(const std::string& path)
     {
         std::unique_ptr<TFile> file(TFile::Open(path.c_str()));
+        INFO( "... Input " << ( file != nullptr  ? "Opened " : "Failed to open ") << path );
+
         std::unique_ptr<TTree> hitsTree(file->Get<TTree>("spacepoints"));
-        
+        INFO( "... Input tree " << ( hitsTree != nullptr  ? " ok " : "absent ") << path );
+
         uint32_t eventId;
         float x;
         float y;
@@ -169,7 +170,8 @@ namespace HelixSolver
         }
 
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
-        for(auto& idAndStubs : stubs) events->push_back(std::make_shared<Event>(idAndStubs.first, std::move(idAndStubs.second)));
+        for(auto& idAndStubs : stubs) 
+            events->push_back(std::make_shared<Event>(idAndStubs.first, std::move(idAndStubs.second)));
         return events;
     }
 

@@ -4,6 +4,7 @@
 
 #include "HelixSolver/ComputingWorker.h"
 
+
 namespace HelixSolver
 {
     class ComputingManager
@@ -20,7 +21,7 @@ namespace HelixSolver
     private:
         void startProcessingReadyBuffers();
         void transferSolutionsFromCompletedWorkers();
-        std::unique_ptr<sycl::queue> getNewQueue() const;
+        std::unique_ptr<Queue> getNewQueue() const;
 
         ComputingWorker::Platform platform;
         std::vector<std::shared_ptr<EventBuffer>> eventBuffers;

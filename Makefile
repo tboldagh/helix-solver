@@ -1,6 +1,6 @@
-CC := dpcpp
-# CFLAGS := -std=c++17 -g -O0 -Og
-CFLAGS := -std=c++17 -O3
+DPCC := dpcpp
+CPP := c++
+CFLAGS := -std=c++17 -O3 $(shell  root-config --cflags)
 WFLAGS := -Wall -Wextra
 
 INPUT_ARGS := config.json
@@ -20,14 +20,13 @@ TESTTARGET := $(BINDIR)/$(TESTEXEC)
 SRCEXT := cpp
 
 LINKBOOST := -lboost_program_options
-ROOT_INCLUDE := $(LIBS)/root/include
 ROOT_CONFIG := $(shell root-config --glibs --libs)
-NLOHMAN_INCLUDE := $(LIBS)/nlohmann
+NLOHMAN_INCLUDE := $(LIBS)/json/include
 
 SRC := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJ := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SRC:.$(SRCEXT)=.o))
 
-INC := -I $(INCDIR) -I $(ROOT_INCLUDE) -I $(NLOHMAN_INCLUDE)
+INC := -I $(INCDIR) -I $(NLOHMAN_INCLUDE)
 # INC := -I $(INCDIR) -I $(ROOT_INCLUDE) -I $(shell root-config --incdir)
 
 TESTSRC := $(shell find $(TESTSRCDIR) -type f -name *.$(SRCEXT))
@@ -52,11 +51,16 @@ PLATFOMR_FLAGS := $(CPU_FLAGS)
 # PLATFOMR_FLAGS := $(FPGA_FLAGS)
 # PLATFOMR_FLAGS := $(FPGA_EMULATOR_FLAGS)
 
+bin/ht_no_sycl: $(wildcard src/*.cpp) $(wildcard include/*/*h)
+	mkdir -p $(BINDIR)
+	$(CPP) $(CFLAGS) $(ROOT_CONFIG) -UUSE_SYCL -DPRINT_DEBUG $(INC) $(SRCDIR)/*.cpp -o bin/ht_no_sycl
+
+
 fpga_hw:
-	$(CC) $(CFLAGS) $(STRATIX_FLAGS) $(INC) $(SRCDIR)/*.cpp -o bin/fpga_out.fpga
+	$(DPCC) $(CFLAGS) $(STRATIX_FLAGS) $(INC) $(SRCDIR)/*.cpp -o bin/fpga_out.fpga
 
 report:
-	$(CC) $(CFLAGS) $(STRATIX_FLAGS_FOR_REPORT) $(INC) $(SRCDIR)/*.cpp -o bin/fpga_compile_report.a
+	$(DPCC) $(CFLAGS) $(STRATIX_FLAGS_FOR_REPORT) $(INC) $(SRCDIR)/*.cpp -o bin/fpga_compile_report.a
 
 run: $(TARGET)
 	./$< $(INPUT_ARGS)

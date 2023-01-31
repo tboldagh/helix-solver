@@ -17,8 +17,8 @@ namespace HelixSolver
         if (state != EventBufferState::FREE) return false;
 
         this->event = event;
-        rBuffer = std::make_shared<sycl::buffer<float, 1>>(sycl::buffer<float, 1>(event->getR().begin(), event->getR().end()));
-        phiBuffer = std::make_shared<sycl::buffer<float, 1>>(sycl::buffer<float, 1>(event->getPhi().begin(), event->getPhi().end()));
+        rBuffer = std::make_shared<FloatBuffer>(FloatBuffer(event->getR().begin(), event->getR().end()));
+        phiBuffer = std::make_shared<FloatBuffer>(FloatBuffer(event->getPhi().begin(), event->getPhi().end()));
 
         state = EventBufferState::READY;
 
@@ -30,12 +30,12 @@ namespace HelixSolver
         return event;
     }
 
-    std::shared_ptr<sycl::buffer<float, 1>> EventBuffer::getRBuffer() const
+    std::shared_ptr<FloatBuffer> EventBuffer::getRBuffer() const
     {
         return rBuffer;
     }
 
-    std::shared_ptr<sycl::buffer<float, 1>> EventBuffer::getPhiBuffer() const
+    std::shared_ptr<FloatBuffer> EventBuffer::getPhiBuffer() const
     {
         return phiBuffer;
     }

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <CL/sycl.hpp>
-
 #include "HelixSolver/SolutionCircle.h"
 #include "HelixSolver/Constants.h"
 
@@ -9,16 +7,32 @@
 
 #include "HelixSolver/EventBuffer.h"
 
+
+#ifdef USE_SYCL
+    #include <CL/sycl.hpp>
+    using FloatBufferReadAccessor=sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device>;
+    using SolutionsWriteAccessor=sycl::accessor<HelixSolver::SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device>;
+    using Index2D=sycl::id<2>;
+#else
+    #include <vector>
+    #include <array>
+    using FloatBufferReadAccessor=const FloatBuffer&;
+    using SolutionsWriteAccessor=std::vector<HelixSolver::SolutionCircle>&;
+    using Index2D=std::array<int, 2>;
+    #define SYCL_EXTERNAL
+#endif
+
+
 namespace HelixSolver
 {
     class AdaptiveHoughGpuKernel
     {
     public:
-        AdaptiveHoughGpuKernel(sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs,
-                sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis,
-                sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solution);
+        AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs,
+                FloatBufferReadAccessor phis,
+                SolutionsWriteAccessor solution);
 
-        SYCL_EXTERNAL void operator()(sycl::id<2> idx) const;
+        SYCL_EXTERNAL void operator()(Index2D idx) const;
 
     private:
         class AccumulatorSection
@@ -40,9 +54,9 @@ namespace HelixSolver
 
         static constexpr uint8_t MAX_DIVISION_LEVEL = Q_OVER_PT_MAX_GRID_DIVISION_LEVEL > PHI_MAX_GRID_DIVISION_LEVEL ? Q_OVER_PT_MAX_GRID_DIVISION_LEVEL : PHI_MAX_GRID_DIVISION_LEVEL;
 
-        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs;
-        sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis;
-        sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions;
+        FloatBufferReadAccessor rs;
+        FloatBufferReadAccessor phis;
+        SolutionsWriteAccessor solutions;
     };
 
     inline float AdaptiveHoughGpuKernel::linspaceElement(float start, float end, uint32_t numPoints, uint16_t index)

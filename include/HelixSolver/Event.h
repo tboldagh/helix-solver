@@ -2,8 +2,7 @@
 
 #include <vector>
 #include <functional>
-#include <nlohmann/json.hpp>
-
+#include <stdint.h>
 #include "HelixSolver/Stub.h"
 
 namespace HelixSolver

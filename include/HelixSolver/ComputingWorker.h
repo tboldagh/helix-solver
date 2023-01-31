@@ -2,7 +2,7 @@
 
 #include "HelixSolver/EventBuffer.h"
 #include "HelixSolver/SolutionCircle.h"
-
+#include "HelixSolver/ProcessingQueue.h"
 namespace HelixSolver
 {
     class ComputingWorker
@@ -17,20 +17,22 @@ namespace HelixSolver
 
         enum class Platform
         {
-            BAD_PLATFORM,
-            CPU,
-            GPU,
-            FPGA,
-            FPGA_EMULATOR
+            BAD_PLATFORM=0,
+            CPU_NO_SYCL=1,
+            CPU=2,
+            GPU=3,
+            FPGA=4,
+            FPGA_EMULATOR=5
         };
 
         using EventSoutionsPair = std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>;
 
-        ComputingWorker(std::unique_ptr<sycl::queue>&& queue);
         ComputingWorkerState updateAndGetState();
         void setState(ComputingWorkerState state);
         bool assignBuffer(std::shared_ptr<EventBuffer> eventBuffer);
-        const sycl::queue* getQueue() const;
+        ComputingWorker(std::unique_ptr<Queue>&& queue);
+        const Queue* getQueue() const;
+
         EventSoutionsPair transferSolutions();
         void waitUntillCompleted();
 
@@ -40,10 +42,13 @@ namespace HelixSolver
 
         ComputingWorkerState state = ComputingWorkerState::WAITING;
         std::shared_ptr<EventBuffer> eventBuffer = nullptr; // ?
-        std::unique_ptr<sycl::queue> queue;
         std::unique_ptr<std::vector<SolutionCircle>> solutions;
+        std::unique_ptr<SolutionBuffer> solutionsBuffer;
+        std::unique_ptr<Queue> queue;
 
-        std::unique_ptr<sycl::buffer<SolutionCircle, 1>> solutionsBuffer;
+#ifdef USE_SYCL
         sycl::event computingEvent;
+#endif        
+
     };
 } // HelixSolver

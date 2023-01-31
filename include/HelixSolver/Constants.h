@@ -1,5 +1,5 @@
 #pragma once
-
+#include <stdint.h>
 static constexpr uint8_t THRESHOLD = 6;
 static constexpr float Q_OVER_P_BEGIN  = -0.2857142857142857;
 static constexpr float Q_OVER_P_END = 0.2857142857142857;

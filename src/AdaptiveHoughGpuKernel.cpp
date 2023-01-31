@@ -1,17 +1,22 @@
+#include <cmath>
+#include <iostream>
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
-
+#include "HelixSolver/Debug.h"
 
 namespace HelixSolver
 {
-    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs,
-            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis,
-            sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions)
+    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel( FloatBufferReadAccessor rs,
+                                                    FloatBufferReadAccessor phis,
+                                                    SolutionsWriteAccessor solutions)
     : rs(rs)
     , phis(phis)
-    , solutions(solutions) {}
+    , solutions(solutions) {
+        DEBUG( ".. AdaptiveHoughKernel instantiated with " << rs.size() << " measurements " );
+    }
 
-    void AdaptiveHoughGpuKernel::operator()(sycl::id<2> idx) const
+    void AdaptiveHoughGpuKernel::operator()(Index2D idx) const
     {
+        DEBUG( " .. AdaptiveHoughKernel initiated for subregion " << idx[0] << " " << idx[1] );
         constexpr uint8_t MAX_STUB_LISTS_NUM = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL + 2;
         constexpr uint32_t MAX_STUB_LIST_ELEMENTS_NUM = MAX_STUB_NUM * MAX_STUB_LISTS_NUM;
         constexpr uint16_t INITIAL_SECTION_WIDTH = ACC_WIDTH / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
@@ -30,47 +35,50 @@ namespace HelixSolver
 
         constexpr uint8_t MAX_SECTIONS_HEIGHT = (MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL) * 4;
         AccumulatorSection sections[MAX_SECTIONS_HEIGHT];
-        uint8_t sectionsHeight = 1;
+        uint8_t sectionsBufferSize = 1;
         sections[0] = AccumulatorSection(INITIAL_SECTION_WIDTH, INITIAL_SECTION_HEIGHT, xBegin, yBegin);
-        while (sectionsHeight) fillAccumulatorSection(sections, sectionsHeight, stubLists, stubListSizes);
+        while (sectionsBufferSize) fillAccumulatorSection(sections, sectionsBufferSize, stubLists, stubListSizes);
     }
 
-    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection* sections, uint8_t& sectionsHeight, uint32_t* stubLists, uint32_t* stubListSizes) const
+    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection* sections, uint8_t& sectionsBufferSize, uint32_t* stubLists, uint32_t* stubListSizes) const
     {
-        sectionsHeight--;
-        const AccumulatorSection section = sections[sectionsHeight];
+        DEBUG("Regions buffer depth " << static_cast<int>(sectionsBufferSize));
+        sectionsBufferSize--;
+        const AccumulatorSection section = sections[sectionsBufferSize];
 
-        const uint8_t divisionLevel = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL - static_cast<uint8_t>(round(log2(section.width > section.height ? section.width : section.height)));
+        const uint8_t divisionLevel = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL - static_cast<uint8_t>(round(std::log2(section.width > section.height ? section.width : section.height)));
         fillHits(stubLists, stubListSizes, divisionLevel, section);
         if (stubListSizes[divisionLevel + 1] - stubListSizes[divisionLevel] < THRESHOLD) return;
         
         if (section.width > 1)
         {
+            DEBUG("Splitting in 2D");
             const uint16_t newWidth = section.width / 2;
             if(section.height > 1)
             {
                 const uint16_t newHeight = section.height / 2;
-                sections[sectionsHeight] = AccumulatorSection(newWidth, newHeight, section.xBegin, section.yBegin);
-                sections[sectionsHeight + 1] = AccumulatorSection(newWidth, newHeight, section.xBegin, section.yBegin + newHeight);
-                sections[sectionsHeight + 2] = AccumulatorSection(newWidth, newHeight, section.xBegin + newWidth, section.yBegin);
-                sections[sectionsHeight + 3] = AccumulatorSection(newWidth, newHeight, section.xBegin + newWidth, section.yBegin + newHeight);
-                sectionsHeight += 4;
+                sections[sectionsBufferSize] = AccumulatorSection(newWidth, newHeight, section.xBegin, section.yBegin);
+                sections[sectionsBufferSize + 1] = AccumulatorSection(newWidth, newHeight, section.xBegin, section.yBegin + newHeight);
+                sections[sectionsBufferSize + 2] = AccumulatorSection(newWidth, newHeight, section.xBegin + newWidth, section.yBegin);
+                sections[sectionsBufferSize + 3] = AccumulatorSection(newWidth, newHeight, section.xBegin + newWidth, section.yBegin + newHeight);
+                sectionsBufferSize += 4;
             }
             else
             {
-                sections[sectionsHeight] = AccumulatorSection(newWidth, section.height, section.xBegin, section.yBegin);
-                sections[sectionsHeight + 1] = AccumulatorSection(newWidth, section.height, section.xBegin + newWidth, section.yBegin);
-                sectionsHeight += 2;
+                sections[sectionsBufferSize] = AccumulatorSection(newWidth, section.height, section.xBegin, section.yBegin);
+                sections[sectionsBufferSize + 1] = AccumulatorSection(newWidth, section.height, section.xBegin + newWidth, section.yBegin);
+                sectionsBufferSize += 2;
             }
         }
         else
         {
+            DEBUG("Splitting in 1D");
             if(section.height > 1)
             {
                 const uint16_t newHeight = section.height / 2;
-                sections[sectionsHeight] = AccumulatorSection(section.width, newHeight, section.xBegin, section.yBegin);
-                sections[sectionsHeight + 1] = AccumulatorSection(section.width, newHeight, section.xBegin, section.yBegin + newHeight);
-                sectionsHeight += 2;   
+                sections[sectionsBufferSize] = AccumulatorSection(section.width, newHeight, section.xBegin, section.yBegin);
+                sections[sectionsBufferSize + 1] = AccumulatorSection(section.width, newHeight, section.xBegin, section.yBegin + newHeight);
+                sectionsBufferSize += 2;   
             }
             else
             {
@@ -113,6 +121,7 @@ namespace HelixSolver
         solutions[index].isValid = true;
         solutions[index].r = 1000 / (qOverPt * B);
         solutions[index].phi = phi_0 + M_PI_2;
+        DEBUG( " .. AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << solutions[index].phi );
     }
 
     AdaptiveHoughGpuKernel::AccumulatorSection::AccumulatorSection(uint16_t width, uint16_t height, uint16_t xBegin, uint16_t yBegin)
