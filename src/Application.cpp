@@ -47,7 +47,7 @@ namespace HelixSolver
 
         #ifdef MULTIPLY_EVENTS
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> newEvents = std::make_unique<std::vector<std::shared_ptr<Event>>>();
-        
+
         for(unsigned int i = 0; i < config["multiplyEvents"]; i++)
         {
             for(auto event : *events)
@@ -59,9 +59,7 @@ namespace HelixSolver
         events.swap(newEvents);
         #endif
 
-        ComputingManager computingManager(getPlatformFromString(config["platform"]), 
-                                          config["cpuEventBuffers"],
-                                          config["cpuComputingWorkers"]);
+        ComputingManager computingManager(getPlatformFromString(config["platform"]), config["cpuEventBuffers"], config["cpuComputingWorkers"]);
 
         auto executionTimeStart = std::chrono::high_resolution_clock::now();
 
@@ -75,7 +73,7 @@ namespace HelixSolver
         }
         computingManager.waitUntillAllTasksCompleted();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
-        
+
         auto executionTimeEnd = std::chrono::high_resolution_clock::now();
         auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
         INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
@@ -86,10 +84,10 @@ namespace HelixSolver
     void Application::runOnGpu() const
     {
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = loadEvents(config["inputFile"]);
-        
+
         #ifdef MULTIPLY_EVENTS
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> newEvents = std::make_unique<std::vector<std::shared_ptr<Event>>>();
-        
+
         for(unsigned int i = 0; i < config["multiplyEvents"]; i++)
         {
             for(auto event : *events)
@@ -100,7 +98,7 @@ namespace HelixSolver
 
         events.swap(newEvents);
         #endif
-        
+
         ComputingManager computingManager(ComputingWorker::Platform::GPU, config["gpuEventBuffers"], config["gpuComputingWorkers"]);
 
         auto executionTimeStart = std::chrono::high_resolution_clock::now();
@@ -111,7 +109,7 @@ namespace HelixSolver
         }
         computingManager.waitUntillAllTasksCompleted();
         std::unique_ptr<std::vector<std::pair<std::shared_ptr<Event>, std::unique_ptr<std::vector<SolutionCircle>>>>> eventsAndSolutions = computingManager.transferSolutions();
-        
+
         auto executionTimeEnd = std::chrono::high_resolution_clock::now();
         auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
         INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
@@ -146,7 +144,7 @@ namespace HelixSolver
         INFO( "... Input " << ( file != nullptr  ? "Opened " : "Failed to open ") << path );
 
         std::unique_ptr<TTree> hitsTree(file->Get<TTree>("spacepoints"));
-        INFO( "... Input tree " << ( hitsTree != nullptr  ? " ok " : "absent ") << path );
+        INFO( "... Input tree " << ( hitsTree != nullptr  ? "ok " : "absent ") << path );
 
         uint32_t eventId;
         float x;
@@ -160,17 +158,18 @@ namespace HelixSolver
         hitsTree->SetBranchAddress("z", &z);
 
         std::map<Event::EventId, std::unique_ptr<std::vector<Stub>>> stubs;
+
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
-
-            stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
-
-            stubs[eventId]->push_back(Stub{x, y, z, layer});
+            if(eventId == 1){       // to analyse only a single event
+                stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
+                stubs[eventId]->push_back(Stub{x, y, z, layer});
+            }
         }
 
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
-        for(auto& idAndStubs : stubs) 
+        for(auto& idAndStubs : stubs)
             events->push_back(std::make_shared<Event>(idAndStubs.first, std::move(idAndStubs.second)));
         return events;
     }
@@ -194,6 +193,6 @@ namespace HelixSolver
     void Application::loadConfig(const std::string& configFilePath)
     {
         std::ifstream configFile(configFilePath);
-        configFile >> config;   
+        configFile >> config;
     }
 } // HelixSolver

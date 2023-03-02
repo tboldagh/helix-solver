@@ -11,12 +11,12 @@ static constexpr uint32_t MAX_STUB_NUM = 100000;
 // static constexpr uint32_t MAX_STUB_NUM = 8;
 // TODO: rename
 // * Must be a power of 2
-static constexpr uint32_t ACC_WIDTH = 64;
+static constexpr float ACC_WIDTH = 64;
 // TODO: rename
 // * Must be a power of 2
-static constexpr uint32_t ACC_HEIGHT = 256;
+static constexpr float ACC_HEIGHT = 256;
 // TODO: rename
-static constexpr uint32_t ACC_SIZE = ACC_WIDTH * ACC_HEIGHT;
+static constexpr float ACC_SIZE = ACC_WIDTH * ACC_HEIGHT;
 // TODO: rename
 static constexpr float ACC_CELL_WIDTH = (Q_OVER_P_END - Q_OVER_P_BEGIN) / (ACC_WIDTH - 1);
 // TODO: rename
