@@ -7,7 +7,7 @@
     "gpuComputingWorkers": 24,
     "cpuEventBuffers": 48,
     "cpuComputingWorkers": 12,
-    "multiplyEvents": 10,
+    "multiplyEvents": 1,
     "B": 2,
     "R": 600,
     "c": 299792458,
