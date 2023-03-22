@@ -33,29 +33,21 @@ namespace HelixSolver
         {
         public:
             AccumulatorSection() = default;
-            AccumulatorSection(float width, float height, float xBegin, float yBegin);
+            AccumulatorSection(double width, double height, double xBegin, double yBegin);
 
-            float width;
-            float height;
-            float xBegin;
-            float yBegin;
+            double width;
+            double height;
+            double xBegin;
+            double yBegin;
         };
 
-        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight, uint32_t *stubIndexes, uint32_t *stubCounts) const;
+        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight, uint32_t *stubIndexes, uint32_t *stubCounts, uint8_t &divisionLevel, uint32_t *divisionLevelIterator) const;
         void fillHits(uint32_t *stubIndexes, uint32_t *stubCounts, uint8_t divisionLevel, const AccumulatorSection &section) const;
-        void addSolution(float qOverPt_width, float phi_height, float qOverPtIndex, float phiIndex) const;
-        static inline float linspaceElement(float start, float end, float numPoints, float index);
-
-        static constexpr uint8_t MAX_DIVISION_LEVEL = Q_OVER_PT_MAX_GRID_DIVISION_LEVEL > PHI_MAX_GRID_DIVISION_LEVEL ? Q_OVER_PT_MAX_GRID_DIVISION_LEVEL : PHI_MAX_GRID_DIVISION_LEVEL;
+        void addSolution(double qOverPt_width, double phi_height, double qOverPtIndex, double phiIndex) const;
 
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;
         SolutionsWriteAccessor solutions;
     };
-
-    inline float AdaptiveHoughGpuKernel::linspaceElement(float start, float end, float numPoints, float index)
-    {
-        return start + (end - start) * index / (numPoints - 1);
-    }
 
 } // namespace HelixSolver

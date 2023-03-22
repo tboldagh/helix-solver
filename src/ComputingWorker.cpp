@@ -21,7 +21,7 @@ namespace HelixSolver
     bool ComputingWorker::assignBuffer(std::shared_ptr<EventBuffer> eventBuffer)
     {
         if (state != ComputingWorkerState::WAITING || eventBuffer->getState() != EventBuffer::EventBufferState::READY) return false;
-        
+
         this->eventBuffer = std::move(eventBuffer);
         scheduleTasksToQueue();
 
@@ -57,13 +57,13 @@ namespace HelixSolver
 #ifdef USE_SYCL
         if (state == ComputingWorkerState::WAITING) return;
         sycl::info::event_command_status status = computingEvent.get_info<sycl::info::event::command_execution_status>();
-        state = status == sycl::info::event_command_status::complete ? ComputingWorkerState::COMPLETED : ComputingWorkerState::PROCESSING;        
+        state = status == sycl::info::event_command_status::complete ? ComputingWorkerState::COMPLETED : ComputingWorkerState::PROCESSING;
 #endif
     }
 
     void ComputingWorker::scheduleTasksToQueue()
     {
-#ifdef USE_SYCL        
+#ifdef USE_SYCL
         solutions = std::make_unique<std::vector<SolutionCircle>>();
         solutions->insert(solutions->begin(), ACC_SIZE, SolutionCircle{});
         solutionsBuffer = std::make_unique<sycl::buffer<SolutionCircle, 1>>(sycl::buffer<SolutionCircle, 1>(solutions->begin(), solutions->end()));
@@ -76,7 +76,7 @@ namespace HelixSolver
             AdaptiveHoughGpuKernel kernel(rs, phis, solutions);
             handler.parallel_for(sycl::range<2>(ADAPTIVE_KERNEL_INITIAL_DIVISIONS, ADAPTIVE_KERNEL_INITIAL_DIVISIONS), kernel);
         });
-        
+
         state = ComputingWorkerState::PROCESSING;
         eventBuffer->setState(EventBuffer::EventBufferState::PROCESSED);
 #else
@@ -89,7 +89,8 @@ namespace HelixSolver
         }
     }
     state = ComputingWorkerState::COMPLETED;
-#endif        
+#endif
     }
 
 } // namespace HelixSolver
+ 
