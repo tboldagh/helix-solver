@@ -47,7 +47,6 @@ namespace HelixSolver
 
         const uint8_t divisionLevel = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL - static_cast<uint8_t>(round(std::log2(section.width > section.height ? section.width : section.height)));
         fillHits(stubLists, stubListSizes, divisionLevel, section);
-
         if (stubListSizes[divisionLevel + 1] - stubListSizes[divisionLevel] < THRESHOLD)
             return;
 
