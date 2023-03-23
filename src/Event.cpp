@@ -25,7 +25,7 @@ namespace HelixSolver
         }
         buildStubsFunctions();
     }
-    
+
     void Event::print() const
     {
         std::cout.precision(64);
@@ -45,7 +45,7 @@ namespace HelixSolver
         {
             const float r = sqrt(stub.x * stub.x + stub.y * stub.y) / 1000.0;
             const float phi = atan2(stub.y, stub.x);
-
+            std::cout<<r<<","<<phi<<":PHI"<<std::endl;
             rs.push_back(r);
             phis.push_back(phi);
             layers.push_back(stub.layer);
@@ -64,7 +64,7 @@ namespace HelixSolver
     {
         return rs;
     }
-    
+
     std::vector<float>& Event::getPhi()
     {
         return phis;

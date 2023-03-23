@@ -162,7 +162,7 @@ namespace HelixSolver
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
-            if(eventId == 1){       // to analyse only a single event
+            if(eventId == 0){       // to analyse only a single event
                 stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
                 stubs[eventId]->push_back(Stub{x, y, z, layer});
             }
