@@ -183,7 +183,7 @@ namespace HelixSolver
 
             for (const SolutionCircle& solution : *eventAndSolution.second)
             {
-                if (solution.isValid) outputFile << "\t" << solution.r << "\t" << solution.phi << std::endl;
+                outputFile << "\t" << solution.pt << "\t" << solution.phi << std::endl;
             }
 
             outputFile << "\n";

@@ -2,8 +2,7 @@
 #include <iostream>
 #include <TFile.h>
 #include <TTree.h>
-
-// #include "HelixSolver/AccumulatorHelper.h"
+#include "HelixSolver/Debug.h"
 #include "HelixSolver/Event.h"
 
 namespace HelixSolver
@@ -43,9 +42,9 @@ namespace HelixSolver
     {
         for (const Stub& stub : *stubs)
         {
-            const float r = sqrt(stub.x * stub.x + stub.y * stub.y) / 1000.0;
+            const float r = sqrt(stub.x * stub.x + stub.y * stub.y);
             const float phi = atan2(stub.y, stub.x);
-            std::cout<<r<<","<<phi<<":PHI"<<std::endl;
+            DEBUG(r << "," << phi << ":PHI");
             rs.push_back(r);
             phis.push_back(phi);
             layers.push_back(stub.layer);
