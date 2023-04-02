@@ -1,16 +1,17 @@
-void Accumulator_Cells(){
+void Accumulator_Cells(
+    const float Phi_min      =  M_PI_2 + 0.0990196,
+	const float Phi_max      =  M_PI_2 + 0.60098,
+	const float qOverPt_min  =  -0.285714,
+	const float qOverPt_max  =  0.290249){
 
-	// used for TH2F
-	const float Phi_min_hist       =  0.05 + M_PI_2;
-	const float Phi_max_hist       =  0.65 + M_PI_2;
-	const float qOverPt_min_hist   =  -0.32;
-	const float qOverPt_max_hist   =  0.32;
+    const float Phi_size = Phi_max - Phi_min;
+    const float Phi_min_hist      =  Phi_min-Phi_size*0.05;
+	const float Phi_max_hist      =  Phi_max+Phi_size*0.05;
+    const float qOverPt_size = qOverPt_max - qOverPt_min;
+	const float qOverPt_min_hist  =  qOverPt_min - qOverPt_size*0.05;
+	const float qOverPt_max_hist  =  qOverPt_max + qOverPt_size*0.05;	
 
-	// used for TLine
-	const float Phi_min      =  M_PI_2 + 0.1;
-	const float Phi_max      =  M_PI_2 + 0.6;
-	const float qOverPt_min  =  -0.2857142857142857;
-	const float qOverPt_max  =  0.2857142857142857;
+	// used for THist
 
 	float min_size    = 100;		// the smallest area of a single cells
 	const int n_bins  =  1000;
@@ -21,8 +22,10 @@ void Accumulator_Cells(){
 	gStyle       ->  SetOptStat(0);
 	hist         ->  Draw();
 
-	TFile *file_BoxPosition   =  new TFile("root_file/hough_tree_BoxPosition.root");
-	TFile *file_SolutionPait  =  new TFile("root_file/hough_tree_SolutionPair.root");
+	TFile *file_BoxPosition   =  new TFile("hough_tree_BoxPosition.root");
+	assert(file_BoxPosition);
+	TFile *file_SolutionPait  =  new TFile("hough_tree_SolutionPair.root");
+	assert(file_SolutionPait);
 
    	TTree *tree_BoxPosition           =  (TTree*)file_BoxPosition->Get("tree");
 	TTree *tree_BoxPosition_minSize   =  (TTree*)file_BoxPosition->Get("tree");
@@ -182,5 +185,5 @@ void Accumulator_Cells(){
 		point -> SetMarkerSize(0.8);
 	}
 
-	c1 -> SaveAs("output/Accumulator_Cells_AllTracks.pdf");
+	c1 -> SaveAs("Accumulator_Cells_AllTracks.pdf");
 }

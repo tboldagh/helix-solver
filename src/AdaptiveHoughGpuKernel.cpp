@@ -14,11 +14,13 @@ namespace HelixSolver
     {
         DEBUG(" .. AdaptiveHoughKernel initiated for subregion " << idx[0] << " " << idx[1]);
 
-        constexpr float INITIAL_SECTION_WIDTH = ACC_WIDTH / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-        constexpr float INITIAL_SECTION_HEIGHT = ACC_HEIGHT / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        constexpr float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
 
-        const double xBegin = Q_OVER_PT_BEGIN + INITIAL_SECTION_WIDTH * idx[0];
-        const double yBegin = PHI_BEGIN + INITIAL_SECTION_HEIGHT * idx[1];
+        const double xBegin = Q_OVER_PT_BEGIN + INITIAL_X_SIZE * idx[0];
+        const double yBegin = PHI_BEGIN + INITIAL_Y_SIZE * idx[1];
+        DEBUG(" .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << xBegin+INITIAL_X_SIZE 
+                                          << " y: " << yBegin << " ysz: " << yBegin+INITIAL_Y_SIZE);
 
         // uint32_t stubListSizes[MAX_STUB_LISTS_NUM];
         // for (uint32_t i = 0; i < MAX_STUB_LISTS_NUM; ++i)
@@ -34,12 +36,11 @@ namespace HelixSolver
         // the size os somewhat arbitrary, for regular algorithm dividing into 4 sub-sections it defined by the depth allowed
         // but for more flexible algorithms that is less predictable
         // for now it is an arbitrary constant + checks that we stay within this limit
-        constexpr uint8_t MAX_SECTIONS_SIZE = 100;
-  
-        AccumulatorSection sections[MAX_SECTIONS_SIZE]; // in here sections of image will be recorded
+
+        AccumulatorSection sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image will be recorded
         uint8_t sectionsBufferSize = 1;
         const uint8_t initialDivisionLevel = 0;
-        sections[0] = AccumulatorSection(INITIAL_SECTION_WIDTH, INITIAL_SECTION_HEIGHT, xBegin, yBegin, initialDivisionLevel);
+        sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin, yBegin, initialDivisionLevel);
 
         // uint32_t divisionLevelIterator[MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL + 4];
         // for (uint8_t i = 0; i<MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL; ++i)
@@ -69,26 +70,34 @@ namespace HelixSolver
 
         // fillHits(stubLists, stubListSizes, divisionLevel_smh, section);
         const uint16_t count = countHits(THRESHOLD, section);
+        DEBUG("count of lines in region x:" << section.xBegin
+            << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
         if ( count < THRESHOLD )
             return;
         // if (stubListSizes[divisionLevel_smh + 1] - stubListSizes[divisionLevel_smh] < THRESHOLD)
         //     return;
-        if ( section.xSize > ACC_WIDTH_PRECISION && section.ySize > ACC_HEIGHT_PRECISION) {
+        if ( section.xSize > ACC_X_PRECISION && section.ySize > ACC_Y_PRECISION) {
+            DEBUG("Splitting region into 4");
             // by the order here we steer the direction of the search of image space
             // it may be relevant depending on the data ordering
             sections[sectionsBufferSize]     = section.bottomLeft();
             sections[sectionsBufferSize + 1] = section.topLeft();
             sections[sectionsBufferSize + 2] = section.topRight();
             sections[sectionsBufferSize + 3] = section.bottomRight();
-            sectionsBufferSize += 3;
-        } else if ( section.xSize > ACC_WIDTH_PRECISION ) {
+            ASSURE_THAT( sectionsBufferSize + 3 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in 4 subregions split)");
+            sectionsBufferSize += 4;            
+        } else if ( section.xSize > ACC_X_PRECISION ) {
+            DEBUG("Splitting region into 2 in x direction");
             sections[sectionsBufferSize]     = section.left();
             sections[sectionsBufferSize + 1] = section.right();
-            sectionsBufferSize += 1;
-        } else if ( section.ySize > ACC_WIDTH_PRECISION ) {
+            ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in x split)");
+            sectionsBufferSize += 2;
+        } else if ( section.ySize > ACC_Y_PRECISION ) {
+            DEBUG("Splitting region into 2 in y direction");
             sections[sectionsBufferSize]     = section.bottom();
             sections[sectionsBufferSize + 1] = section.top();
-            sectionsBufferSize += 1;
+            ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in y split)");
+            sectionsBufferSize += 2;
         } else { // no more splitting
             addSolution(section);
         }
@@ -102,7 +111,7 @@ namespace HelixSolver
         const double yBottom = section.yBegin;
         const double yTop = yBottom + section.ySize;
         uint16_t counter=0;
-        DEBUG(xLeft<<","<<M_PI_2+yBottom<<","<<xRight<<","<<M_PI_2+yTop<<":BoxPosition");
+        DEBUG(xLeft<<","<<yBottom<<","<<xRight<<","<<yTop<<":BoxPosition");
 
         // need to understand this
         // stubListSizes[divisionLevel + 1] = stubListSizes[divisionLevel];
@@ -123,7 +132,7 @@ namespace HelixSolver
             const double yLeft = -r * xLeft + phi;
             const double yRight = -r * xRight + phi;
 
-            DEBUG(yLeft<<","<<xLeft<<","<<yRight<<","<<xRight<<":LinePosition");
+            // DEBUG(yLeft<<","<<xLeft<<","<<yRight<<","<<xRight<<":LinePosition");
 
             if (yLeft >= yBottom && yRight <= yTop)
             {

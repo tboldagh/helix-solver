@@ -7,7 +7,8 @@ public:
   AccumulatorSection(double xw, double yw, double xBegin, double yBegin,
                      int div)
       : xSize(xw), ySize(yw), xBegin(xBegin), yBegin(yBegin),
-        divisionLevel(div) {}
+        divisionLevel(div) {
+        }
 
   double xSize;
   double ySize;

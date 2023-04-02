@@ -1,20 +1,22 @@
-void Accumulator_Lines_R_Phi(){
+void Accumulator_Lines_R_Phi(
+    const float Phi_min      =  0.0990196,
+	const float Phi_max      =  0.60098,
+	const float qOverPt_min  =  -0.285714,
+	const float qOverPt_max  =  0.290249 ){
 
-    const float Phi_min      =  0.0990196;
-	const float Phi_max      =  0.60098;
-	const float qOverPt_min  =  -0.285714;
-	const float qOverPt_max  =  0.290249;
-
-    const float Phi_min_hist      =  0.08;
-	const float Phi_max_hist      =  0.62;
-	const float qOverPt_min_hist  = -0.32;
-	const float qOverPt_max_hist  =  0.32;
+    const float Phi_size = Phi_max - Phi_min;
+    const float Phi_min_hist      =  Phi_min-Phi_size*0.05;
+	const float Phi_max_hist      =  Phi_max+Phi_size*0.05;
+    const float qOverPt_size = qOverPt_max - qOverPt_min;
+	const float qOverPt_min_hist  =  qOverPt_min - qOverPt_size*0.05;
+	const float qOverPt_max_hist  =  qOverPt_max + qOverPt_size*0.05;
 
     TCanvas *c1 = new TCanvas("c1", "c1", 1100, 900);
 	c1->SetGrid();
     gStyle  ->  SetOptStat(0);
 
-    TFile *file  =  new TFile("root_file/hough_tree_R_Phi.root");
+    TFile *file  =  new TFile("hough_tree_RPhi.root");
+    assert(file);
     TTree *tree  =  (TTree*)file->Get("tree");
 
     float radius;
@@ -92,8 +94,10 @@ void Accumulator_Lines_R_Phi(){
   	line4 ->  Draw("same");
 
     // Solutions of the algorithm
-    TFile *file_SolutionPait  =  new TFile("root_file/hough_tree_SolutionPair.root");
-    TTree *tree_SolutionPair  =  (TTree*)file_SolutionPait->Get("tree");
+    TFile *file_SolutionPair  =  new TFile("hough_tree_SolutionPair.root");
+    assert(file_SolutionPair);
+    TTree *tree_SolutionPair  =  (TTree*)file_SolutionPair->Get("tree");
+    assert(tree_SolutionPair);
     float Phi_solution;
 	float qOverPt_solution;
     tree_SolutionPair  ->  SetBranchAddress("Phi_solution", &Phi_solution);
@@ -108,6 +112,6 @@ void Accumulator_Lines_R_Phi(){
 		point -> SetMarkerSize(0.8);
 	}
 
-    c1  ->  SaveAs("output/Accumulator_Lines_R_Phi.pdf");
+    c1  ->  SaveAs("Accumulator_Lines_R_Phi.pdf");
 
 }

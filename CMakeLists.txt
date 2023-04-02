@@ -58,11 +58,11 @@ target_compile_definitions(ht_sycl
 install(TARGETS ht_no_sycl 
     DESTINATION bin
 )
-install(FILES tools/TBoxPlot/make_tbox_plots.sh
-    DESTINATION bin
-)
 
-install(FILES tools/TBoxPlot/Create_Root_File.C
+
+FILE(GLOB TBoxScripts tools/TBoxPlot/*.C)
+message(STATUS " utility scipts " ${TBoxScripts})
+install(FILES ${TBoxScripts} tools/TBoxPlot/make_tbox_plots.sh
     DESTINATION scripts
 )
 

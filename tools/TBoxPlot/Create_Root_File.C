@@ -19,9 +19,9 @@ void Create_Root_File(){
 	hfile_solution.Close();
 
 	// to draw all the lines - radius, phi
-	TFile hfile_R_Phi("hough_tree_PHI.root","RECREATE","ROOT file containing sorted coordinates of accumulator cells");
+	TFile hfile_R_Phi("hough_tree_RPhi.root","RECREATE","ROOT file containing sorted coordinates of accumulator cells");
 	TTree tree_R_Phi("tree", "tree");
-	tree_R_Phi.ReadFile("data_PHI.csv", "radius:phi");
+	tree_R_Phi.ReadFile("data_RPhi.csv", "radius:phi");
 
 	tree_R_Phi.Fill();
 	tree_R_Phi.Write();

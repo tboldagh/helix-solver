@@ -15,6 +15,12 @@
 #define VERBOSE(MSG)
 #endif
 
+#ifdef USE_SYCL
+#define ASSURE_THAT(COND, MSG)
+#else
+#define ASSURE_THAT(COND, MSG) { if ( COND == false ) { throw std::runtime_error(MSG); } }
+#endif
+
 #define ACCUMULATOR_DUMP_FILE_PATH "logs/accumulator_dump.log"
 #define PRINT_PLATFORM
 #define PRINT_DEVICE
