@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 project(helix-solver)
+
 set(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
@@ -7,7 +8,7 @@ FetchContent_Declare(
   nlohmann
   GIT_REPOSITORY https://github.com/nlohmann/json.git
   GIT_TAG        v3.11.2
-  )
+)
 
 FetchContent_MakeAvailable(nlohmann)
 
@@ -32,17 +33,39 @@ target_link_libraries(ht_no_sycl
     ${libs}
 )
 
-add_executable( ht ${Sources})
-target_link_libraries(ht
+target_compile_definitions(ht_no_sycl
+    PRIVATE
+    PRINT_DEBUG # control here debug messages
+    PRINT_VERBOSE # control here verbose messages
+)
+
+add_executable( ht_sycl ${Sources})
+
+target_link_libraries(ht_sycl
     PRIVATE 
     ${libs}
 )
-set_target_properties(ht 
+set_target_properties(ht_sycl 
     PROPERTIES 
-    EXCLUDE_FROM_ALL true)
-target_compile_definitions(ht PRIVATE USE_SYCL)
+    EXCLUDE_FROM_ALL true # == do not build bey default, only whith make ht_sycl
+)
 
-install(TARGETS ht_no_sycl)
+target_compile_definitions(ht_sycl
+    PRIVATE
+    USE_SYCL
+)
+
+install(TARGETS ht_no_sycl 
+    DESTINATION bin
+)
+install(FILES tools/TBoxPlot/make_tbox_plots.sh
+    DESTINATION bin
+)
+
+install(FILES tools/TBoxPlot/Create_Root_File.C
+    DESTINATION scripts
+)
+
 
 add_subdirectory(test)
 

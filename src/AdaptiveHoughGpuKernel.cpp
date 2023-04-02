@@ -170,7 +170,7 @@ namespace HelixSolver
             if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {
                 solutions[index].pt = 1000 / (qOverPt * MagneticInduction);
                 solutions[index].phi = phi_0;
-                DEBUG("AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << phi);
+                DEBUG("AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << phi_0);
                 DEBUG(qOverPt<<","<<phi_0<<":SolutionPair");
                 return;
             }
