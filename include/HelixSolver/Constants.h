@@ -16,7 +16,7 @@ static constexpr uint16_t MAX_SOLUTIONS=1000; // an arbitrary size, need to get 
 
 // Precision of solution estimate -> criterion used for ending the loop
 static constexpr float ACC_X_PRECISION = 0.01;
-static constexpr float ACC_Y_PRECISION = 0.001;
+static constexpr float ACC_Y_PRECISION = 0.01; // this is simplified approach, in reality it could be modified it depending on q/pt
 
 // Division levels
 // static constexpr uint8_t Q_OVER_PT_MAX_GRID_DIVISION_LEVEL = ceil(std::log2(ACC_WIDTH / ACC_WIDTH_PRECISION));
