@@ -1,6 +1,6 @@
 void Accumulator_Cells(
-    const float Phi_min      =  M_PI_2 + 0.0990196,
-	const float Phi_max      =  M_PI_2 + 0.60098,
+    const float Phi_min      =  0.0,
+	const float Phi_max      =  0.6,
 	const float qOverPt_min  =  -0.285714,
 	const float qOverPt_max  =  0.290249){
 

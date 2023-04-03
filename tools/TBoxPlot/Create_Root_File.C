@@ -3,7 +3,7 @@ void Create_Root_File(){
 	// for box coordinates
 	TFile hfile_box("hough_tree_BoxPosition.root","RECREATE","ROOT file containing sorted coordinates of accumulator cells");
 	TTree tree_box("tree", "tree");
-  	tree_box.ReadFile("data_BoxPosition.csv", "qOverPt_begin:Phi_begin:qOverPt_end:Phi_end");
+  	tree_box.ReadFile("data_BoxPosition.csv", "Phi_begin:qOverPt_begin:Phi_end:qOverPt_end:divLevel");
 
 	tree_box.Fill();
 	tree_box.Write();

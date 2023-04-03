@@ -44,13 +44,9 @@ namespace HelixSolver
         {
             const float r = sqrt(stub.x * stub.x + stub.y * stub.y);
             const float phi = atan2(stub.y, stub.x);
-            DEBUG(r << "," << phi << ":RPhi");
             rs.push_back(r);
             phis.push_back(phi);
             layers.push_back(stub.layer);
-
-            auto fun = [r, phi](float x) { return -r * x + phi; };
-            stubsFunctions.push_back(fun);
         }
     }
 

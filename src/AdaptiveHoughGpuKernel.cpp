@@ -17,10 +17,12 @@ namespace HelixSolver
         constexpr float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
         constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
 
-        const double xBegin = Q_OVER_PT_BEGIN + INITIAL_X_SIZE * idx[0];
-        const double yBegin = PHI_BEGIN + INITIAL_Y_SIZE * idx[1];
-        DEBUG(" .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << xBegin+INITIAL_X_SIZE 
-                                          << " y: " << yBegin << " ysz: " << yBegin+INITIAL_Y_SIZE);
+        const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
+        const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
+        DEBUG(" .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << INITIAL_X_SIZE 
+                                          << " y: " << yBegin << " ysz: " << INITIAL_Y_SIZE);
+
+        // we need here a limited set of stubs
 
         // uint32_t stubListSizes[MAX_STUB_LISTS_NUM];
         // for (uint32_t i = 0; i < MAX_STUB_LISTS_NUM; ++i)
@@ -106,12 +108,10 @@ namespace HelixSolver
 
     uint8_t AdaptiveHoughGpuKernel::countHits(const uint8_t max, const AccumulatorSection &section) const
     {
-        const double xLeft = section.xBegin;
-        const double xRight = xLeft + section.xSize;
-        const double yBottom = section.yBegin;
-        const double yTop = yBottom + section.ySize;
+        const double xEnd = section.xBegin + section.xSize;
+        const double yEnd = section.yBegin + section.ySize;
         uint16_t counter=0;
-        DEBUG(xLeft<<","<<yBottom<<","<<xRight<<","<<yTop<<":BoxPosition");
+        DEBUG(section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<":BoxPosition");
 
         // need to understand this
         // stubListSizes[divisionLevel + 1] = stubListSizes[divisionLevel];
@@ -128,13 +128,15 @@ namespace HelixSolver
         {
             // const uint32_t stubIndex = stubLists[index];
             const float r = rs[index];
+            const float inverse_r = 1.0/r;
             const float phi = phis[index];
-            const double yLeft = -r * xLeft + phi;
-            const double yRight = -r * xRight + phi;
+            const double yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi);
+            const double yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi);
+            DEBUG(r << ", " << inverse_r << ", " << phi << ":RInvRPhi" );
 
-            // DEBUG(yLeft<<","<<xLeft<<","<<yRight<<","<<xRight<<":LinePosition");
+            DEBUG(section.xBegin<<","<<yLineAtBegin<<","<<xEnd<<","<<yLineAtEnd<<":LinePosition");
 
-            if (yLeft >= yBottom && yRight <= yTop)
+            if (yLineAtBegin <= section.yBegin && yEnd <= yLineAtEnd)
             {
                 counter++;
                 // stubLists[stubListSizes[divisionLevel + 1]] = stubIndex;
@@ -154,7 +156,7 @@ namespace HelixSolver
                 float x_cross_point = (phis[stubIndex] - phis[stubSubIndex])/(rs[stubIndex] - rs[stubSubIndex]);
                 float y_cross_point = - rs[stubIndex] * x_cross_point + phis[stubIndex];
 
-                if((x_cross_point > xLeft && x_cross_point < xRight) && (y_cross_point > yBottom && y_cross_point < yTop))
+                if((x_cross_point > xLeft && x_cross_point < xRight) && (y_cross_point > section.yBegin && y_cross_point < yTop))
                 {
                     stubLists[stubListSizes[divisionLevel + 1]] = stubIndex;
                     stubListSizes[divisionLevel + 1]++;
@@ -173,11 +175,12 @@ namespace HelixSolver
         // for now a stupid solution is to iterate over to the first free slot
         // this won't be that easy for truly parallel execution, 
         // we will likely need to deffer to sycl::atomic_ref compare_exchange_weak/strong
+        // or have the first pass over to calculate number of solutions
 //        const uint32_t index = phiIndex / ACC_HEIGHT_PRECISION  + qOverPtIndex / ACC_WIDTH_PRECISION;
         const uint32_t solutionsBufferSize = solutions.size();
         for ( uint32_t index = 0; index < solutionsBufferSize; ++index ) {
             if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {
-                solutions[index].pt = 1000 / (qOverPt * MagneticInduction);
+                solutions[index].pt  = 1./qOverPt;
                 solutions[index].phi = phi_0;
                 DEBUG("AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << phi_0);
                 DEBUG(qOverPt<<","<<phi_0<<":SolutionPair");

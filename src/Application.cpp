@@ -173,6 +173,8 @@ namespace HelixSolver
             if(eventId == 0){       // to analyse only a single event
                 stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
                 stubs[eventId]->push_back(Stub{x, y, z, layer});
+                DEBUG(std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
+
             }
         }
 

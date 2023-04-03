@@ -1,6 +1,6 @@
 void Accumulator_Lines_x_y(
-    const float Phi_min      =  M_PI_2 + 0.0990196,
-	const float Phi_max      =  M_PI_2 + 0.60098,
+    const float Phi_min      =  0.0990196,
+	const float Phi_max      =  0.60098,
 	const float qOverPt_min  =  -0.285714,
 	const float qOverPt_max  =  0.290249){
 
@@ -16,6 +16,7 @@ void Accumulator_Lines_x_y(
 
     TFile *file  =  new TFile("hough_tree_LinePosition.root");
     TTree *tree  =  (TTree*)file->Get("tree");
+    cout << ".. Will draw " << tree->GetEntries() << " lines\n";
 
     float xLeft;
     float yLeft;
@@ -36,8 +37,8 @@ void Accumulator_Lines_x_y(
     for(Int_t i = 0; i<nentries; ++i){
         tree -> GetEntry(i);
 
-        xLeft += M_PI_2;
-        xRight += M_PI_2;
+        // xLeft += M_PI_2;
+        // xRight += M_PI_2;
 
         if(xLeft > xRight)
         {
