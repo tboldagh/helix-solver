@@ -139,31 +139,9 @@ namespace HelixSolver
             if (yLineAtBegin <= section.yBegin && yEnd <= yLineAtEnd)
             {
                 counter++;
-                // stubLists[stubListSizes[divisionLevel + 1]] = stubIndex;
-                // stubListSizes[divisionLevel + 1]++;
             }
         }
         return counter;
-/*
-        int32_t maxStubIndex = stubListSizes[divisionLevel];
-        for (uint32_t stubIndexInList = startStubIndexInList; stubIndexInList < maxStubIndex; ++stubIndexInList)
-        {
-            for(uint32_t stubSubIndexInList = stubIndexInList + 1; stubSubIndexInList < maxStubIndex; ++stubSubIndexInList)
-            {
-                const uint32_t stubIndex  = stubLists[stubIndexInList];
-                const uint32_t stubSubIndex = stubLists[stubSubIndexInList];
-
-                float x_cross_point = (phis[stubIndex] - phis[stubSubIndex])/(rs[stubIndex] - rs[stubSubIndex]);
-                float y_cross_point = - rs[stubIndex] * x_cross_point + phis[stubIndex];
-
-                if((x_cross_point > xLeft && x_cross_point < xRight) && (y_cross_point > section.yBegin && y_cross_point < yTop))
-                {
-                    stubLists[stubListSizes[divisionLevel + 1]] = stubIndex;
-                    stubListSizes[divisionLevel + 1]++;
-                }
-            }
-        }
-*/
     }
 
     void AdaptiveHoughGpuKernel::addSolution(const AccumulatorSection& section) const
