@@ -111,7 +111,7 @@ namespace HelixSolver
         const double xEnd = section.xBegin + section.xSize;
         const double yEnd = section.yBegin + section.ySize;
         uint16_t counter=0;
-        DEBUG(section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<":BoxPosition");
+        DEBUG(section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<","<<section.divisionLevel<<":BoxPosition");
 
         // need to understand this
         // stubListSizes[divisionLevel + 1] = stubListSizes[divisionLevel];
@@ -136,7 +136,7 @@ namespace HelixSolver
 
             DEBUG(section.xBegin<<","<<yLineAtBegin<<","<<xEnd<<","<<yLineAtEnd<<":LinePosition");
 
-            if (yLineAtBegin <= section.yBegin && yEnd <= yLineAtEnd)
+            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
             {
                 counter++;
             }

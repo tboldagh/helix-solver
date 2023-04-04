@@ -95,6 +95,11 @@ void Accumulator_Cells(
 	Int_t i;
 	for (i=0; i<nentries_BoxPosition; i++) {
       	tree_BoxPosition->GetEntry(i);
+		// No box outside the initial range
+		if (Phi_begin < Phi_min || Phi_end > Phi_max || qOverPt_begin < qOverPt_min || qOverPt_end > qOverPt_max) {
+			continue;
+		}
+
 		TBox *box = new TBox(Phi_begin, qOverPt_begin, Phi_end, qOverPt_end);
 		size_ratio = int(((Phi_end-Phi_begin)*(qOverPt_end-qOverPt_begin))/min_size + epsilon);
 		size_pow2 = int(std::log2(size_ratio));
