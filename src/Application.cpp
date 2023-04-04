@@ -170,7 +170,8 @@ namespace HelixSolver
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
-            if(eventId == 0){       // to analyse only a single event
+            if(eventId == 0){  // to analyse only a single event (here can select other events)
+                // TODO add handling of innermost layers (maybe drop, maybe load them separately, future work)
                 stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
                 stubs[eventId]->push_back(Stub{x, y, z, layer});
                 DEBUG(std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");

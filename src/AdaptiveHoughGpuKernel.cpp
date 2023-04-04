@@ -24,17 +24,6 @@ namespace HelixSolver
 
         // we need here a limited set of stubs
 
-        // uint32_t stubListSizes[MAX_STUB_LISTS_NUM];
-        // for (uint32_t i = 0; i < MAX_STUB_LISTS_NUM; ++i)
-        //     stubListSizes[i] = 0;
-
-        // uint32_t stubLists[MAX_STUB_LIST_ELEMENTS_NUM];
-        // const uint32_t stubsNum = rs.size();
-        // stubListSizes[0] = stubsNum;
-        // for (uint32_t i = 0; i < stubsNum; ++i)
-        //     stubLists[i] = i;
-
-//        constexpr uint8_t MAX_SECTIONS_SIZE = (MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL) * 4;
         // the size os somewhat arbitrary, for regular algorithm dividing into 4 sub-sections it defined by the depth allowed
         // but for more flexible algorithms that is less predictable
         // for now it is an arbitrary constant + checks that we stay within this limit
@@ -44,20 +33,14 @@ namespace HelixSolver
         const uint8_t initialDivisionLevel = 0;
         sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin, yBegin, initialDivisionLevel);
 
-        // uint32_t divisionLevelIterator[MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL + 4];
-        // for (uint8_t i = 0; i<MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL; ++i)
-        //     divisionLevelIterator[i] = 0;
-        // divisionLevelIterator[0] = 1;
 
         // scan this region until there is no section to process (i.e. size, initially 1, becomes 0)
         while (sectionsBufferSize) {
             fillAccumulatorSection(sections, sectionsBufferSize);
         }
-//            fillAccumulatorSection(sections, sectionsBufferSize, stubLists, stubListSizes, divisionLevel_smh, divisionLevelIterator);
 
     }
 
-//    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint8_t &sectionsBufferSize, uint32_t *stubLists, uint32_t *stubListSizes, uint8_t &divisionLevel_smh, uint32_t *divisionLevelIterator) const
     void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint8_t &sectionsBufferSize) const
     {
         DEBUG("Regions buffer depth " << static_cast<int>(sectionsBufferSize));
@@ -66,22 +49,16 @@ namespace HelixSolver
         const AccumulatorSection section = sections[sectionsBufferSize];
 
 
-        // while (divisionLevelIterator[divisionLevel_smh] == 0)
-        //     divisionLevel_smh--;
-        // divisionLevelIterator[divisionLevel_smh]--;
-
-        // fillHits(stubLists, stubListSizes, divisionLevel_smh, section);
         const uint16_t count = countHits(THRESHOLD, section);
         DEBUG("count of lines in region x:" << section.xBegin
             << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
         if ( count < THRESHOLD )
             return;
-        // if (stubListSizes[divisionLevel_smh + 1] - stubListSizes[divisionLevel_smh] < THRESHOLD)
-        //     return;
+
         if ( section.xSize > ACC_X_PRECISION && section.ySize > ACC_Y_PRECISION) {
             DEBUG("Splitting region into 4");
             // by the order here we steer the direction of the search of image space
-            // it may be relevant depending on the data ordering
+            // it may be relevant depending on the data ordering??? to be testes
             sections[sectionsBufferSize]     = section.bottomLeft();
             sections[sectionsBufferSize + 1] = section.topLeft();
             sections[sectionsBufferSize + 2] = section.topRight();
@@ -100,7 +77,7 @@ namespace HelixSolver
             sections[sectionsBufferSize + 1] = section.top();
             ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in y split)");
             sectionsBufferSize += 2;
-        } else { // no more splitting
+        } else { // no more splitting, we have a solution
             addSolution(section);
         }
     
@@ -113,20 +90,12 @@ namespace HelixSolver
         uint16_t counter=0;
         DEBUG(section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<","<<section.divisionLevel<<":BoxPosition");
 
-        // need to understand this
-        // stubListSizes[divisionLevel + 1] = stubListSizes[divisionLevel];
-        // const uint32_t startStubIndexInList = divisionLevel ? stubListSizes[divisionLevel - 1] : 0;
-        //        for (uint32_t stubIndexInList = startStubIndexInList; stubIndexInList < stubListSizes[divisionLevel]; ++stubIndexInList)
-        // for (uint32_t stubIndexInList = startStubIndexInList; stubIndexInList < stubListSizes[divisionLevel] && count < max; ++stubIndexInList)
-
-        // here we can improve by knowing over which stubs to iterate, this is related to geometry
-        // this can be stored in section object, 
-        // the index range smaller to be within the the range before division is simply not going to give much gain because stubs are in 2D
+        // here we can improve by knowing over which stubs to iterate (i.e. indices of measurements), this is related to geometry
+        // this can be stored in section object maybe???
 
         const uint32_t maxIndex = rs.size();
         for (uint32_t index = 0; index < maxIndex && counter <= max; ++index)        
         {
-            // const uint32_t stubIndex = stubLists[index];
             const float r = rs[index];
             const float inverse_r = 1.0/r;
             const float phi = phis[index];
@@ -154,7 +123,13 @@ namespace HelixSolver
         // this won't be that easy for truly parallel execution, 
         // we will likely need to deffer to sycl::atomic_ref compare_exchange_weak/strong
         // or have the first pass over to calculate number of solutions
-//        const uint32_t index = phiIndex / ACC_HEIGHT_PRECISION  + qOverPtIndex / ACC_WIDTH_PRECISION;
+
+        // the coordinates of the solution can be much improved too
+        // e.g. using exact formula (i.e. no sin x = x approx), d0 fit & reevaluation,
+        // additional hits from pixels inner layers, 
+        // TODO future work
+
+
         const uint32_t solutionsBufferSize = solutions.size();
         for ( uint32_t index = 0; index < solutionsBufferSize; ++index ) {
             if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {

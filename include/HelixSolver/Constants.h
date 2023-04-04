@@ -36,6 +36,6 @@ static constexpr uint32_t MAX_SECTIONS_BUFFER_SIZE = 40; // need to be checked e
 
 // Additional parameters
 static constexpr float MagneticInduction = 2.0;
-static constexpr float INVERSE_A = 3333;
+static constexpr float INVERSE_A = 1.0/3.0e-4;
 // constexpr uint8_t MAX_STUB_LISTS_NUM = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL + 2;
 // constexpr uint32_t MAX_STUB_LIST_ELEMENTS_NUM = MAX_STUB_NUM * MAX_STUB_LISTS_NUM;
