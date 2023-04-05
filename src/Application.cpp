@@ -7,6 +7,7 @@
 
 #include <TFile.h>
 #include <TTree.h>
+#include <stdexcept>
 #include <thread>
 
 namespace HelixSolver
@@ -141,10 +142,17 @@ namespace HelixSolver
     std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEventsFromSpacepointsRootFile(const std::string& path)
     {
         std::unique_ptr<TFile> file(TFile::Open(path.c_str()));
-        INFO( "... Input " << ( file != nullptr  ? "Opened " : "Failed to open ") << path );
+        if ( file == nullptr ) {
+            throw std::runtime_error("Can't open input file: "+path);
+        }
+        INFO( "... Opened: " << path );
+        const std::string treeName = "spacepoints";
+        std::unique_ptr<TTree> hitsTree(file->Get<TTree>(treeName.c_str()));
+        if ( hitsTree == nullptr ) {
+            throw std::runtime_error("Can't access tree in the ROOT file: "+treeName);
+        }
+        INFO( "... Accessed input tree: " << treeName << " in "  << path );
 
-        std::unique_ptr<TTree> hitsTree(file->Get<TTree>("spacepoints"));
-        INFO( "... Input tree " << ( hitsTree != nullptr  ? "ok " : "absent ") << path );
 
         uint32_t eventId;
         float x;
@@ -162,9 +170,12 @@ namespace HelixSolver
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
-            if(eventId == 0){       // to analyse only a single event
+            if(eventId == 0){  // to analyse only a single event (here can select other events)
+                // TODO add handling of innermost layers (maybe drop, maybe load them separately, future work)
                 stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
                 stubs[eventId]->push_back(Stub{x, y, z, layer});
+                DEBUG(std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
+
             }
         }
 
@@ -183,7 +194,7 @@ namespace HelixSolver
 
             for (const SolutionCircle& solution : *eventAndSolution.second)
             {
-                if (solution.isValid) outputFile << "\t" << solution.r << "\t" << solution.phi << std::endl;
+                outputFile << "\t" << solution.pt << "\t" << solution.phi << std::endl;
             }
 
             outputFile << "\n";

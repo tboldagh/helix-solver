@@ -14,159 +14,136 @@ namespace HelixSolver
     {
         DEBUG(" .. AdaptiveHoughKernel initiated for subregion " << idx[0] << " " << idx[1]);
 
-        constexpr float INITIAL_SECTION_WIDTH = ACC_WIDTH / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-        constexpr float INITIAL_SECTION_HEIGHT = ACC_HEIGHT / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        constexpr float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
 
-        const double xBegin = Q_OVER_PT_BEGIN + INITIAL_SECTION_WIDTH * idx[0];
-        const double yBegin = PHI_BEGIN + INITIAL_SECTION_HEIGHT * idx[1];
+        const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
+        const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
+        DEBUG(" .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << INITIAL_X_SIZE 
+                                          << " y: " << yBegin << " ysz: " << INITIAL_Y_SIZE);
 
-        uint32_t stubListSizes[MAX_STUB_LISTS_NUM];
-        for (uint32_t i = 0; i < MAX_STUB_LISTS_NUM; ++i)
-            stubListSizes[i] = 0;
+        // we need here a limited set of stubs
 
-        uint32_t stubLists[MAX_STUB_LIST_ELEMENTS_NUM];
-        const uint32_t stubsNum = rs.size();
-        stubListSizes[0] = stubsNum;
-        for (uint32_t i = 0; i < stubsNum; ++i)
-            stubLists[i] = i;
+        // the size os somewhat arbitrary, for regular algorithm dividing into 4 sub-sections it defined by the depth allowed
+        // but for more flexible algorithms that is less predictable
+        // for now it is an arbitrary constant + checks that we stay within this limit
 
-        constexpr uint8_t MAX_SECTIONS_HEIGHT = (MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL) * 4;
-        AccumulatorSection sections[MAX_SECTIONS_HEIGHT];
+        AccumulatorSection sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image will be recorded
         uint8_t sectionsBufferSize = 1;
-        uint8_t divisionLevel_smh = 0;
-        sections[0] = AccumulatorSection(INITIAL_SECTION_WIDTH, INITIAL_SECTION_HEIGHT, xBegin, yBegin);
+        const uint8_t initialDivisionLevel = 0;
+        sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin, yBegin, initialDivisionLevel);
 
-        uint32_t divisionLevelIterator[MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL + 4];
-        for (uint8_t i = 0; i<MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL; ++i)
-            divisionLevelIterator[i] = 0;
-        divisionLevelIterator[0] = 1;
 
-        while (sectionsBufferSize)
-            fillAccumulatorSection(sections, sectionsBufferSize, stubLists, stubListSizes, divisionLevel_smh, divisionLevelIterator);
+        // scan this region until there is no section to process (i.e. size, initially 1, becomes 0)
+        while (sectionsBufferSize) {
+            fillAccumulatorSection(sections, sectionsBufferSize);
+        }
+
     }
 
-    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint8_t &sectionsBufferSize, uint32_t *stubLists, uint32_t *stubListSizes, uint8_t &divisionLevel_smh, uint32_t *divisionLevelIterator) const
+    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint8_t &sectionsBufferSize) const
     {
         DEBUG("Regions buffer depth " << static_cast<int>(sectionsBufferSize));
+        // pop the region from the top of sections buffer
         sectionsBufferSize--;
         const AccumulatorSection section = sections[sectionsBufferSize];
 
-        while (divisionLevelIterator[divisionLevel_smh] == 0)
-            divisionLevel_smh--;
-        divisionLevelIterator[divisionLevel_smh]--;
 
-        fillHits(stubLists, stubListSizes, divisionLevel_smh, section);
-
-        if (stubListSizes[divisionLevel_smh + 1] - stubListSizes[divisionLevel_smh] < THRESHOLD)
+        const uint16_t count = countHits(THRESHOLD, section);
+        DEBUG("count of lines in region x:" << section.xBegin
+            << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
+        if ( count < THRESHOLD )
             return;
 
-        if (section.width > ACC_WIDTH_PRECISION)
-        {
-            DEBUG("Splitting in 2D");
-            const double newWidth = section.width / 2;
-            if (section.height > ACC_HEIGHT_PRECISION)
-            {
-                const double newHeight = section.height / 2.0;
-                divisionLevel_smh++;
-                divisionLevelIterator[divisionLevel_smh] += 4;
-                sections[sectionsBufferSize] = AccumulatorSection(newWidth, newHeight, section.xBegin, section.yBegin);
-                sections[sectionsBufferSize + 1] = AccumulatorSection(newWidth, newHeight, section.xBegin, section.yBegin + newHeight);
-                sections[sectionsBufferSize + 2] = AccumulatorSection(newWidth, newHeight, section.xBegin + newWidth, section.yBegin);
-                sections[sectionsBufferSize + 3] = AccumulatorSection(newWidth, newHeight, section.xBegin + newWidth, section.yBegin + newHeight );
-                sectionsBufferSize += 4;
-            }
-            else
-            {
-                divisionLevel_smh++;
-                divisionLevelIterator[divisionLevel_smh] += 2;
-                sections[sectionsBufferSize] = AccumulatorSection(newWidth, section.height, section.xBegin, section.yBegin);
-                sections[sectionsBufferSize + 1] = AccumulatorSection(newWidth, section.height, section.xBegin + newWidth, section.yBegin);
-                sectionsBufferSize += 2;
-            }
+        if ( section.xSize > ACC_X_PRECISION && section.ySize > ACC_Y_PRECISION) {
+            DEBUG("Splitting region into 4");
+            // by the order here we steer the direction of the search of image space
+            // it may be relevant depending on the data ordering??? to be testes
+            sections[sectionsBufferSize]     = section.bottomLeft();
+            sections[sectionsBufferSize + 1] = section.topLeft();
+            sections[sectionsBufferSize + 2] = section.topRight();
+            sections[sectionsBufferSize + 3] = section.bottomRight();
+            ASSURE_THAT( sectionsBufferSize + 3 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in 4 subregions split)");
+            sectionsBufferSize += 4;            
+        } else if ( section.xSize > ACC_X_PRECISION ) {
+            DEBUG("Splitting region into 2 in x direction");
+            sections[sectionsBufferSize]     = section.left();
+            sections[sectionsBufferSize + 1] = section.right();
+            ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in x split)");
+            sectionsBufferSize += 2;
+        } else if ( section.ySize > ACC_Y_PRECISION ) {
+            DEBUG("Splitting region into 2 in y direction");
+            sections[sectionsBufferSize]     = section.bottom();
+            sections[sectionsBufferSize + 1] = section.top();
+            ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in y split)");
+            sectionsBufferSize += 2;
+        } else { // no more splitting, we have a solution
+            addSolution(section);
         }
-        else
-        {
-            DEBUG("Splitting in 1D");
-            if (section.height > ACC_HEIGHT_PRECISION)
-            {
-                divisionLevel_smh++;
-                divisionLevelIterator[divisionLevel_smh+1] += 2;
-                const double newHeight = section.height / 2;
-                sections[sectionsBufferSize] = AccumulatorSection(section.width, newHeight, section.xBegin, section.yBegin);
-                sections[sectionsBufferSize + 1] = AccumulatorSection(section.width, newHeight, section.xBegin, section.yBegin + newHeight);
-                sectionsBufferSize += 2;
-            }
-            else
-            {
-                addSolution(section.width, section.height, section.xBegin, section.yBegin);
-            }
-        }
-
+    
     }
 
-    void AdaptiveHoughGpuKernel::fillHits(uint32_t *stubLists, uint32_t *stubListSizes, uint8_t divisionLevel, const AccumulatorSection &section) const
+    uint8_t AdaptiveHoughGpuKernel::countHits(const uint8_t max, const AccumulatorSection &section) const
     {
-        const double xLeft = section.xBegin;
-        const double xRight = xLeft + section.width;
-        const double yBottom = section.yBegin;
-        const double yTop = yBottom + section.height;
+        const double xEnd = section.xBegin + section.xSize;
+        const double yEnd = section.yBegin + section.ySize;
+        uint16_t counter=0;
+        DEBUG(section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<","<<section.divisionLevel<<":BoxPosition");
 
-        std::cout<<xLeft<<","<<M_PI_2+yBottom<<","<<xRight<<","<<M_PI_2+yTop<<":BoxPosition"<<std::endl;
+        // here we can improve by knowing over which stubs to iterate (i.e. indices of measurements), this is related to geometry
+        // this can be stored in section object maybe???
 
-        stubListSizes[divisionLevel + 1] = stubListSizes[divisionLevel];
-        const uint32_t startStubIndexInList = divisionLevel ? stubListSizes[divisionLevel - 1] : 0;
-
-        for (uint32_t stubIndexInList = startStubIndexInList; stubIndexInList < stubListSizes[divisionLevel]; ++stubIndexInList)
+        const uint32_t maxIndex = rs.size();
+        for (uint32_t index = 0; index < maxIndex && counter <= max; ++index)        
         {
-            const uint32_t stubIndex = stubLists[stubIndexInList];
-            const double yLeft = -rs[stubIndex] * xLeft + phis[stubIndex];
-            const double yRight = -rs[stubIndex] * xRight + phis[stubIndex];
+            const float r = rs[index];
+            const float inverse_r = 1.0/r;
+            const float phi = phis[index];
+            const double yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi);
+            const double yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi);
+            DEBUG(r << ", " << inverse_r << ", " << phi << ":RInvRPhi" );
 
-            std::cout<<yLeft<<","<<xLeft<<","<<yRight<<","<<xRight<<":LinePosition"<<std::endl;
+            DEBUG(section.xBegin<<","<<yLineAtBegin<<","<<xEnd<<","<<yLineAtEnd<<":LinePosition");
 
-            if (yLeft >= yBottom && yRight <= yTop)
+            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
             {
-                stubLists[stubListSizes[divisionLevel + 1]] = stubIndex;
-                stubListSizes[divisionLevel + 1]++;
+                counter++;
             }
         }
-
-/*
-        int32_t maxStubIndex = stubListSizes[divisionLevel];
-        for (uint32_t stubIndexInList = startStubIndexInList; stubIndexInList < maxStubIndex; ++stubIndexInList)
-        {
-            for(uint32_t stubSubIndexInList = stubIndexInList + 1; stubSubIndexInList < maxStubIndex; ++stubSubIndexInList)
-            {
-                const uint32_t stubIndex  = stubLists[stubIndexInList];
-                const uint32_t stubSubIndex = stubLists[stubSubIndexInList];
-
-                float x_cross_point = (phis[stubIndex] - phis[stubSubIndex])/(rs[stubIndex] - rs[stubSubIndex]);
-                float y_cross_point = - rs[stubIndex] * x_cross_point + phis[stubIndex];
-
-                if((x_cross_point > xLeft && x_cross_point < xRight) && (y_cross_point > yBottom && y_cross_point < yTop))
-                {
-                    stubLists[stubListSizes[divisionLevel + 1]] = stubIndex;
-                    stubListSizes[divisionLevel + 1]++;
-                }
-            }
-        }
-*/
+        return counter;
     }
 
-    void AdaptiveHoughGpuKernel::addSolution(double qOverPt_width, double phi_height, double qOverPtIndex, double phiIndex) const
+    void AdaptiveHoughGpuKernel::addSolution(const AccumulatorSection& section) const
     {
-        const double qOverPt = qOverPtIndex + 0.5 * qOverPt_width;
-        const double phi_0 = phiIndex + 0.5 * phi_height;
+        const double qOverPt = section.yBegin + 0.5 * section.ySize;
+        const double phi_0 = section.xBegin + 0.5 * section.xSize;
+        // for truly adaptive algorithm the index can not be calculated in obvious way
+        // therefore the kernel needs to find first available slot to store the solution
+        // for now a stupid solution is to iterate over to the first free slot
+        // this won't be that easy for truly parallel execution, 
+        // we will likely need to deffer to sycl::atomic_ref compare_exchange_weak/strong
+        // or have the first pass over to calculate number of solutions
 
-        const uint32_t index = phiIndex / ACC_HEIGHT_PRECISION  + qOverPtIndex / ACC_WIDTH_PRECISION;
-        solutions[index].isValid = true;
-        solutions[index].r = 1000 / (qOverPt * MagneticInduction);
-        solutions[index].phi = phi_0 + M_PI_2;
-        DEBUG(" .. AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << solutions[index].phi);
-        std::cout<<qOverPt<<","<<phi_0 + M_PI_2<<":SolutionPair"<<std::endl;
+        // the coordinates of the solution can be much improved too
+        // e.g. using exact formula (i.e. no sin x = x approx), d0 fit & reevaluation,
+        // additional hits from pixels inner layers, 
+        // TODO future work
+
+
+        const uint32_t solutionsBufferSize = solutions.size();
+        for ( uint32_t index = 0; index < solutionsBufferSize; ++index ) {
+            if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {
+                solutions[index].pt  = 1./qOverPt;
+                solutions[index].phi = phi_0;
+                DEBUG("AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << phi_0);
+                DEBUG(qOverPt<<","<<phi_0<<":SolutionPair");
+                return;
+            }
+        }
+        INFO("Could not find place for solution!!");
     }
 
-    AdaptiveHoughGpuKernel::AccumulatorSection::AccumulatorSection(double width, double height, double xBegin, double yBegin)
-        : width(width), height(height), xBegin(xBegin), yBegin(yBegin) {}
+
+
 
 } // namespace HelixSolver

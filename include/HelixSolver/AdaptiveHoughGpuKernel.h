@@ -1,9 +1,11 @@
 #pragma once
 
+#include "AccumulatorSection.h"
 #include "HelixSolver/SolutionCircle.h"
 #include "HelixSolver/Constants.h"
 #include "HelixSolver/Debug.h"
 #include "HelixSolver/EventBuffer.h"
+#include "HelixSolver/AccumulatorSection.h"
 
 #ifdef USE_SYCL
 #include <CL/sycl.hpp>
@@ -29,21 +31,9 @@ namespace HelixSolver
         SYCL_EXTERNAL void operator()(Index2D idx) const;
 
     private:
-        class AccumulatorSection
-        {
-        public:
-            AccumulatorSection() = default;
-            AccumulatorSection(double width, double height, double xBegin, double yBegin);
-
-            double width;
-            double height;
-            double xBegin;
-            double yBegin;
-        };
-
-        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight, uint32_t *stubIndexes, uint32_t *stubCounts, uint8_t &divisionLevel, uint32_t *divisionLevelIterator) const;
-        void fillHits(uint32_t *stubIndexes, uint32_t *stubCounts, uint8_t divisionLevel, const AccumulatorSection &section) const;
-        void addSolution(double qOverPt_width, double phi_height, double qOverPtIndex, double phiIndex) const;
+        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight) const;
+        uint8_t countHits(const uint8_t max, const AccumulatorSection &section) const;
+        void addSolution(const AccumulatorSection& section) const;
 
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;
