@@ -26,7 +26,7 @@ namespace HelixSolver
     class AdaptiveHoughGpuKernel
     {
     public:
-        AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, SolutionsWriteAccessor solution);
+        AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor z, SolutionsWriteAccessor solution);
 
         SYCL_EXTERNAL void operator()(Index2D idx) const;
 

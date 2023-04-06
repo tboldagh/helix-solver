@@ -2,7 +2,7 @@
 
 namespace HelixSolver
 {
-    struct Stub
+    struct Point
     {
         const float x;
         const float y;
