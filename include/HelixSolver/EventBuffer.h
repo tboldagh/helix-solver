@@ -33,11 +33,13 @@ namespace HelixSolver
         std::shared_ptr<Event> getEvent();
         std::shared_ptr<FloatBuffer> getRBuffer() const;
         std::shared_ptr<FloatBuffer> getPhiBuffer() const;
+        std::shared_ptr<FloatBuffer> getZBuffer() const;
 
     private:
         EventBufferState state = EventBufferState::FREE;
         std::shared_ptr<Event> event;
         std::shared_ptr<FloatBuffer> rBuffer;
         std::shared_ptr<FloatBuffer> phiBuffer;
+        std::shared_ptr<FloatBuffer> zBuffer;
     };
 } // namespace HelixSolver

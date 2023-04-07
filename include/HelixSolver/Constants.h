@@ -6,7 +6,7 @@ static constexpr float Q_OVER_PT_BEGIN  = -1;
 static constexpr float Q_OVER_PT_END = 1;
 static constexpr float PHI_BEGIN = -3.1416;
 static constexpr float PHI_END = 3.1416;
-static constexpr uint32_t MAX_STUB_NUM = 100000;
+static constexpr uint32_t MAX_Point_NUM = 100000;
 
 // Accumulator size parameters
 static constexpr float ACC_X_SIZE = PHI_END - PHI_BEGIN;
@@ -37,5 +37,5 @@ static constexpr uint32_t MAX_SECTIONS_BUFFER_SIZE = 40; // need to be checked e
 // Additional parameters
 static constexpr float MagneticInduction = 2.0;
 static constexpr float INVERSE_A = 1.0/3.0e-4;
-// constexpr uint8_t MAX_STUB_LISTS_NUM = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL + 2;
-// constexpr uint32_t MAX_STUB_LIST_ELEMENTS_NUM = MAX_STUB_NUM * MAX_STUB_LISTS_NUM;
+// constexpr uint8_t MAX_Point_LISTS_NUM = MAX_DIVISION_LEVEL - ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL + 2;
+// constexpr uint32_t MAX_Point_LIST_ELEMENTS_NUM = MAX_Point_NUM * MAX_Point_LISTS_NUM;

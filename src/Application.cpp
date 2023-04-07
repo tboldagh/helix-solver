@@ -165,23 +165,23 @@ namespace HelixSolver
         hitsTree->SetBranchAddress("y", &y);
         hitsTree->SetBranchAddress("z", &z);
 
-        std::map<Event::EventId, std::unique_ptr<std::vector<Stub>>> stubs;
+        std::map<Event::EventId, std::unique_ptr<std::vector<Point>>> Points;
 
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
             if(eventId == 0){  // to analyse only a single event (here can select other events)
                 // TODO add handling of innermost layers (maybe drop, maybe load them separately, future work)
-                stubs.try_emplace(eventId, std::make_unique<std::vector<Stub>>());
-                stubs[eventId]->push_back(Stub{x, y, z, layer});
+                Points.try_emplace(eventId, std::make_unique<std::vector<Point>>());
+                Points[eventId]->push_back(Point{x, y, z, layer});
                 DEBUG(std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
 
             }
         }
 
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
-        for(auto& idAndStubs : stubs)
-            events->push_back(std::make_shared<Event>(idAndStubs.first, std::move(idAndStubs.second)));
+        for(auto& idAndPoints : Points)
+            events->push_back(std::make_shared<Event>(idAndPoints.first, std::move(idAndPoints.second)));
         return events;
     }
 

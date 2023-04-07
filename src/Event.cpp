@@ -7,46 +7,47 @@
 
 namespace HelixSolver
 {
-    Event::Event(EventId id, std::unique_ptr<std::vector<Stub>> stubs)
+    Event::Event(EventId id, std::unique_ptr<std::vector<Point>> Points)
     : id(id)
-    , stubs(std::move(stubs))
+    , Points(std::move(Points))
     {
-        buildStubsFunctions();
+        buildPointsFunctions();
     }
 
     Event::Event(const Event& other)
     : id(other.id)
     {
-        stubs = std::make_unique<std::vector<Stub>>();
-        for(const Stub& stub : *other.stubs)
+        Points = std::make_unique<std::vector<Point>>();
+        for(const Point& Point : *other.Points)
         {
-            stubs->push_back(stub);
+            Points->push_back(Point);
         }
-        buildStubsFunctions();
+        buildPointsFunctions();
     }
 
     void Event::print() const
     {
         std::cout.precision(64);
-        for (const Stub& stub : *stubs) {
-            std::cout << stub.x << " " << stub.y << " " << stub.z << std::endl;
+        for (const Point& Point : *Points) {
+            std::cout << Point.x << " " << Point.y << " " << Point.z << std::endl;
         }
     }
 
-    const std::vector<std::function<float(float)>>&  Event::getStubsFuncs() const
+    const std::vector<std::function<float(float)>>&  Event::getPointsFuncs() const
     {
-        return stubsFunctions;
+        return PointsFunctions;
     }
 
-    void Event::buildStubsFunctions()
+    void Event::buildPointsFunctions()
     {
-        for (const Stub& stub : *stubs)
+        for (const Point& Point : *Points)
         {
-            const float r = sqrt(stub.x * stub.x + stub.y * stub.y);
-            const float phi = atan2(stub.y, stub.x);
+            const float r = sqrt(Point.x * Point.x + Point.y * Point.y);
+            const float phi = atan2(Point.y, Point.x);
             rs.push_back(r);
             phis.push_back(phi);
-            layers.push_back(stub.layer);
+            z.push_back(Point.z);
+            layers.push_back(Point.layer);
         }
     }
 
@@ -63,6 +64,10 @@ namespace HelixSolver
     std::vector<float>& Event::getPhi()
     {
         return phis;
+    }
+    std::vector<float>& Event::getZ()
+    {
+        return z;
     }
 
     std::vector<uint8_t>& Event::getLayers()

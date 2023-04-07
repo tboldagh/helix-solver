@@ -5,7 +5,7 @@
 
 namespace HelixSolver
 {
-    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, SolutionsWriteAccessor solutions) : rs(rs), phis(phis), solutions(solutions)
+    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : rs(rs), phis(phis), solutions(solutions)
     {
         DEBUG(".. AdaptiveHoughKernel instantiated with " << rs.size() << " measurements ");
     }
@@ -22,7 +22,7 @@ namespace HelixSolver
         DEBUG(" .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << INITIAL_X_SIZE 
                                           << " y: " << yBegin << " ysz: " << INITIAL_Y_SIZE);
 
-        // we need here a limited set of stubs
+        // we need here a limited set of Points
 
         // the size os somewhat arbitrary, for regular algorithm dividing into 4 sub-sections it defined by the depth allowed
         // but for more flexible algorithms that is less predictable
@@ -90,7 +90,7 @@ namespace HelixSolver
         uint16_t counter=0;
         DEBUG(section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<","<<section.divisionLevel<<":BoxPosition");
 
-        // here we can improve by knowing over which stubs to iterate (i.e. indices of measurements), this is related to geometry
+        // here we can improve by knowing over which Points to iterate (i.e. indices of measurements), this is related to geometry
         // this can be stored in section object maybe???
 
         const uint32_t maxIndex = rs.size();
