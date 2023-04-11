@@ -20,5 +20,6 @@
         "y_dpi": 256,
         "y_begin": 0.1,
         "y_end": 0.6
-    }
+    },
+    "excludeRZRegions": [[0, 200, -100, 100]]
 }
