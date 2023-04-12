@@ -4,6 +4,7 @@
 #include "HelixSolver/Application.h"
 #include "HelixSolver/ComputingManager.h"
 #include "HelixSolver/Debug.h"
+#include "HelixSolver/Constants.h"
 
 #include <TFile.h>
 #include <TTree.h>
@@ -148,11 +149,11 @@ namespace HelixSolver
             for ( auto conf : config["excludeRZRegions"]) {
                 exclusionRegions.emplace_back( region{conf[0], conf[1], conf[2], conf[3]} );
                 DEBUG("Will skip points from region: rmin: " << exclusionRegions.back().rmin
-                        << " rmax: " << exclusionRegions.back().rmax  
-                        << " zmin: " << exclusionRegions.back().zmin 
+                        << " rmax: " << exclusionRegions.back().rmax
+                        << " zmin: " << exclusionRegions.back().zmin
                         << " zmax: " << exclusionRegions.back().zmax);
             }
-            return [exclusionRegions]( float x, float y, float z) { 
+            return [exclusionRegions]( float x, float y, float z) {
                 float r = std::hypot(x,y);
                 // check if the point belongs to any region
                 for ( auto region : exclusionRegions ) {
@@ -192,7 +193,7 @@ namespace HelixSolver
         hitsTree->SetBranchAddress("y", &y);
         hitsTree->SetBranchAddress("z", &z);
 
-        std::map<Event::EventId, std::unique_ptr<std::vector<Point>>> Points;        
+        std::map<Event::EventId, std::unique_ptr<std::vector<Point>>> Points;
         auto acceptPoint = selector();
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
@@ -202,7 +203,7 @@ namespace HelixSolver
                 Points.try_emplace(eventId, std::make_unique<std::vector<Point>>());
                 if ( acceptPoint(x,y,z)) {
                     Points[eventId]->push_back(Point{x, y, z, layer});
-                    DEBUG(std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
+                    CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
                 }
 
             }

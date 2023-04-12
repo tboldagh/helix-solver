@@ -6,7 +6,13 @@
 #ifdef PRINT_DEBUG
 #define DEBUG(MSG) std::cout << " ... " << MSG << std::endl;
 #else
-#define DEBUG(MSG)
+#define DEBUG(COND, MSG)
+#endif
+
+#ifdef PRINT_CDEBUG
+#define CDEBUG(COND, MSG) { if ( COND == true ) { std::cout << " ... " << MSG << std::endl; } }
+#else
+#define CDEBUG(COND, MSG)
 #endif
 
 #ifdef PRINT_VERBOSE

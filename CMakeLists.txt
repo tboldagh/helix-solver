@@ -29,24 +29,25 @@ FILE(GLOB Sources src/*.cpp)
 add_executable( ht_no_sycl ${Sources})
 
 target_link_libraries(ht_no_sycl
-    PRIVATE 
+    PRIVATE
     ${libs}
 )
 
 target_compile_definitions(ht_no_sycl
     PRIVATE
     PRINT_DEBUG # control here debug messages
+    PRINT_CDEBUG # control here cdebug messages
     PRINT_VERBOSE # control here verbose messages
 )
 
 add_executable( ht_sycl ${Sources})
 
 target_link_libraries(ht_sycl
-    PRIVATE 
+    PRIVATE
     ${libs}
 )
-set_target_properties(ht_sycl 
-    PROPERTIES 
+set_target_properties(ht_sycl
+    PROPERTIES
     EXCLUDE_FROM_ALL true # == do not build bey default, only whith make ht_sycl
 )
 
@@ -55,7 +56,7 @@ target_compile_definitions(ht_sycl
     USE_SYCL
 )
 
-install(TARGETS ht_no_sycl 
+install(TARGETS ht_no_sycl
     DESTINATION bin
 )
 

@@ -4,10 +4,10 @@
 The project is build with cmake.
 To compile: create `build` dir next to helix-solver and change to it.
 ```
-cmake -DCMAKE_INSTALL_PREFIX=$PWD ../helix-solver  ; make install
+cmake -DCMAKE_INSTALL_PREFIX=$PWD ../helix-solver ; make install
 ```
-programs are installed in bin subdirectory of the build in this case. 
-By default a lot of debugging is enabled. 
+programs are installed in bin subdirectory of the build in this case.
+By default a lot of debugging is enabled.
 It can be switched off by editing editing CMakeFile.txt file.
 
 Together with the main code unit tests are compiled.
@@ -16,10 +16,10 @@ It is recommended to run them after compilation to check if local env is not som
 ./test/*
 ```
 
-By default oneAPI/SYCL independent version is only compiled. 
+By default oneAPI/SYCL independent version is only compiled.
 To compile SYCL variant run `make ht_sycl`
 
-# Running 
+# Running
 ```
 ./ht_no_sycl config.json | tee log
 ```
@@ -39,9 +39,6 @@ make install && . ./scripts/make_tbox_plots.sh log
 ```
 To draw lines considered by the algorithm (additional install ):
 ```
-make install > /dev/null && root -l "scripts/Accumulator_Lines_x_y.C(2.1, 2.4, -1., 1.)"
+make install > /dev/null && root -l "scripts/Accumulator_Lines_R_Phi.C(1.82, 1.92, -0.5, 0.2)"
 ```
-Above the range accumulator are is constrained to `phi = [2.1, 2.4]` and `q/pt = [-1, 1]`.
- 
-
-
+Above the range accumulator are is constrained to `phi = [1.82, 1.92]` and `q/pt = [-0.5, 0.2]`.
