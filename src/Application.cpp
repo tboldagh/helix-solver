@@ -139,7 +139,34 @@ namespace HelixSolver
         }
     }
 
-    std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEventsFromSpacepointsRootFile(const std::string& path)
+    std::function<bool(float, float, float)> Application::selector() const {
+        // define selector, default one selects all points
+        if ( config.contains("excludeRZRegions") ) {
+            DEBUG("Nontrivial selector " << config["excludeRZRegions"]);
+            struct region {float rmin, rmax, zmin, zmax; };
+            std::vector<region> exclusionRegions;
+            for ( auto conf : config["excludeRZRegions"]) {
+                exclusionRegions.emplace_back( region{conf[0], conf[1], conf[2], conf[3]} );
+                DEBUG("Will skip points from region: rmin: " << exclusionRegions.back().rmin
+                        << " rmax: " << exclusionRegions.back().rmax  
+                        << " zmin: " << exclusionRegions.back().zmin 
+                        << " zmax: " << exclusionRegions.back().zmax);
+            }
+            return [exclusionRegions]( float x, float y, float z) { 
+                float r = std::hypot(x,y);
+                // check if the point belongs to any region
+                for ( auto region : exclusionRegions ) {
+                    if ( region.rmin < r && r < region.rmax && region.zmin < z && z < region.zmax )
+                        return false;
+                }
+                return true;
+                };
+        }
+        DEBUG("Selecting all points");
+        return []( float x, float y, float z) { return true; };
+    }
+
+    std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEventsFromSpacepointsRootFile(const std::string& path) const
     {
         std::unique_ptr<TFile> file(TFile::Open(path.c_str()));
         if ( file == nullptr ) {
@@ -165,16 +192,18 @@ namespace HelixSolver
         hitsTree->SetBranchAddress("y", &y);
         hitsTree->SetBranchAddress("z", &z);
 
-        std::map<Event::EventId, std::unique_ptr<std::vector<Point>>> Points;
-
+        std::map<Event::EventId, std::unique_ptr<std::vector<Point>>> Points;        
+        auto acceptPoint = selector();
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
             if(eventId == 0){  // to analyse only a single event (here can select other events)
                 // TODO add handling of innermost layers (maybe drop, maybe load them separately, future work)
                 Points.try_emplace(eventId, std::make_unique<std::vector<Point>>());
-                Points[eventId]->push_back(Point{x, y, z, layer});
-                DEBUG(std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
+                if ( acceptPoint(x,y,z)) {
+                    Points[eventId]->push_back(Point{x, y, z, layer});
+                    DEBUG(std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
+                }
 
             }
         }
