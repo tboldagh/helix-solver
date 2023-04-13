@@ -41,7 +41,6 @@ if( NOT IntelSYCL_FOUND )
    
    target_compile_definitions(ht_no_sycl
        PRIVATE
-       R__HAS_STD_STRING_VIEW # this maye be needed if ROOT is built w/o knowing the system
        PRINT_DEBUG # control here debug messages
        PRINT_VERBOSE # control here verbose messages
    )
