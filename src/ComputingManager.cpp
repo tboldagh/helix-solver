@@ -140,7 +140,7 @@ namespace HelixSolver
             case ComputingWorker::Platform::FPGA_EMULATOR:
                 return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_emulator_selector{}, NULL, propertyList));
             default:
-                throw std::runtime_error("Bad platform" + platform);
+                throw std::runtime_error("Bad platform" + std::to_string(static_cast<int>(platform)) + " in " + __FILE__);
         }
 #else        
         switch (platform)
