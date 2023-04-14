@@ -1,7 +1,10 @@
 #include <cmath>
+#ifndef USE_SYCL
 #include <iostream>
-#include "HelixSolver/AdaptiveHoughGpuKernel.h"
+#endif
 #include "HelixSolver/Debug.h"
+
+#include "HelixSolver/AdaptiveHoughGpuKernel.h"
 
 namespace HelixSolver
 {

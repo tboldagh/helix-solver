@@ -26,38 +26,46 @@ SET(libs nlohmann_json::nlohmann_json ${ROOT_LIBRARIES})
 
 FILE(GLOB Sources src/*.cpp)
 
-add_executable( ht_no_sycl ${Sources})
 
-target_link_libraries(ht_no_sycl
-    PRIVATE 
-    ${libs}
+
+find_package( IntelSYCL )
+if( NOT IntelSYCL_FOUND )
+   message( STATUS "SYCL compilation is not available, not building SYCL targets" )
+
+   add_executable( ht_no_sycl ${Sources})
+
+   target_link_libraries(ht_no_sycl
+       PRIVATE 
+       ${libs}
+   )
+   
+   target_compile_definitions(ht_no_sycl
+       PRIVATE
+       PRINT_DEBUG # control here debug messages
+       PRINT_VERBOSE # control here verbose messages
+   )
+   install(TARGETS ht_no_sycl 
+       DESTINATION bin
+   )
+  
+else()
+    add_executable( ht_sycl ${Sources})
+    target_link_libraries(ht_sycl
+        PRIVATE 
+        ${libs}
+    )
+    target_compile_definitions(ht_sycl PRIVATE 
+        USE_SYCL=1
+        R__HAS_STD_STRING_VIEW
+    )
+    add_sycl_to_target(TARGET ht_sycl SOURCES ${Sources})
+    install(TARGETS ht_sycl DESTINATION bin
 )
 
-target_compile_definitions(ht_no_sycl
-    PRIVATE
-    PRINT_DEBUG # control here debug messages
-    PRINT_VERBOSE # control here verbose messages
-)
+endif()
 
-add_executable( ht_sycl ${Sources})
 
-target_link_libraries(ht_sycl
-    PRIVATE 
-    ${libs}
-)
-set_target_properties(ht_sycl 
-    PROPERTIES 
-    EXCLUDE_FROM_ALL true # == do not build bey default, only whith make ht_sycl
-)
 
-target_compile_definitions(ht_sycl
-    PRIVATE
-    USE_SYCL
-)
-
-install(TARGETS ht_no_sycl 
-    DESTINATION bin
-)
 
 
 FILE(GLOB TBoxScripts tools/TBoxPlot/*.C)
@@ -68,6 +76,3 @@ install(FILES ${TBoxScripts} tools/TBoxPlot/make_tbox_plots.sh
 
 
 add_subdirectory(test)
-
-
-

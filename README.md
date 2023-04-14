@@ -44,4 +44,19 @@ make install > /dev/null && root -l "scripts/Accumulator_Lines_x_y.C(2.1, 2.4, -
 Above the range accumulator are is constrained to `phi = [2.1, 2.4]` and `q/pt = [-1, 1]`.
  
 
+# Compiling with oneAPI
+First, the oneAPI installation has to be available on the system.
+The project provides docker image with oneAPI + ROOT. 
+To use it: copy this file to some empty dir and run command listed in the end of the file (in the comment). The image is sizeable (about 18 GB).
+There is also an example command to launch this image `docker run ...`.
+
+The image mounts current directory as `/helix` while in container. You need to launch it from place where all sources codes are visible. Below I assume it is just above the `helix-solver` dir.
+
+To setup compilation in `build` dir that is next to `helix-solver` dir:
+```
+cmake -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx ../helix-solver/
+```
+Hint. The `build` dir needs to be cleaned up before. Without this the standard compliler 
+
+
 
