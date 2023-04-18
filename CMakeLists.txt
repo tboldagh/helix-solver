@@ -38,23 +38,23 @@ if( NOT IntelSYCL_FOUND )
        PRIVATE 
        ${libs}
    )
-   
+
    target_compile_definitions(ht_no_sycl
        PRIVATE
        PRINT_DEBUG # control here debug messages
        PRINT_VERBOSE # control here verbose messages
    )
-   install(TARGETS ht_no_sycl 
+   install(TARGETS ht_no_sycl
        DESTINATION bin
    )
-  
+
 else()
     add_executable( ht_sycl ${Sources})
     target_link_libraries(ht_sycl
-        PRIVATE 
+        PRIVATE
         ${libs}
     )
-    target_compile_definitions(ht_sycl PRIVATE 
+    target_compile_definitions(ht_sycl PRIVATE
         USE_SYCL=1
         R__HAS_STD_STRING_VIEW
     )
@@ -63,7 +63,6 @@ else()
 )
 
 endif()
-
 
 
 
