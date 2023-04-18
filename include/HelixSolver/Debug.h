@@ -1,10 +1,12 @@
 #pragma once
 
-#ifdef USE_SYCL
-#define INFO(MSG)
-#else
+// Bool values for CDEBUG, used to surpress output
+static constexpr bool DISPLAY_BASIC = 0;
+static constexpr bool DISPLAY_BOX_POSITION = 0;
+static constexpr bool DISPLAY_SOLUTION_PAIR = 1;
+static constexpr bool DISPLAY_RPHI = 1;
+
 #define INFO(MSG) std::cout << " . " << MSG << std::endl;
-#endif
 
 #ifdef PRINT_DEBUG
 #ifdef USE_SYCL
@@ -14,6 +16,11 @@
 #else
 #define DEBUG(MSG)
 #endif
+
+#ifdef PRINT_CDEBUG
+#define CDEBUG(COND, MSG) { if ( COND == true ) { std::cout << " ... " << MSG << std::endl; } }
+#else
+#define CDEBUG(COND, MSG)
 
 #ifdef PRINT_VERBOSE
 #define VERBOSE(MSG) std::cout << " ..... " << MSG << std::endl;
