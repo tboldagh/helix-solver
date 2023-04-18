@@ -1,9 +1,15 @@
 #pragma once
 
+#ifdef USE_SYCL
+#define INFO(MSG)
+#else
 #define INFO(MSG) std::cout << " . " << MSG << std::endl;
-
+#endif
 
 #ifdef PRINT_DEBUG
+#ifdef USE_SYCL 
+    "Can not use DEBUG and other macros when building SYCL"
+#endif
 #define DEBUG(MSG) std::cout << " ... " << MSG << std::endl;
 #else
 #define DEBUG(COND, MSG)

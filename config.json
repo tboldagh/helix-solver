@@ -2,12 +2,14 @@
     "platform": "cpu_no_sycl",
     "inputFileType": "root_spacepoints",
     "inputFile": "inputs/odd_output/spacepoints.root",
-    "outputFile": "detected-circles.txt",
+    "outputFile": "detected-circles",
     "gpuEventBuffers": 48,
     "gpuComputingWorkers": 24,
     "cpuEventBuffers": 48,
     "cpuComputingWorkers": 12,
     "multiplyEvents": 1,
+    "event": 1,
+    "comment_event": "event property can be used to select particular, single event to process, if removed (e.g. name changed to skip_event all events in file will be processed)",
     "B": 2,
     "R": 600,
     "c": 299792458,
@@ -21,5 +23,7 @@
         "y_begin": 0.1,
         "y_end": 0.6
     },
-    "excludeRZRegions": [[0, 200, -100, 100]]
+    "excludeRZRegions": [[0, 200, -100, 100]],
+    "comment_excludeRZRegions": " use to remove inner pixel layers from consideration" 
+
 }

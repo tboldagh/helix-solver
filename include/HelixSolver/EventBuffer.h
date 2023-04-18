@@ -5,7 +5,7 @@
 #ifdef USE_SYCL
     #include <CL/sycl.hpp>
     using FloatBuffer=sycl::buffer<float, 1>;
-    using SolutionBuffer=sycl::buffer<HelixSolver::SolutionCircle, 1>
+    using SolutionBuffer=sycl::buffer<HelixSolver::SolutionCircle, 1>;
 #else
     #include <vector>
     using FloatBuffer=std::vector<float>;

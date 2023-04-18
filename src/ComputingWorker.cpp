@@ -40,7 +40,7 @@ namespace HelixSolver
 #ifdef USE_SYCL
         // TODO: Move to scheduleTasksToQueue
         sycl::host_accessor solutionsAccessor(*solutionsBuffer, sycl::read_only);
-        for (uint32_t i = 0; i < ACC_SIZE; ++i) (*solutions)[i] = solutionsAccessor[i];
+        for (uint32_t i = 0; i < solutionsAccessor.size(); ++i) (*solutions)[i] = solutionsAccessor[i];
 #else
     /// TODO come back to this, maybe no need to make the copy
 #endif
@@ -65,15 +65,16 @@ namespace HelixSolver
     {
 #ifdef USE_SYCL
         solutions = std::make_unique<std::vector<SolutionCircle>>();
-        solutions->insert(solutions->begin(), ACC_SIZE, SolutionCircle{});
+        solutions->insert(solutions->begin(), MAX_SOLUTIONS, SolutionCircle{});
         solutionsBuffer = std::make_unique<sycl::buffer<SolutionCircle, 1>>(sycl::buffer<SolutionCircle, 1>(solutions->begin(), solutions->end()));
 
         computingEvent = queue->submit([&](sycl::handler& handler)
         {
             sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs(*eventBuffer->getRBuffer(), handler, sycl::read_only);
             sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis(*eventBuffer->getPhiBuffer(), handler, sycl::read_only);
+            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> zs(*eventBuffer->getZBuffer(), handler, sycl::read_only);
             sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions(*solutionsBuffer, handler, sycl::write_only);
-            AdaptiveHoughGpuKernel kernel(rs, phis, solutions);
+            AdaptiveHoughGpuKernel kernel(rs, phis, zs, solutions);
             handler.parallel_for(sycl::range<2>(ADAPTIVE_KERNEL_INITIAL_DIVISIONS, ADAPTIVE_KERNEL_INITIAL_DIVISIONS), kernel);
         });
 
