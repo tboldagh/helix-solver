@@ -80,6 +80,8 @@ namespace HelixSolver
         INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
 
         printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
+        saveSolutionsInRootFile(eventsAndSolutions, config["outputFile"].get<std::string>());
+
     }
 
     void Application::runOnGpu() const
@@ -116,6 +118,8 @@ namespace HelixSolver
         INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
 
         printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
+        saveSolutionsInRootFile(eventsAndSolutions, config["outputFile"].get<std::string>());
+
     }
 
     ComputingWorker::Platform Application::getPlatformFromString(const std::string& platformStr)
@@ -197,7 +201,9 @@ namespace HelixSolver
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
-            if(eventId == 0){  // to analyse only a single event (here can select other events)
+
+            if( not config.contains("event") ||
+                (config.contains("event") && eventId == config["event"] ) ){  // to analyse only a single event add "event" property in config file
                 // TODO add handling of innermost layers (maybe drop, maybe load them separately, future work)
                 Points.try_emplace(eventId, std::make_unique<std::vector<Point>>());
                 if ( acceptPoint(x,y,z)) {
@@ -216,18 +222,65 @@ namespace HelixSolver
 
     void Application::printEventsAndSolutionsToFile(const std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>>& eventsAndSolutions, const std::string& path)
     {
-        std::ofstream outputFile(path);
+        std::ofstream outputFile(path+".txt");
         for (const auto& eventAndSolution : *eventsAndSolutions)
         {
             outputFile << "EventId: " << eventAndSolution.first->getId() << "\n";
 
             for (const SolutionCircle& solution : *eventAndSolution.second)
             {
+                if ( solution.invalid() )
+                    break;
                 outputFile << "\t" << solution.pt << "\t" << solution.phi << std::endl;
             }
 
             outputFile << "\n";
         }
+    }
+
+   void Application::saveSolutionsInRootFile(const std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>>& eventsAndSolutions, const std::string& path) {
+        TFile* f= TFile::Open((path+".root").c_str(), "RECREATE"); // we overwrite output, maybe this is wrong idea? TODO, decide
+        uint32_t eventId{};
+        float phi{};
+        float pt{};
+        float q{};
+        float eta{};
+        float z{};
+        float d0{};
+        int nhits{};
+
+        TTree* outputTree = new TTree("solutions", "solutions");
+        outputTree->Branch("event_id", &eventId);
+        outputTree->Branch("phi", &phi);
+        outputTree->Branch("pt", &pt);
+        outputTree->Branch("eta", &eta);
+        outputTree->Branch("q", &q);
+        outputTree->Branch("z", &z);
+        outputTree->Branch("d0", &d0);
+        outputTree->Branch("nhits", &nhits);
+
+        for (const auto& eventAndSolution : *eventsAndSolutions)
+        {
+            eventId = eventAndSolution.first->getId();
+
+            for (const SolutionCircle& solution : *eventAndSolution.second)
+            {
+                if ( solution.invalid() )
+                    break;
+                
+                phi = solution.phi;
+                pt = std::abs(solution.pt);
+                q =  solution.pt > 0  ? 1.0 : -1.0;
+                eta = solution.eta;
+                z = solution.z;
+                d0 = solution.d0;
+                nhits = solution.nhits;
+
+                outputTree->Fill();
+            }
+        }
+        f->Write();
+        f->Close();
     }
 
     void Application::loadConfig(const std::string& configFilePath)

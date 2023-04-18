@@ -138,6 +138,7 @@ namespace HelixSolver
             if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {
                 solutions[index].pt  = 1./qOverPt;
                 solutions[index].phi = phi_0;
+                // TODO calculate remaining parameters, eta, z, d0                
                 DEBUG("AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << phi_0);
                 DEBUG(qOverPt<<","<<phi_0<<":SolutionPair");
                 return;
