@@ -134,6 +134,7 @@ namespace HelixSolver
                 solutions[index].phi = phi_0;
                 CDEBUG(DISPLAY_BASIC, "AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << phi_0);
                 CDEBUG(DISPLAY_SOLUTION_PAIR, qOverPt<<","<<phi_0<<","<<section.xBegin<<","<<section.yBegin<<","<<section.xBegin + section.xSize<<","<<section.yBegin + section.ySize<<","<<section.divisionLevel<<":SolutionPair");
+                // TODO calculate remaining parameters, eta, z, d0
                 return;
             }
         }
