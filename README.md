@@ -35,7 +35,7 @@ make install && ./bin/ht_no_sycl config.json > log
 The plots for drawing solutions are also installed by default.
 First the log needs to be processed like this (again assuming you are in `build` dir):
 ```
-make install && . ./scripts/make_tbox_plots.sh log
+make install && ./scripts/make_tbox_plots.sh log
 ```
 To draw lines considered by the algorithm (additional install ):
 ```

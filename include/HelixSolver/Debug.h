@@ -21,6 +21,7 @@ static constexpr bool DISPLAY_RPHI = 1;
 #define CDEBUG(COND, MSG) { if ( COND == true ) { std::cout << " ... " << MSG << std::endl; } }
 #else
 #define CDEBUG(COND, MSG)
+#endif
 
 #ifdef PRINT_VERBOSE
 #define VERBOSE(MSG) std::cout << " ..... " << MSG << std::endl;
