@@ -101,6 +101,6 @@ void Histogram_pt_phi(){
     hist_phi_truth -> Draw("SAME HIST");
 
 // final, close file
-    canvas -> SaveAs("pt_phi_histograms.png");
+    canvas -> SaveAs("pt_hough_phi_hough_histograms.png");
     file_hough -> Close();
 }
