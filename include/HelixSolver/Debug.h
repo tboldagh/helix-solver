@@ -1,10 +1,11 @@
 #pragma once
 
 // Bool values for CDEBUG, used to surpress output
-static constexpr bool DISPLAY_BASIC = 0;
+static constexpr bool DISPLAY_BASIC = 1;
 static constexpr bool DISPLAY_BOX_POSITION = 0;
 static constexpr bool DISPLAY_SOLUTION_PAIR = 1;
 static constexpr bool DISPLAY_RPHI = 1;
+#define PRINT_CDEBUG
 
 #define INFO(MSG) std::cout << " . " << MSG << std::endl;
 
@@ -21,6 +22,7 @@ static constexpr bool DISPLAY_RPHI = 1;
 #define CDEBUG(COND, MSG) { if ( COND == true ) { std::cout << " ... " << MSG << std::endl; } }
 #else
 #define CDEBUG(COND, MSG)
+#endif
 
 #ifdef PRINT_VERBOSE
 #define VERBOSE(MSG) std::cout << " ..... " << MSG << std::endl;
