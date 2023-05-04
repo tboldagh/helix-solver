@@ -32,8 +32,9 @@ namespace HelixSolver
 
     private:
         void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight) const;
-        uint8_t countHits(const uint8_t max, const AccumulatorSection &section) const;
+        uint8_t countHits(AccumulatorSection &section) const;
         void addSolution(const AccumulatorSection& section) const;
+        void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
 
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;

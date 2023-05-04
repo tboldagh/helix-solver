@@ -1,4 +1,5 @@
 #pragma once
+#include "HelixSolver/Constants.h"
 namespace HelixSolver {
 
 class AccumulatorSection {
@@ -15,6 +16,9 @@ public:
   double xBegin;
   double yBegin;
   int divisionLevel = 0; // number of divisions needed from the original acc
+  short indices[MAX_COUNT_PER_SECTION];
+  uint8_t counts = 0;
+  inline bool canUseIndices() const { return counts != 0; }
 
   AccumulatorSection bottomLeft(float xFraction = 0.5,
                                 float yFraction = 0.5) const {
