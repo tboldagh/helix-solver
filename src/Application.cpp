@@ -78,9 +78,9 @@ namespace HelixSolver
 
         auto executionTimeEnd = std::chrono::high_resolution_clock::now();
         auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
-        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
+        auto elapsedTime_sec = round(float(elapsedTime) / 1e3) / 1e3;
+        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime_sec<<" seconds" );
 
-        printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
         saveSolutionsInRootFile(eventsAndSolutions, config["outputFile"].get<std::string>());
 
     }
@@ -91,7 +91,7 @@ namespace HelixSolver
 
         #ifdef MULTIPLY_EVENTS
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> newEvents = std::make_unique<std::vector<std::shared_ptr<Event>>>();
-
+        auto x = config["multiplyEvents"];
         for(unsigned int i = 0; i < config["multiplyEvents"]; i++)
         {
             for(auto event : *events)
@@ -116,9 +116,9 @@ namespace HelixSolver
 
         auto executionTimeEnd = std::chrono::high_resolution_clock::now();
         auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
-        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
+        auto elapsedTime_sec = round(float(elapsedTime) / 1e3) / 1e3;
+        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime_sec<<" seconds" );
 
-        printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
         saveSolutionsInRootFile(eventsAndSolutions, config["outputFile"].get<std::string>());
 
     }
@@ -221,24 +221,6 @@ namespace HelixSolver
         return events;
     }
 
-    void Application::printEventsAndSolutionsToFile(const std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>>& eventsAndSolutions, const std::string& path)
-    {
-        std::ofstream outputFile(path+".txt");
-        for (const auto& eventAndSolution : *eventsAndSolutions)
-        {
-            outputFile << "EventId: " << eventAndSolution.first->getId() << "\n";
-
-            for (const SolutionCircle& solution : *eventAndSolution.second)
-            {
-                if ( solution.invalid() )
-                    break;
-                outputFile << "\t" << solution.pt << "\t" << solution.phi << std::endl;
-            }
-
-            outputFile << "\n";
-        }
-    }
-
    void Application::saveSolutionsInRootFile(const std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>>& eventsAndSolutions, const std::string& path) {
         TFile* f= TFile::Open((path+".root").c_str(), "RECREATE"); // we overwrite output, maybe this is wrong idea? TODO, decide
         uint32_t eventId{};
@@ -268,7 +250,7 @@ namespace HelixSolver
             {
                 if ( solution.invalid() )
                     break;
-                
+
                 phi = solution.phi;
                 pt = std::abs(solution.pt);
                 q =  solution.pt > 0  ? 1.0 : -1.0;

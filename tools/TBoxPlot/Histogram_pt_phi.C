@@ -1,4 +1,9 @@
-void Histogram_pt_phi(){
+void Histogram_pt_phi(
+    const float pt_min = 1,
+    const float pt_max = 12,
+    const float phi_min = -3.141,
+    const float phi_max = 3.142
+    ){
 
 // initial, remove objects
     delete gROOT -> FindObject("canvas");
@@ -12,10 +17,10 @@ void Histogram_pt_phi(){
 
 // define histograms
     const Int_t n_bins = 100;
-    const float pt_hough_hist_min = 0;
-    const float pt_hough_hist_max = 11;
-    const float phi_hough_hist_min = - 1.1 * M_PI;
-    const float phi_hough_hist_max =   1.1 * M_PI;
+    const float pt_hough_hist_min = pt_min - 1;
+    const float pt_hough_hist_max = pt_max + 1;
+    const float phi_hough_hist_min = 1.1 * phi_min;
+    const float phi_hough_hist_max = 1.1 * phi_max;
 
     TH1D *hist_pt_hough  = new TH1D("hist_pt_hough", "p_{T} Hough histogram;p_{T} [GeV];counts", n_bins, pt_hough_hist_min, pt_hough_hist_max);
     TH1D *hist_phi_hough = new TH1D("hist_phi_hough", "#phi Hough histogram;#phi_hough [rad];counts", n_bins, phi_hough_hist_min, phi_hough_hist_max);
@@ -57,6 +62,7 @@ void Histogram_pt_phi(){
 
 // fill histograms - Hough
     Int_t nentries = tree_hough -> GetEntries();
+    std::cout<<"Number of Hough solutions read: "<<nentries<<std::endl;
     for (Int_t index = 0; index < nentries; ++index){
 
         tree_hough -> GetEntry(index);
@@ -101,6 +107,6 @@ void Histogram_pt_phi(){
     hist_phi_truth -> Draw("SAME HIST");
 
 // final, close file
-    canvas -> SaveAs("pt_hough_phi_hough_histograms.png");
+    //canvas -> SaveAs("pt_hough_phi_hough_histograms.png");
     file_hough -> Close();
 }

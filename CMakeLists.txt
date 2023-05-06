@@ -35,13 +35,14 @@ if( NOT IntelSYCL_FOUND )
    add_executable( ht_no_sycl ${Sources})
 
    target_link_libraries(ht_no_sycl
-       PRIVATE 
+       PRIVATE
        ${libs}
    )
 
    target_compile_definitions(ht_no_sycl
        PRIVATE
        PRINT_DEBUG # control here debug messages
+       PRINT_CDEBUG # control here cdebug messages
        PRINT_VERBOSE # control here verbose messages
    )
    install(TARGETS ht_no_sycl

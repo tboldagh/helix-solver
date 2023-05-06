@@ -50,13 +50,28 @@ namespace HelixSolver
         sectionsBufferSize--;
         AccumulatorSection section = sections[sectionsBufferSize]; // copy section, it will be modified, TODO consider not to copy
 
-        const uint16_t count = countHits(section);
+        if (std::fabs(1./section.yBegin) > MAX_PT || std::fabs(1./section.yBegin + section.ySize) > MAX_PT)
+            return;
+
+        const uint16_t count = countHits(THRESHOLD, section);
         CDEBUG(DISPLAY_BASIC, "count of lines in region x:" << section.xBegin
             << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
         if ( count < THRESHOLD )
             return;
 
-        if ( section.xSize > ACC_X_PRECISION && section.ySize > ACC_Y_PRECISION) {
+        double section_pt_precision{};
+        if (section.yBegin == 0){
+            //section_pt_precision = 2 * (1./(std::fabs(section.yBegin) + 0.5 * section.ySize) - 1./(section.yBegin + section.ySize));
+            section_pt_precision = 100;
+        } else if ((section.yBegin + section.ySize) == 0){
+            //section_pt_precision = 2 * (1./std::fabs(section.yBegin) - 1./(std::fabs(section.yBegin) + 0.5 * section.ySize));
+            section_pt_precision = 100;
+        } else {
+            section_pt_precision = 1./std::fabs(section.yBegin) - 1./(std::fabs(section.yBegin) + section.ySize);
+        }
+
+        //section_pt_precision = section.ySize;
+        if ( section.xSize > ACC_X_PRECISION && section_pt_precision > ACC_PT_PRECISION) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
             // by the order here we steer the direction of the search of image space
             // it may be relevant depending on the data ordering??? to be testes
@@ -72,7 +87,7 @@ namespace HelixSolver
             sections[sectionsBufferSize + 1] = section.right();
             ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in x split)");
             sectionsBufferSize += 2;
-        } else if ( section.ySize > ACC_Y_PRECISION ) {
+        } else if ( section_pt_precision > ACC_PT_PRECISION ) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in y direction");
             sections[sectionsBufferSize]     = section.bottom();
             sections[sectionsBufferSize + 1] = section.top();
@@ -131,7 +146,7 @@ namespace HelixSolver
 
         const uint32_t solutionsBufferSize = solutions.size();
         for ( uint32_t index = 0; index < solutionsBufferSize; ++index ) {
-            if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {      
+            if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {
                 if ( section.canUseIndices()) {
                     fillPreciseSolution(section, solutions[index]);
                     CDEBUG(DISPLAY_BASIC, "AdaptiveHoughKernel solution count: " << int(section.counts));
@@ -145,7 +160,7 @@ namespace HelixSolver
                 return;
             }
         }
-        INFO("Could not find place for solution!!");
+        std::runtime_error("Could not find place for solution!!");
     }
 
     void  AdaptiveHoughGpuKernel::fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const {

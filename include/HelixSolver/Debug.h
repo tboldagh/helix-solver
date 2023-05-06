@@ -1,7 +1,7 @@
 #pragma once
 
 // Bool values for CDEBUG, used to surpress output
-static constexpr bool DISPLAY_BASIC = 1;
+static constexpr bool DISPLAY_BASIC = 0;
 static constexpr bool DISPLAY_BOX_POSITION = 0;
 static constexpr bool DISPLAY_SOLUTION_PAIR = 1;
 static constexpr bool DISPLAY_RPHI = 1;
@@ -19,9 +19,12 @@ static constexpr bool DISPLAY_RPHI = 1;
 #endif
 
 #ifdef PRINT_CDEBUG
+#ifdef USE_SYCL
+    "Can not use CDEBUG and other macros when building SYCL"
+#endif
 #define CDEBUG(COND, MSG) { if ( COND == true ) { std::cout << " ... " << MSG << std::endl; } }
 #else
-#define CDEBUG(COND, MSG)
+#define CDEBUG(MSG)
 #endif
 
 #ifdef PRINT_VERBOSE
