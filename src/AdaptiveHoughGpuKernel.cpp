@@ -48,9 +48,9 @@ namespace HelixSolver
         CDEBUG(DISPLAY_BASIC, "Regions buffer depth " << static_cast<int>(sectionsBufferSize));
         // pop the region from the top of sections buffer
         sectionsBufferSize--;
-        const AccumulatorSection section = sections[sectionsBufferSize];
+        AccumulatorSection section = sections[sectionsBufferSize]; // copy section, it will be modified, TODO consider not to copy
 
-        const uint16_t count = countHits(THRESHOLD, section);
+        const uint16_t count = countHits(section);
         CDEBUG(DISPLAY_BASIC, "count of lines in region x:" << section.xBegin
             << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
         if ( count < THRESHOLD )
@@ -84,7 +84,7 @@ namespace HelixSolver
 
     }
 
-    uint8_t AdaptiveHoughGpuKernel::countHits(const uint8_t max, const AccumulatorSection &section) const
+    uint8_t AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section) const
     {
         const double xEnd = section.xBegin + section.xSize;
         const double yEnd = section.yBegin + section.ySize;
@@ -95,7 +95,7 @@ namespace HelixSolver
         // this can be stored in section object maybe???
 
         const uint32_t maxIndex = rs.size();
-        for (uint32_t index = 0; index < maxIndex && counter <= max; ++index)
+        for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index)
         {
             const float r = rs[index];
             const float inverse_r = 1.0/r;
@@ -105,9 +105,11 @@ namespace HelixSolver
 
             if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
             {
+                section.indices[counter] = index;
                 counter++;
             }
         }
+        section.counts =  counter + 1 == MAX_COUNT_PER_SECTION ? 0 : counter; // setting this counter to 0 == indices are invalid
         return counter;
     }
 
@@ -129,9 +131,14 @@ namespace HelixSolver
 
         const uint32_t solutionsBufferSize = solutions.size();
         for ( uint32_t index = 0; index < solutionsBufferSize; ++index ) {
-            if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {
+            if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {      
+                if ( section.canUseIndices()) {
+                    fillPreciseSolution(section, solutions[index]);
+                    CDEBUG(DISPLAY_BASIC, "AdaptiveHoughKernel solution count: " << int(section.counts));
+                } // but for now it is always the simple one
                 solutions[index].pt  = 1./qOverPt;
                 solutions[index].phi = phi_0;
+
                 CDEBUG(DISPLAY_BASIC, "AdaptiveHoughKernel solution q/pt:" << qOverPt << " phi: " << phi_0);
                 CDEBUG(DISPLAY_SOLUTION_PAIR, qOverPt<<","<<phi_0<<","<<section.xBegin<<","<<section.yBegin<<","<<section.xBegin + section.xSize<<","<<section.yBegin + section.ySize<<","<<section.divisionLevel<<":SolutionPair");
                 // TODO calculate remaining parameters, eta, z, d0
@@ -140,5 +147,11 @@ namespace HelixSolver
         }
         INFO("Could not find place for solution!!");
     }
+
+    void  AdaptiveHoughGpuKernel::fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const {
+        // TODO complete it
+    }
+
+
 
 } // namespace HelixSolver

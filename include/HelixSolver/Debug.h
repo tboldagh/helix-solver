@@ -5,6 +5,7 @@ static constexpr bool DISPLAY_BASIC = 1;
 static constexpr bool DISPLAY_BOX_POSITION = 0;
 static constexpr bool DISPLAY_SOLUTION_PAIR = 1;
 static constexpr bool DISPLAY_RPHI = 1;
+#define PRINT_CDEBUG
 
 #define INFO(MSG) std::cout << " . " << MSG << std::endl;
 

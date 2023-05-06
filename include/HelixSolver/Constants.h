@@ -2,11 +2,14 @@
 #include <stdint.h>
 #include <cmath>
 static constexpr uint8_t THRESHOLD = 6;
+static constexpr uint8_t MAX_COUNT_PER_SECTION = 16;
+
+static_assert(THRESHOLD < MAX_COUNT_PER_SECTION, "Require threshold that is higher than max per cell");
+
 static constexpr float Q_OVER_PT_BEGIN  = -1;
 static constexpr float Q_OVER_PT_END = 1;
 static constexpr float PHI_BEGIN = -3.1416;
 static constexpr float PHI_END = 3.1416;
-static constexpr uint32_t MAX_Point_NUM = 100000;
 
 // Accumulator size parameters
 static constexpr float ACC_X_SIZE = PHI_END - PHI_BEGIN;
