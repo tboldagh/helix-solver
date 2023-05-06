@@ -5,7 +5,6 @@ static constexpr bool DISPLAY_BASIC = 0;
 static constexpr bool DISPLAY_BOX_POSITION = 0;
 static constexpr bool DISPLAY_SOLUTION_PAIR = 1;
 static constexpr bool DISPLAY_RPHI = 1;
-#define PRINT_CDEBUG
 
 #define INFO(MSG) std::cout << " . " << MSG << std::endl;
 
@@ -13,6 +12,7 @@ static constexpr bool DISPLAY_RPHI = 1;
 #ifdef USE_SYCL
     "Can not use DEBUG and other macros when building SYCL"
 #endif
+
 #define DEBUG(MSG) std::cout << " ... " << MSG << std::endl;
 #else
 #define DEBUG(MSG)

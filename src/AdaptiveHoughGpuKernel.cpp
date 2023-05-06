@@ -53,7 +53,7 @@ namespace HelixSolver
         if (std::fabs(1./section.yBegin) > MAX_PT || std::fabs(1./section.yBegin + section.ySize) > MAX_PT)
             return;
 
-        const uint16_t count = countHits(THRESHOLD, section);
+        const uint16_t count = countHits(section);
         CDEBUG(DISPLAY_BASIC, "count of lines in region x:" << section.xBegin
             << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
         if ( count < THRESHOLD )
