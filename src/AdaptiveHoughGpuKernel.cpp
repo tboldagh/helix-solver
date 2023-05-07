@@ -94,6 +94,18 @@ namespace HelixSolver
         // here we can improve by knowing over which Points to iterate (i.e. indices of measurements), this is related to geometry
         // this can be stored in section object maybe???
 
+        // logic that will quickly check if there are any solutions in this section is as follows
+        // we order the solutions at the left and right, i.e. if the order is the same it means no two lines cross
+        // and the solution is not there
+        struct Sol {
+            uint32_t index;
+            double value;   // TODO see is float is not enough
+            bool operator<( const Sol& rhs) const { return value < rhs.value; }
+        };
+        Sol solAtBegin[MAX_COUNT_PER_SECTION];
+        Sol solAtEnd[MAX_COUNT_PER_SECTION];
+
+
         const uint32_t maxIndex = rs.size();
         for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index)
         {
@@ -106,10 +118,26 @@ namespace HelixSolver
             if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
             {
                 section.indices[counter] = index;
+                solAtBegin[counter] = {index, yLineAtBegin};
+                solAtEnd[counter] = {index, yLineAtEnd};                
                 counter++;
             }
         }
         section.counts =  counter + 1 == MAX_COUNT_PER_SECTION ? 0 : counter; // setting this counter to 0 == indices are invalid
+        if ( DO_LINE_CROSS_FILTERING ) {
+            // sort the solutions
+            // TODO verify if SYCL needs different code (likely so)
+            std::sort(std::begin(solAtBegin), std::end(solAtBegin));
+            std::sort(std::begin(solAtEnd), std::end(solAtEnd));
+            for ( uint16_t i =0 ; i < counter; ++i ) {
+                if ( solAtBegin[i].index != solAtEnd[i].index ) {
+                    DEBUG("AdaptiveHoughKernel Reordering at the ends, there is a solution in this section");
+                    return counter;
+                }
+            }
+            DEBUG("AdaptiveHoughKernel Ordering at ends is the same, no solution in this section");
+            return 0;
+        }
         return counter;
     }
 
