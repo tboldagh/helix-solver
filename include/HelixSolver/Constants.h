@@ -30,3 +30,5 @@ static constexpr uint32_t MAX_SECTIONS_BUFFER_SIZE = 40; // need to be checked e
 // Additional parameters
 static constexpr float MAGNETIC_INDUCTION = 2.0;
 static constexpr float INVERSE_A = 1.0/3.0e-4;
+
+static constexpr bool DO_LINE_CROSS_FILTERING = false;

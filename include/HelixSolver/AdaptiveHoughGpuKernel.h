@@ -36,6 +36,7 @@ namespace HelixSolver
         void addSolution(const AccumulatorSection& section) const;
         void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
 
+
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;
         SolutionsWriteAccessor solutions;
