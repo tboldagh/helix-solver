@@ -21,4 +21,20 @@ target_link_libraries(AccumulatorSectionTest
   GTest::GTest)
 target_include_directories(AccumulatorSectionTest PRIVATE ../include)
 
-  add_test(AccumulatorSectionTest_getst AccumulatorSectionTest)  
+add_test(AccumulatorSectionTest_getst AccumulatorSectionTest)  
+
+
+add_executable(
+  ZPhiPartitioningTest
+  ZPhiPartitioningTestSuite.cpp
+  ../src/ZPhiPartitioning.cpp
+)
+
+target_link_libraries(ZPhiPartitioningTest
+ PRIVATE
+  GTest::GTest)
+target_include_directories(ZPhiPartitioningTest PRIVATE ../include)
+
+add_test(ZPhiPartitioningTest_getst ZPhiPartitioningTest)  
+
+

@@ -46,7 +46,6 @@ TEST(PhiSuite, PhiWrappingAroundPI) {
   ASSERT_FALSE(wedge.in_wedge_r_phi_z(1, -3, 0));
 }
 
-
 // TEST(RZSuite, RightTilted) {
 //   Wedge wedge(Reg({0, 3.1415}), Reg({0, 20}), Reg({3, 1}) );
 //   std::cout << "Right\n";
@@ -59,13 +58,12 @@ TEST(PhiSuite, PhiWrappingAroundPI) {
 //   ASSERT_FALSE(wedge.in_wedge_r_phi_z(1, 1, -20));
 // }
 
-
 TEST(RZSuite, LeftTilted) {
   Wedge wedge(Reg({0, 3.1415}), Reg({0, 20}), Reg({-3, 1}) );
-  std::cout << "Left\n";
-  std::cout << "phi " << wedge.m_phi.center << " "  << wedge.m_phi.width << std::endl;
-  std::cout << "left " << wedge.m_aleft << " "  << wedge.m_bleft << std::endl;
-  std::cout << "right " << wedge.m_aright << " "  << wedge.m_bright << std::endl;
+  // std::cout << "Left\n";
+  // std::cout << "phi " << wedge.m_phi.center << " "  << wedge.m_phi.width << std::endl;
+  // std::cout << "left " << wedge.m_aleft << " "  << wedge.m_bleft << std::endl;
+  // std::cout << "right " << wedge.m_aright << " "  << wedge.m_bright << std::endl;
 
   ASSERT_FALSE(wedge.in_wedge_r_phi_z(1, 3.14, 20));
   // ASSERT_TRUE(wedge.in_wedge_r_phi_z(1, -3.14, 0));
@@ -91,7 +89,13 @@ TEST(RZSuite, Gen) {
 }
 
 
-
-
-
+TEST(SplitSuite, One) {
+  // Reg region(float min, float max, uint8_t index, uint8_t splits );
+  auto r1 = region(-3, 3, 0, 5);
+  ASSERT_FLOAT_EQ(r1.width, 0.5*6./5.);
+  ASSERT_FLOAT_EQ(r1.center, -3. + 0.5*6./5.);
+  auto r4 = region(-3, 3, 4, 5);
+  ASSERT_FLOAT_EQ(r4.width, 0.5*6./5.);
+  ASSERT_FLOAT_EQ(r4.center, 3. - 0.5*6./5.);
+}
 } // namespace HelixSolver

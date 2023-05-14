@@ -44,9 +44,7 @@ struct Wedge {
      * @brief returns true if the the point given as an argument is above bottom line
      */
     bool above(float r, float z) const;
-
-
 };
 
-
+Reg region(float min, float max, uint8_t index, uint8_t splits );
 

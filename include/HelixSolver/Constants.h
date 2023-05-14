@@ -22,10 +22,14 @@ static constexpr float ACC_X_PRECISION = 0.001;
 static constexpr float ACC_Y_PRECISION = 0.01; // this is simplified approach, in reality it could be modified it depending on q/pt
 
 // Initial division parameters
-//static constexpr uint8_t ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL = 20; // this gives parallelism
-static constexpr uint8_t ADAPTIVE_KERNEL_INITIAL_DIVISIONS = 1; // this is easier to debug
+// static constexpr uint8_t ADAPTIVE_KERNEL_INITIAL_DIVISIONS = 20;
+static constexpr uint8_t REGIONS_IN_PHI = 10; // set to one for easier debugging
+static constexpr uint8_t REGIONS_IN_ETA = 9; //
+
 
 static constexpr uint32_t MAX_SECTIONS_BUFFER_SIZE = 40; // need to be checked experimentally
+
+static constexpr uint16_t MAX_SP_PER_REGION = 30000; // will need to reduce it depending on number of splits
 
 // Additional parameters
 static constexpr float MAGNETIC_INDUCTION = 2.0;

@@ -31,13 +31,22 @@ namespace HelixSolver
         SYCL_EXTERNAL void operator()(Index2D idx) const;
 
     private:
-        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight) const;
-        uint8_t countHits(AccumulatorSection &section) const;
-        void addSolution(const AccumulatorSection& section) const;
-        void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
+        // data structure for region data
+        struct RegionData {
+            float one_over_RA[MAX_SP_PER_REGION];
+            float phi[MAX_SP_PER_REGION];
+            // TODO add z as well or index to the measurement in global memory
+            uint16_t spInRegion = 0;
+        };
+
+        void fillAccumulatorSection(const RegionData& data, AccumulatorSection *sectionsStack, uint8_t &sectionsHeight) const;
+        uint8_t countHits(const RegionData& data, AccumulatorSection &section) const;
+        void addSolution(const RegionData& data, const AccumulatorSection& section) const;
+        void fillPreciseSolution(const RegionData& data, const AccumulatorSection& section, SolutionCircle& s) const;
 
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;
+        FloatBufferReadAccessor zs;
         SolutionsWriteAccessor solutions;
     };
 

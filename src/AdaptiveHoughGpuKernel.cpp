@@ -4,11 +4,14 @@
 #endif
 #include "HelixSolver/Debug.h"
 
+#include "HelixSolver/ZPhiPartitioning.h"
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
+
 
 namespace HelixSolver
 {
-    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : rs(rs), phis(phis), solutions(solutions)
+    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor zs, SolutionsWriteAccessor solutions) 
+        : rs(rs), phis(phis), zs(zs), solutions(solutions)
     {
         CDEBUG(DISPLAY_BASIC, ".. AdaptiveHoughKernel instantiated with " << rs.size() << " measurements ");
     }
@@ -17,15 +20,44 @@ namespace HelixSolver
     {
         CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel initiated for subregion " << idx[0] << " " << idx[1]);
 
-        constexpr float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-        constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        const uint16_t phiRegionIndex = idx[0]; 
+        // TODO test if we need to widen phi a bit
+        const Reg phiRegion = region(-3.1415, 3.1415, phiRegionIndex, REGIONS_IN_PHI);
+        ASSURE_THAT(phiRegionIndex < REGIONS_IN_PHI, "overrun in phi index, likely confused dimensions");
+        DEBUG("... phi Region " << phiRegion.center << " +- " << phiRegion.width);
+
+        const uint16_t etaRegionIndex = idx[1];        
+        const Reg etaRegion = region(-3, 3, etaRegionIndex, REGIONS_IN_ETA);
+        ASSURE_THAT(etaRegionIndex < REGIONS_IN_ETA, "overrun in eta index, likely confused dimensions");
+        DEBUG("... eta Region " << etaRegion.center << " +- " << etaRegion.width);
+        Wedge region( phiRegion, Reg({-20, 20}  ), etaRegion); // +- 20 mm along z        
+        RegionData regionData;
+        {
+            uint16_t count = 0;
+            for ( uint16_t i = 0; i < rs.size(); ++i ) {
+                ASSURE_THAT(count < MAX_SP_PER_REGION, "Region memory not sufficient for SPs");
+                if ( region.in_wedge_r_phi_z( rs[i], phis[i], zs[i]) ) {
+                    regionData.one_over_RA[count] = INVERSE_A/(rs[i]);
+                    regionData.phi[count] = phis[i];
+                    count++;     
+                }
+            }
+            regionData.spInRegion = count;
+        }
+        DEBUG("Count of SP per region: " << regionData.spInRegion << " all SP " << rs.size() 
+                << " fraction:" << static_cast<double>(regionData.spInRegion)/rs.size());
+
+        // TODO rework splitting into pt (likely eliminate further splitting in phi)                
+        // constexpr float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        // constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        constexpr float INITIAL_X_SIZE = ACC_X_SIZE;
+        constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE;
 
         const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
         const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
         CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << INITIAL_X_SIZE
                                           << " y: " << yBegin << " ysz: " << INITIAL_Y_SIZE);
 
-        // we need here a limited set of Points
 
         // the size os somewhat arbitrary, for regular algorithm dividing into 4 sub-sections it defined by the depth allowed
         // but for more flexible algorithms that is less predictable
@@ -38,19 +70,19 @@ namespace HelixSolver
 
         // scan this region until there is no section to process (i.e. size, initially 1, becomes 0)
         while (sectionsBufferSize) {
-            fillAccumulatorSection(sections, sectionsBufferSize);
+            fillAccumulatorSection(regionData, sections, sectionsBufferSize);
         }
 
     }
 
-    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint8_t &sectionsBufferSize) const
+    void AdaptiveHoughGpuKernel::fillAccumulatorSection( const RegionData & data, AccumulatorSection *sections, uint8_t &sectionsBufferSize) const
     {
         CDEBUG(DISPLAY_BASIC, "Regions buffer depth " << static_cast<int>(sectionsBufferSize));
         // pop the region from the top of sections buffer
         sectionsBufferSize--;
         AccumulatorSection section = sections[sectionsBufferSize]; // copy section, it will be modified, TODO consider not to copy
 
-        const uint16_t count = countHits(section);
+        const uint16_t count = countHits(data, section);
         CDEBUG(DISPLAY_BASIC, "count of lines in region x:" << section.xBegin
             << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
         if ( count < THRESHOLD )
@@ -79,12 +111,12 @@ namespace HelixSolver
             ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in y split)");
             sectionsBufferSize += 2;
         } else { // no more splitting, we have a solution
-            addSolution(section);
+            addSolution(data, section);
         }
 
     }
 
-    uint8_t AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section) const
+    uint8_t AdaptiveHoughGpuKernel::countHits(const RegionData& data, AccumulatorSection &section) const
     {
         const double xEnd = section.xBegin + section.xSize;
         const double yEnd = section.yBegin + section.ySize;
@@ -94,14 +126,13 @@ namespace HelixSolver
         // here we can improve by knowing over which Points to iterate (i.e. indices of measurements), this is related to geometry
         // this can be stored in section object maybe???
 
-        const uint32_t maxIndex = rs.size();
-        for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index)
+        const uint16_t maxIndex = data.spInRegion;
+        for (uint16_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index)
         {
-            const float r = rs[index];
-            const float inverse_r = 1.0/r;
-            const float phi = phis[index];
-            const double yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi);
-            const double yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi);
+            const float inverse_r = data.one_over_RA[index];
+            const float phi = data.phi[index];
+            const double yLineAtBegin  = inverse_r * (section.xBegin - phi);
+            const double yLineAtEnd    = inverse_r * (xEnd - phi);
 
             if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
             {
@@ -113,7 +144,7 @@ namespace HelixSolver
         return counter;
     }
 
-    void AdaptiveHoughGpuKernel::addSolution(const AccumulatorSection& section) const
+    void AdaptiveHoughGpuKernel::addSolution(const RegionData& data, const AccumulatorSection& section) const
     {
         const double qOverPt = section.yBegin + 0.5 * section.ySize;
         const double phi_0 = section.xBegin + 0.5 * section.xSize;
@@ -133,7 +164,7 @@ namespace HelixSolver
         for ( uint32_t index = 0; index < solutionsBufferSize; ++index ) {
             if ( solutions[index].phi == SolutionCircle::INVALID_PHI ) {      
                 if ( section.canUseIndices()) {
-                    fillPreciseSolution(section, solutions[index]);
+                    fillPreciseSolution(data, section, solutions[index]);
                     CDEBUG(DISPLAY_BASIC, "AdaptiveHoughKernel solution count: " << int(section.counts));
                 } // but for now it is always the simple one
                 solutions[index].pt  = 1./qOverPt;
@@ -148,7 +179,7 @@ namespace HelixSolver
         INFO("Could not find place for solution!!");
     }
 
-    void  AdaptiveHoughGpuKernel::fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const {
+    void  AdaptiveHoughGpuKernel::fillPreciseSolution(const RegionData& data, const AccumulatorSection& section, SolutionCircle& s) const {
         // TODO complete it
     }
 

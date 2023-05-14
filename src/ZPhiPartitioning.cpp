@@ -21,12 +21,12 @@ float phi_dist ( float phi1, float phi2 ) {
 }
 
 
-Wedge::Wedge( Reg p, Reg z, Reg eta) 
-    : m_phi(p) {
-    ASSURE_THAT( p.width> 0.1, "Wedge is very narrow in phi < 0.1, not good idea")
+Wedge::Wedge( Reg phi, Reg z, Reg eta) 
+    : m_phi(phi) {
+    ASSURE_THAT( phi.width> 0.1, "Wedge is very narrow in phi < 0.1, not good idea")
     ASSURE_THAT( eta.width > 0.1, "Wedge is very narrow in eta < 0.1, not good idea (also do not support negative widths)")
-    ASSURE_THAT( std::fabs( eta.center + eta.width)> 0.01, "Wedge does not support eta + eta width == 0")
-    ASSURE_THAT( std::fabs( eta.center - eta.width)> 0.01, "Wedge does not support eta - eta width == 0")
+    ASSURE_THAT( std::fabs( eta.center + eta.width)> 0.01, "Wedge does not support eta + (eta width) ~= 0")
+    ASSURE_THAT( std::fabs( eta.center - eta.width)> 0.01, "Wedge does not support eta - (eta width) ~= 0")
     m_aleft = std::tan( 2.0 * std::atan( std::exp( - (eta.center-eta.width))));
     m_aright = std::tan( 2.0 * std::atan( std::exp( - (eta.center+eta.width))));
     m_bleft = - m_aleft/(z.center - z.width);
@@ -52,7 +52,12 @@ bool Wedge::in_wedge_r_phi_z( float r, float phi, float z ) const {
     }
     ASSURE_THAT( true, "Strange position of the point, does not fit any wedge definition");
     return false;
-
 }
 
 
+
+
+Reg region(float min, float max, uint8_t index, uint8_t splits ) {
+  float width = (max-min)/splits;
+  return {min + width*index + 0.5f*width, 0.5f*width};
+}

@@ -84,8 +84,8 @@ namespace HelixSolver
     // in pure CPU code we do not wait for anything
     solutions = std::make_unique<std::vector<SolutionCircle>>(MAX_SOLUTIONS);
     AdaptiveHoughGpuKernel kernel(*eventBuffer->getRBuffer(), *eventBuffer->getPhiBuffer(), *eventBuffer->getZBuffer(), *solutions);
-    for ( uint8_t div1 = 0; div1 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div1 ) {
-        for ( uint8_t div2 = 0; div2 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div2 ) {
+    for ( uint8_t div1 = 0; div1 < REGIONS_IN_PHI; ++div1 ) {
+        for ( uint8_t div2 = 0; div2 < REGIONS_IN_ETA; ++div2 ) {
             kernel({div1, div2});
         }
     }
