@@ -18,11 +18,12 @@ public:
   int divisionLevel = 0; // number of divisions needed from the original acc
   short indices[MAX_COUNT_PER_SECTION];
   uint8_t counts = 0;
+  int8_t OUT_OF_RANGE_COUNTS = -100;
   inline bool canUseIndices() const { return counts != 0; }
 
   AccumulatorSection bottomLeft(float xFraction = 0.5,
                                 float yFraction = 0.5) const {
-                                    return AccumulatorSection( 
+                                    return AccumulatorSection(
                                         xSize*xFraction,
                                         ySize*yFraction,
                                         xBegin,
@@ -31,7 +32,7 @@ public:
                                 }
   AccumulatorSection topLeft(float xFraction = 0.5,
                              float yFraction = 0.5) const {
-                                    return AccumulatorSection( 
+                                    return AccumulatorSection(
                                         xSize*xFraction,
                                         ySize*yFraction,
                                         xBegin,
@@ -40,7 +41,7 @@ public:
                              }
   AccumulatorSection topRight(float xFraction = 0.5,
                               float yFraction = 0.5) const {
-                                    return AccumulatorSection( 
+                                    return AccumulatorSection(
                                         xSize*xFraction,
                                         ySize*yFraction,
                                         xBegin+xSize-xSize*xFraction,
@@ -50,7 +51,7 @@ public:
                               }
   AccumulatorSection bottomRight(float xFraction = 0.5,
                                  float yFraction = 0.5) const {
-                                    return AccumulatorSection( 
+                                    return AccumulatorSection(
                                         xSize*xFraction,
                                         ySize*yFraction,
                                         xBegin+xSize-xSize*xFraction,

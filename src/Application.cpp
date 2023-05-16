@@ -211,7 +211,6 @@ namespace HelixSolver
                     Points[eventId]->push_back(Point{x, y, z, layer});
                     CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
                 }
-
             }
         }
 
@@ -262,6 +261,7 @@ namespace HelixSolver
                 outputTree->Fill();
             }
         }
+        DEBUG("Output data saved to file " + path+".root");
         f->Write();
         f->Close();
     }

@@ -50,16 +50,27 @@ namespace HelixSolver
         sectionsBufferSize--;
         AccumulatorSection section = sections[sectionsBufferSize]; // copy section, it will be modified, TODO consider not to copy
 
-        if (std::fabs(1./section.yBegin) > MAX_PT || std::fabs(1./section.yBegin + section.ySize) > MAX_PT)
-            return;
+        // neccesary when applying pt_precision as exit-loop condition
+        //if (std::fabs(1./section.yBegin) > MAX_PT || std::fabs(1./section.yBegin + section.ySize) > MAX_PT)
+        //    return;
 
-        const uint16_t count = countHits(section);
+        // if we are sufficently far in division algorithm, cells can be rejected based also on the condition
+        // none of the lines intersects within the cell boundaries,
+        // countHits_checkOrder checks that condition
+        uint16_t count{};
+        if (section.divisionLevel < THRESHOLD_DIVISION_LEVEL_COUNT_HITS_CHECK_ORDER){
+            count = countHits(section);
+        } else count = countHits_checkOrder(section);
+
         CDEBUG(DISPLAY_BASIC, "count of lines in region x:" << section.xBegin
             << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
         if ( count < THRESHOLD )
             return;
 
+        // can be used to determine exit-loop condition based on pt_precision ->
+        // solves the problem of strongly quantized pt for higher values of pt
         double section_pt_precision{};
+        /*
         if (section.yBegin == 0){
             //section_pt_precision = 2 * (1./(std::fabs(section.yBegin) + 0.5 * section.ySize) - 1./(section.yBegin + section.ySize));
             section_pt_precision = 100;
@@ -69,8 +80,9 @@ namespace HelixSolver
         } else {
             section_pt_precision = 1./std::fabs(section.yBegin) - 1./(std::fabs(section.yBegin) + section.ySize);
         }
+        */
 
-        //section_pt_precision = section.ySize;
+        section_pt_precision = section.ySize;
         if ( section.xSize > ACC_X_PRECISION && section_pt_precision > ACC_PT_PRECISION) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
             // by the order here we steer the direction of the search of image space
@@ -115,6 +127,78 @@ namespace HelixSolver
             const float r = rs[index];
             const float inverse_r = 1.0/r;
             const float phi = phis[index];
+            double yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi);
+            double yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi);
+
+            const double y_for_x_min_acc = inverse_r * INVERSE_A * (PHI_BEGIN - phi);
+            const double y_for_x_max_acc = inverse_r * INVERSE_A * (PHI_END - phi);
+
+            if (y_for_x_min_acc <= Q_OVER_PT_BEGIN && y_for_x_max_acc >= Q_OVER_PT_END){
+
+                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
+                {
+                    section.indices[counter] = index;
+                    counter++;
+                }
+            } else if (y_for_x_min_acc > Q_OVER_PT_BEGIN && y_for_x_min_acc < Q_OVER_PT_END){
+
+                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
+                {
+                    section.indices[counter] = index;
+                    counter++;
+                }
+
+                yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi) - 2 * M_PI * inverse_r * INVERSE_A;
+                yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi) - 2 * M_PI * inverse_r * INVERSE_A;
+
+                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
+                {
+                    section.indices[counter] = index;
+                    counter++;
+                }
+            } else if (y_for_x_max_acc < Q_OVER_PT_END && y_for_x_max_acc > Q_OVER_PT_BEGIN) {
+
+                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
+                {
+                    section.indices[counter] = index;
+                    counter++;
+                }
+
+                yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi) + 2 * M_PI * inverse_r * INVERSE_A;
+                yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi) + 2 * M_PI * inverse_r * INVERSE_A;
+
+                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
+                {
+                    section.indices[counter] = index;
+                    counter++;
+                }
+            }
+        }
+        section.counts =  counter + 1 == section.OUT_OF_RANGE_COUNTS ? 0 : counter; // setting this counter to 0 == indices are invalid
+        return counter;
+    }
+
+
+        uint8_t AdaptiveHoughGpuKernel::countHits_checkOrder(AccumulatorSection &section) const
+    {
+        const double xEnd = section.xBegin + section.xSize;
+        const double yEnd = section.yBegin + section.ySize;
+        uint16_t counter=0;
+        CDEBUG(DISPLAY_BOX_POSITION, section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<","<<section.divisionLevel<<":BoxPosition");
+
+        // here we can improve by knowing over which Points to iterate (i.e. indices of measurements), this is related to geometry
+        // this can be stored in section object maybe???
+
+        const uint32_t maxIndex = rs.size();
+        // 1st value will be coordinate of intersection point, the other is r of a given line
+        std::vector<std::pair<float, uint16_t>> cell_intersection_before;
+        std::vector<std::pair<float, uint16_t>> cell_intersection_after;
+
+        for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index)
+        {
+            const float r = rs[index];
+            const float inverse_r = 1.0/r;
+            const float phi = phis[index];
             const double yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi);
             const double yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi);
 
@@ -122,9 +206,61 @@ namespace HelixSolver
             {
                 section.indices[counter] = index;
                 counter++;
-            }
+
+                if (yLineAtBegin <= yEnd && yLineAtBegin >= section.yBegin){
+
+                cell_intersection_before.push_back(std::make_pair(1 + (yLineAtBegin - section.yBegin)/section.ySize, counter));
+                    } else {
+
+                        float xLineAtBegin = phi + section.yBegin / (inverse_r * INVERSE_A);
+                        cell_intersection_before.push_back(std::make_pair((section.xBegin + section.xSize - xLineAtBegin)/section.xSize, counter));
+                }
+
+                if (yLineAtEnd <= yEnd && yLineAtBegin >= section.yBegin){
+
+                    cell_intersection_after.push_back(std::make_pair((yLineAtBegin - section.yBegin)/section.ySize, counter));
+                } else {
+
+                    float xLineAtEnd = phi + (section.yBegin + section.ySize) / (inverse_r * INVERSE_A);
+                    cell_intersection_after.push_back(std::make_pair(1 + (section.xBegin + section.xSize - xLineAtEnd)/section.xSize, counter));
+                }
+            };
         }
-        section.counts =  counter + 1 == MAX_COUNT_PER_SECTION ? 0 : counter; // setting this counter to 0 == indices are invalid
+
+        if (counter < THRESHOLD){
+            return 0;
+        }
+
+        // the lines of code below check whether order of lines at the left and bottom boundary of cells is the same
+        // as for right and upper boundary of the cells, if they are not, the cell is rejected
+        sort(cell_intersection_before.begin(), cell_intersection_before.end());
+        sort(cell_intersection_after.begin(), cell_intersection_after.end());
+        //std::cout<<"here it also worker"<<std::endl;
+        //std::cout<<"\n"<<std::endl;
+        int8_t count_changes{};
+        for(int8_t intersection_index; intersection_index < counter; ++intersection_index){
+            if ((cell_intersection_before.at(intersection_index)).second != (cell_intersection_after.at(intersection_index)).second){
+            //    std::cout<< "Additional condition worked" << std::endl;
+
+                ++count_changes;
+
+                if (count_changes > 5){
+                    section.counts = counter;
+                    return counter;
+                }
+
+            }
+            //std::cout << int(intersection_index) << " " << (cell_intersection_before.at(intersection_index)).first << " " << (cell_intersection_before.at(intersection_index)).second << " " << (cell_intersection_after.at(intersection_index)).first << " " << (cell_intersection_after.at(intersection_index)).second << std::endl;
+        }
+
+        return 0;
+
+        //if (counter + 1 == MAX_COUNT_PER_SECTION){
+        //    std::runtime_error("Hits count in a cell is greater than size of an array!");
+        //}
+
+        section.counts =  counter + 1 == MAX_COUNT_PER_SECTION ? section.OUT_OF_RANGE_COUNTS : counter; // setting this counter to 0 == indices are invalid
+
         return counter;
     }
 
@@ -160,7 +296,7 @@ namespace HelixSolver
                 return;
             }
         }
-        std::runtime_error("Could not find place for solution!!");
+        ASSURE_THAT(false, "Could not find place for solution!!");
     }
 
     void  AdaptiveHoughGpuKernel::fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const {

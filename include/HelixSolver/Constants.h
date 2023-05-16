@@ -2,6 +2,9 @@
 #include <stdint.h>
 #include <cmath>
 static constexpr uint8_t THRESHOLD = 6;
+// if divisionLevel is greater then THRESHOLD_DIVISION_LEVEL_COUNT_HITS_CHECK_ORDER, the alternative function of
+// countHits (countHits_checkOrder) will be triggered. Currently it is best to avoid it (work in progress)
+static constexpr uint8_t THRESHOLD_DIVISION_LEVEL_COUNT_HITS_CHECK_ORDER = 111;
 static constexpr uint8_t MAX_COUNT_PER_SECTION = 16;
 
 static_assert(THRESHOLD < MAX_COUNT_PER_SECTION, "Require threshold that is higher than max per cell");
@@ -18,9 +21,9 @@ static constexpr float ACC_Y_SIZE = Q_OVER_PT_END - Q_OVER_PT_BEGIN;
 static constexpr uint32_t MAX_SOLUTIONS = 1000000; // an arbitrary size, need to get it experimentally (ideally configurable)
 
 // Precision of solution estimate -> criterion used for ending the loop
-static constexpr float ACC_X_PRECISION = 0.05;
-static constexpr float ACC_PT_PRECISION = 0.1; // this is simplified approach, in reality it could be modified it depending on q/pt
-static constexpr float MAX_PT = 30; // GeV
+static constexpr float ACC_X_PRECISION = 0.001;
+static constexpr float ACC_PT_PRECISION = 0.01; // this is simplified approach, in reality it could be modified it depending on q/pt
+//static constexpr float MAX_PT = 30; // GeV
 
 // Initial division parameters
 //static constexpr uint8_t ADAPTIVE_KERNEL_INITIAL_DIVISION_LEVEL = 20; // this gives parallelism
