@@ -91,7 +91,7 @@ namespace HelixSolver
 
         #ifdef MULTIPLY_EVENTS
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> newEvents = std::make_unique<std::vector<std::shared_ptr<Event>>>();
-        auto x = config["multiplyEvents"];
+
         for(unsigned int i = 0; i < config["multiplyEvents"]; i++)
         {
             for(auto event : *events)
