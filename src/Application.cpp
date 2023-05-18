@@ -78,9 +78,9 @@ namespace HelixSolver
 
         auto executionTimeEnd = std::chrono::high_resolution_clock::now();
         auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
-        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
+        auto elapsedTime_sec = round(float(elapsedTime) / 1e3) / 1e3;
+        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime_sec<<" seconds" );
 
-        printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
         saveSolutionsInRootFile(eventsAndSolutions, config["outputFile"].get<std::string>());
 
     }
@@ -116,9 +116,9 @@ namespace HelixSolver
 
         auto executionTimeEnd = std::chrono::high_resolution_clock::now();
         auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(executionTimeEnd - executionTimeStart).count();
-        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime<<" microseconds" );
+        auto elapsedTime_sec = round(float(elapsedTime) / 1e3) / 1e3;
+        INFO( "Computing "<<events->size()<<" events took "<<elapsedTime_sec<<" seconds" );
 
-        printEventsAndSolutionsToFile(eventsAndSolutions, config["outputFile"].get<std::string>());
         saveSolutionsInRootFile(eventsAndSolutions, config["outputFile"].get<std::string>());
 
     }
@@ -211,7 +211,6 @@ namespace HelixSolver
                     Points[eventId]->push_back(Point{x, y, z, layer});
                     CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
                 }
-
             }
         }
 
@@ -219,24 +218,6 @@ namespace HelixSolver
         for(auto& idAndPoints : Points)
             events->push_back(std::make_shared<Event>(idAndPoints.first, std::move(idAndPoints.second)));
         return events;
-    }
-
-    void Application::printEventsAndSolutionsToFile(const std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>>& eventsAndSolutions, const std::string& path)
-    {
-        std::ofstream outputFile(path+".txt");
-        for (const auto& eventAndSolution : *eventsAndSolutions)
-        {
-            outputFile << "EventId: " << eventAndSolution.first->getId() << "\n";
-
-            for (const SolutionCircle& solution : *eventAndSolution.second)
-            {
-                if ( solution.invalid() )
-                    break;
-                outputFile << "\t" << solution.pt << "\t" << solution.phi << std::endl;
-            }
-
-            outputFile << "\n";
-        }
     }
 
    void Application::saveSolutionsInRootFile(const std::unique_ptr<std::vector<ComputingWorker::EventSoutionsPair>>& eventsAndSolutions, const std::string& path) {
@@ -268,7 +249,7 @@ namespace HelixSolver
             {
                 if ( solution.invalid() )
                     break;
-                
+
                 phi = solution.phi;
                 pt = std::abs(solution.pt);
                 q =  solution.pt > 0  ? 1.0 : -1.0;
@@ -280,6 +261,7 @@ namespace HelixSolver
                 outputTree->Fill();
             }
         }
+        DEBUG("Output data saved to file " + path+".root");
         f->Write();
         f->Close();
     }

@@ -94,4 +94,3 @@ namespace HelixSolver
     }
 
 } // namespace HelixSolver
- 

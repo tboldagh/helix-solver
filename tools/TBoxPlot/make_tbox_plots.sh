@@ -16,3 +16,7 @@ filter RPhi
 echo "Producing plots"
 root -l -q  scripts/Create_Root_File.C
 echo "... done"
+
+rm data_BoxPosition.csv
+rm data_SolutionPair.csv
+rm data_RPhi.csv
