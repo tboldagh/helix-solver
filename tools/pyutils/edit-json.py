@@ -20,7 +20,7 @@ args = vars(ap.parse_args())
 
 import json
 inconfig = None
-with open(args["input"], "r") as infile: 
+with open(args["input"], "r") as infile:
     inconfig = json.load(infile)
 
 print(".. loaded JSON")
@@ -28,7 +28,7 @@ print(".. loaded JSON")
 
 
 def search(dictionary):
-    for k, v in dictionary.items():        
+    for k, v in dictionary.items():
         if isinstance(v, dict):
             print(".... looking into sub section ", k )
             found = search(v)
@@ -44,7 +44,7 @@ print(".... looking into top level section" )
 updated = search(inconfig)
 if updated:
     print(".. saving JSON ", args["output"])
-    with open(args["output"], "w") as outfile: 
+    with open(args["output"], "w") as outfile:
         json.dump(inconfig, outfile, indent=4)
 else:
     print(".. no update, error in the key name?")

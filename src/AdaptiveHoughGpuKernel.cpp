@@ -82,7 +82,13 @@ namespace HelixSolver
         }
         */
 
-        section_pt_precision = section.ySize;
+       if (!TO_DISPLAY_PRECISION_PAIR_ONCE){     // so that these values are displayed only once
+            DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " << ACC_X_PRECISION << ", ACC_PT_PRECISION = " << ACC_X_PRECISION);
+            DEBUG("AdaptiveHoughGpuKernel.cpp: &ACC_X_PRECISION = " << &ACC_X_PRECISION << ", &ACC_PT_PRECISION = " << &ACC_PT_PRECISION);
+       }
+       ++TO_DISPLAY_PRECISION_PAIR_ONCE;
+
+        section_pt_precision = section.xSize;
         if ( section.xSize > ACC_X_PRECISION && section_pt_precision > ACC_PT_PRECISION) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
             // by the order here we steer the direction of the search of image space
