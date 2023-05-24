@@ -6,6 +6,7 @@
 #include "HelixSolver/Debug.h"
 #include "HelixSolver/EventBuffer.h"
 #include "HelixSolver/AccumulatorSection.h"
+#include "HelixSolver/Options.h"
 
 #ifdef USE_SYCL
 #include <CL/sycl.hpp>
@@ -18,6 +19,7 @@ using Index2D = sycl::id<2>;
 using FloatBufferReadAccessor = const FloatBuffer &;
 using SolutionsWriteAccessor = std::vector<HelixSolver::SolutionCircle> &;
 using Index2D = std::array<int, 2>;
+using OptionsBuffer = const HelixSolver::Options&;
 #define SYCL_EXTERNAL
 #endif
 
@@ -26,7 +28,7 @@ namespace HelixSolver
     class AdaptiveHoughGpuKernel
     {
     public:
-        AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor z, SolutionsWriteAccessor solution);
+        AdaptiveHoughGpuKernel(OptionsBuffer o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor z, SolutionsWriteAccessor solution);
 
         SYCL_EXTERNAL void operator()(Index2D idx) const;
 
@@ -37,6 +39,7 @@ namespace HelixSolver
         void addSolution(const AccumulatorSection& section) const;
         void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
 
+        OptionsBuffer& opt;
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;
         SolutionsWriteAccessor solutions;
