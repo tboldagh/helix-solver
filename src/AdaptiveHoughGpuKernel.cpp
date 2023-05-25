@@ -19,6 +19,7 @@ namespace HelixSolver
 
         constexpr float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
         constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+        std::cout << "&ADAPTIVE_KERNEL_INITIAL_DIVISIONS" << ACC_X_SIZE <<std::endl;
 
         const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
         const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
@@ -49,6 +50,7 @@ namespace HelixSolver
         // pop the region from the top of sections buffer
         sectionsBufferSize--;
         AccumulatorSection section = sections[sectionsBufferSize]; // copy section, it will be modified, TODO consider not to copy
+        CDEBUG(DISPLAY_BOX_POSITION, section.xBegin<<","<<section.yBegin<<","<<section.xBegin + section.xSize<<","<<section.yBegin + section.ySize<<","<<section.divisionLevel<<":BoxPosition");
 
         // neccesary when applying pt_precision as exit-loop condition
         //if (std::fabs(1./section.yBegin) > MAX_PT || std::fabs(1./section.yBegin + section.ySize) > MAX_PT)
@@ -122,7 +124,6 @@ namespace HelixSolver
         const double xEnd = section.xBegin + section.xSize;
         const double yEnd = section.yBegin + section.ySize;
         uint16_t counter=0;
-        CDEBUG(DISPLAY_BOX_POSITION, section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<","<<section.divisionLevel<<":BoxPosition");
 
         // here we can improve by knowing over which Points to iterate (i.e. indices of measurements), this is related to geometry
         // this can be stored in section object maybe???

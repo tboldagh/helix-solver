@@ -1,5 +1,6 @@
 #include "HelixSolver/ComputingWorker.h"
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
+#include <iostream>
 
 namespace HelixSolver
 {
@@ -85,7 +86,9 @@ namespace HelixSolver
     solutions = std::make_unique<std::vector<SolutionCircle>>(MAX_SOLUTIONS);
     AdaptiveHoughGpuKernel kernel(*eventBuffer->getRBuffer(), *eventBuffer->getPhiBuffer(), *eventBuffer->getZBuffer(), *solutions);
     for ( uint8_t div1 = 0; div1 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div1 ) {
+        std::cout << "&ADAPTIVE_KERNEL_INITIAL_DIVISIONS" << &ADAPTIVE_KERNEL_INITIAL_DIVISIONS <<std::endl;
         for ( uint8_t div2 = 0; div2 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div2 ) {
+            std::cout << "div: " << std::to_string(div1) << " " << &div2 << std::endl;
             kernel({div1, div2});
         }
     }
