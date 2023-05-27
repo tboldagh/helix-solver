@@ -10,6 +10,7 @@
 #include <TTree.h>
 #include <stdexcept>
 #include <thread>
+nlohmann::json config;
 
 namespace HelixSolver
 {
@@ -23,10 +24,6 @@ namespace HelixSolver
 
         loadConfig(argv[1]);
 
-        ACC_X_PRECISION = config["x_precission"];
-        ACC_PT_PRECISION = config["y_precission"];
-        DEBUG("Application.cpp: ACC_X_PRECISION = " << ACC_X_PRECISION << ", ACC_PT_PRECISION = " << ACC_PT_PRECISION);
-        DEBUG("Application.cpp: &ACC_X_PRECISION = " << &ACC_X_PRECISION << ", &ACC_PT_PRECISION = " << &ACC_PT_PRECISION);
     }
 
     void Application::run()

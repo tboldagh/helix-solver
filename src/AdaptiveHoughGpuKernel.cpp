@@ -6,9 +6,11 @@
 
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
 
+
+
 namespace HelixSolver
 {
-    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : rs(rs), phis(phis), solutions(solutions)
+    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(OptionsBuffer o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : opt(o), rs(rs), phis(phis), solutions(solutions)
     {
         CDEBUG(DISPLAY_BASIC, ".. AdaptiveHoughKernel instantiated with " << rs.size() << " measurements ");
     }
@@ -83,13 +85,12 @@ namespace HelixSolver
         */
 
        if (!TO_DISPLAY_PRECISION_PAIR_ONCE){     // so that these values are displayed only once
-            DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " << ACC_X_PRECISION << ", ACC_PT_PRECISION = " << ACC_X_PRECISION);
-            DEBUG("AdaptiveHoughGpuKernel.cpp: &ACC_X_PRECISION = " << &ACC_X_PRECISION << ", &ACC_PT_PRECISION = " << &ACC_PT_PRECISION);
+            DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " << opt.ACC_X_PRECISION << ", ACC_PT_PRECISION = " << opt.ACC_PT_PRECISION);
        }
        ++TO_DISPLAY_PRECISION_PAIR_ONCE;
 
         section_pt_precision = section.xSize;
-        if ( section.xSize > ACC_X_PRECISION && section_pt_precision > ACC_PT_PRECISION) {
+        if ( section.xSize > opt.ACC_X_PRECISION && section_pt_precision > opt.ACC_PT_PRECISION) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
             // by the order here we steer the direction of the search of image space
             // it may be relevant depending on the data ordering??? to be testes
@@ -99,13 +100,13 @@ namespace HelixSolver
             sections[sectionsBufferSize + 3] = section.bottomRight();
             ASSURE_THAT( sectionsBufferSize + 3 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in 4 subregions split)");
             sectionsBufferSize += 4;
-        } else if ( section.xSize > ACC_X_PRECISION ) {
+        } else if ( section.xSize > opt.ACC_X_PRECISION ) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in x direction");
             sections[sectionsBufferSize]     = section.left();
             sections[sectionsBufferSize + 1] = section.right();
             ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in x split)");
             sectionsBufferSize += 2;
-        } else if ( section_pt_precision > ACC_PT_PRECISION ) {
+        } else if ( section_pt_precision > opt.ACC_PT_PRECISION ) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in y direction");
             sections[sectionsBufferSize]     = section.bottom();
             sections[sectionsBufferSize + 1] = section.top();
