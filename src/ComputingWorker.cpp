@@ -1,6 +1,8 @@
+#include <nlohmann/json.hpp>
 #include "HelixSolver/ComputingWorker.h"
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
-#include <iostream>
+#include "HelixSolver/Options.h"
+extern nlohmann::json config;
 
 namespace HelixSolver
 {
@@ -84,7 +86,10 @@ namespace HelixSolver
 #else
     // in pure CPU code we do not wait for anything
     solutions = std::make_unique<std::vector<SolutionCircle>>(MAX_SOLUTIONS);
-    AdaptiveHoughGpuKernel kernel(*eventBuffer->getRBuffer(), *eventBuffer->getPhiBuffer(), *eventBuffer->getZBuffer(), *solutions);
+    HelixSolver::Options opt;
+    opt.ACC_X_PRECISION = config["phi_precision"];
+    opt.ACC_PT_PRECISION = config["pt_precision"];
+    AdaptiveHoughGpuKernel kernel(opt, *eventBuffer->getRBuffer(), *eventBuffer->getPhiBuffer(), *eventBuffer->getZBuffer(), *solutions);
     for ( uint8_t div1 = 0; div1 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div1 ) {
         std::cout << "&ADAPTIVE_KERNEL_INITIAL_DIVISIONS" << &ADAPTIVE_KERNEL_INITIAL_DIVISIONS <<std::endl;
         for ( uint8_t div2 = 0; div2 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div2 ) {

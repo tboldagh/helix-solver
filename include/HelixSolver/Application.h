@@ -15,7 +15,6 @@ namespace HelixSolver
         void run();
 
     private:
-        nlohmann::json config;
 
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> loadEvents(const std::string& path) const;
         void runOnCpu() const;
