@@ -21,7 +21,6 @@ namespace HelixSolver
 
         constexpr float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
         constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-        std::cout << "&ADAPTIVE_KERNEL_INITIAL_DIVISIONS" << ACC_X_SIZE <<std::endl;
 
         const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
         const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
@@ -54,10 +53,6 @@ namespace HelixSolver
         AccumulatorSection section = sections[sectionsBufferSize]; // copy section, it will be modified, TODO consider not to copy
         CDEBUG(DISPLAY_BOX_POSITION, section.xBegin<<","<<section.yBegin<<","<<section.xBegin + section.xSize<<","<<section.yBegin + section.ySize<<","<<section.divisionLevel<<":BoxPosition");
 
-        // neccesary when applying pt_precision as exit-loop condition
-        //if (std::fabs(1./section.yBegin) > MAX_PT || std::fabs(1./section.yBegin + section.ySize) > MAX_PT)
-        //    return;
-
         // if we are sufficently far in division algorithm, cells can be rejected based also on the condition
         // none of the lines intersects within the cell boundaries,
         // countHits_checkOrder checks that condition
@@ -71,28 +66,12 @@ namespace HelixSolver
         if ( count < THRESHOLD )
             return;
 
-        // can be used to determine exit-loop condition based on pt_precision ->
-        // solves the problem of strongly quantized pt for higher values of pt
-        double section_pt_precision{};
-        /*
-        if (section.yBegin == 0){
-            //section_pt_precision = 2 * (1./(std::fabs(section.yBegin) + 0.5 * section.ySize) - 1./(section.yBegin + section.ySize));
-            section_pt_precision = 100;
-        } else if ((section.yBegin + section.ySize) == 0){
-            //section_pt_precision = 2 * (1./std::fabs(section.yBegin) - 1./(std::fabs(section.yBegin) + 0.5 * section.ySize));
-            section_pt_precision = 100;
-        } else {
-            section_pt_precision = 1./std::fabs(section.yBegin) - 1./(std::fabs(section.yBegin) + section.ySize);
-        }
-        */
-
        if (!TO_DISPLAY_PRECISION_PAIR_ONCE){     // so that these values are displayed only once
             DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " << opt.ACC_X_PRECISION << ", ACC_PT_PRECISION = " << opt.ACC_PT_PRECISION);
        }
        ++TO_DISPLAY_PRECISION_PAIR_ONCE;
 
-        section_pt_precision = section.xSize;
-        if ( section.xSize > opt.ACC_X_PRECISION && section_pt_precision > opt.ACC_PT_PRECISION) {
+        if ( section.xSize > opt.ACC_X_PRECISION && section.ySize > opt.ACC_PT_PRECISION) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
             // by the order here we steer the direction of the search of image space
             // it may be relevant depending on the data ordering??? to be testes
@@ -108,7 +87,7 @@ namespace HelixSolver
             sections[sectionsBufferSize + 1] = section.right();
             ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in x split)");
             sectionsBufferSize += 2;
-        } else if ( section_pt_precision > opt.ACC_PT_PRECISION ) {
+        } else if ( section.ySize > opt.ACC_PT_PRECISION ) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in y direction");
             sections[sectionsBufferSize]     = section.bottom();
             sections[sectionsBufferSize + 1] = section.top();
@@ -117,7 +96,6 @@ namespace HelixSolver
         } else { // no more splitting, we have a solution
             addSolution(section);
         }
-
     }
 
     uint8_t AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section) const

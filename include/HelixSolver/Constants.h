@@ -18,7 +18,7 @@ static constexpr float PHI_END = 3.1416;
 static constexpr float ACC_X_SIZE = PHI_END - PHI_BEGIN;
 static constexpr float ACC_Y_SIZE = Q_OVER_PT_END - Q_OVER_PT_BEGIN;
 
-static constexpr uint32_t MAX_SOLUTIONS = 1000000; // an arbitrary size, need to get it experimentally (ideally configurable)
+static constexpr uint32_t MAX_SOLUTIONS = 100000; // an arbitrary size, need to get it experimentally (ideally configurable)
 
 // Precision of solution estimate -> criterion used for ending the loop
 static int32_t TO_DISPLAY_PRECISION_PAIR_ONCE = 0;
