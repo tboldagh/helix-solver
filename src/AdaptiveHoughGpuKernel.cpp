@@ -6,9 +6,11 @@
 
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
 
+
+
 namespace HelixSolver
 {
-    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : rs(rs), phis(phis), solutions(solutions)
+    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(OptionsBuffer o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : opt(o), rs(rs), phis(phis), solutions(solutions)
     {
         CDEBUG(DISPLAY_BASIC, ".. AdaptiveHoughKernel instantiated with " << rs.size() << " measurements ");
     }
@@ -49,10 +51,7 @@ namespace HelixSolver
         // pop the region from the top of sections buffer
         sectionsBufferSize--;
         AccumulatorSection section = sections[sectionsBufferSize]; // copy section, it will be modified, TODO consider not to copy
-
-        // neccesary when applying pt_precision as exit-loop condition
-        //if (std::fabs(1./section.yBegin) > MAX_PT || std::fabs(1./section.yBegin + section.ySize) > MAX_PT)
-        //    return;
+        CDEBUG(DISPLAY_BOX_POSITION, section.xBegin<<","<<section.yBegin<<","<<section.xBegin + section.xSize<<","<<section.yBegin + section.ySize<<","<<section.divisionLevel<<":BoxPosition");
 
         // if we are sufficently far in division algorithm, cells can be rejected based also on the condition
         // none of the lines intersects within the cell boundaries,
@@ -67,23 +66,12 @@ namespace HelixSolver
         if ( count < THRESHOLD )
             return;
 
-        // can be used to determine exit-loop condition based on pt_precision ->
-        // solves the problem of strongly quantized pt for higher values of pt
-        double section_pt_precision{};
-        /*
-        if (section.yBegin == 0){
-            //section_pt_precision = 2 * (1./(std::fabs(section.yBegin) + 0.5 * section.ySize) - 1./(section.yBegin + section.ySize));
-            section_pt_precision = 100;
-        } else if ((section.yBegin + section.ySize) == 0){
-            //section_pt_precision = 2 * (1./std::fabs(section.yBegin) - 1./(std::fabs(section.yBegin) + 0.5 * section.ySize));
-            section_pt_precision = 100;
-        } else {
-            section_pt_precision = 1./std::fabs(section.yBegin) - 1./(std::fabs(section.yBegin) + section.ySize);
-        }
-        */
+       if (!TO_DISPLAY_PRECISION_PAIR_ONCE){     // so that these values are displayed only once
+            DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " << opt.ACC_X_PRECISION << ", ACC_PT_PRECISION = " << opt.ACC_PT_PRECISION);
+       }
+       ++TO_DISPLAY_PRECISION_PAIR_ONCE;
 
-        section_pt_precision = section.ySize;
-        if ( section.xSize > ACC_X_PRECISION && section_pt_precision > ACC_PT_PRECISION) {
+        if ( section.xSize > opt.ACC_X_PRECISION && section.ySize > opt.ACC_PT_PRECISION) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
             // by the order here we steer the direction of the search of image space
             // it may be relevant depending on the data ordering??? to be testes
@@ -93,13 +81,13 @@ namespace HelixSolver
             sections[sectionsBufferSize + 3] = section.bottomRight();
             ASSURE_THAT( sectionsBufferSize + 3 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in 4 subregions split)");
             sectionsBufferSize += 4;
-        } else if ( section.xSize > ACC_X_PRECISION ) {
+        } else if ( section.xSize > opt.ACC_X_PRECISION ) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in x direction");
             sections[sectionsBufferSize]     = section.left();
             sections[sectionsBufferSize + 1] = section.right();
             ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in x split)");
             sectionsBufferSize += 2;
-        } else if ( section_pt_precision > ACC_PT_PRECISION ) {
+        } else if ( section.ySize > opt.ACC_PT_PRECISION ) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in y direction");
             sections[sectionsBufferSize]     = section.bottom();
             sections[sectionsBufferSize + 1] = section.top();
@@ -108,7 +96,6 @@ namespace HelixSolver
         } else { // no more splitting, we have a solution
             addSolution(section);
         }
-
     }
 
     uint8_t AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section) const
@@ -116,7 +103,6 @@ namespace HelixSolver
         const double xEnd = section.xBegin + section.xSize;
         const double yEnd = section.yBegin + section.ySize;
         uint16_t counter=0;
-        CDEBUG(DISPLAY_BOX_POSITION, section.xBegin<<","<<section.yBegin<<","<<xEnd<<","<<yEnd<<","<<section.divisionLevel<<":BoxPosition");
 
         // here we can improve by knowing over which Points to iterate (i.e. indices of measurements), this is related to geometry
         // this can be stored in section object maybe???

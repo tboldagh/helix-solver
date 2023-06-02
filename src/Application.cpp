@@ -10,6 +10,7 @@
 #include <TTree.h>
 #include <stdexcept>
 #include <thread>
+nlohmann::json config;
 
 namespace HelixSolver
 {
@@ -22,6 +23,7 @@ namespace HelixSolver
         }
 
         loadConfig(argv[1]);
+
     }
 
     void Application::run()

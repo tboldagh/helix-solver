@@ -1,4 +1,4 @@
-void Reconstruction_Efficiency_Single_One_File(){
+void Reconstruction_Efficiency_Single(){
 
 // file names
     std::string truth_file_path =  "particles_initial/particles_initial_single_10k.root";
