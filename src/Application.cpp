@@ -201,7 +201,7 @@ namespace HelixSolver
         hitsTree->SetBranchAddress("z", &z);
 
         std::map<Event::EventId, std::unique_ptr<std::vector<Point>>> points;
-        auto excludeRZRegions = selector("excludeRZRegions");
+        auto inExcludedRZRegions = selector("excludeRZRegions");
 
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
@@ -210,7 +210,7 @@ namespace HelixSolver
             if( not config.contains("event") ||
                 (config.contains("event") && eventId == config["event"] ) ){  // to analyse only a single event add "event" property in config file
                 points.try_emplace(eventId, std::make_unique<std::vector<Point>>());
-                if ( not excludeRZRegions(x,y,z) ) {
+                if ( not inExcludedRZRegions(x,y,z) ) {
                     points[eventId]->push_back(Point{x, y, z, layer});
                     CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
                 }
