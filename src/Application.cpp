@@ -146,15 +146,16 @@ namespace HelixSolver
         }
     }
 
-    std::function<bool(float, float, float)> Application::selector() const {
-        // define selector, default one selects all points
-        if ( config.contains("excludeRZRegions") ) {
-            DEBUG("Nontrivial selector " << config["excludeRZRegions"]);
+    std::function<bool(float, float, float)> Application::selector(const std::string& settingName, bool defaultDecision) const {
+        // defaultDecisionine selector, default one selects all points
+        if ( config.contains(settingName) ) {
+            DEBUG("Nontrivial selector " << config[settingName]);
             struct region {float rmin, rmax, zmin, zmax; };
             std::vector<region> exclusionRegions;
-            for ( auto conf : config["excludeRZRegions"]) {
+            for ( auto conf : config[settingName]) {
                 exclusionRegions.emplace_back( region{conf[0], conf[1], conf[2], conf[3]} );
-                DEBUG("Will skip points from region: rmin: " << exclusionRegions.back().rmin
+                DEBUG("Will skip points from region: rmin: " 
+                        << exclusionRegions.back().rmin
                         << " rmax: " << exclusionRegions.back().rmax
                         << " zmin: " << exclusionRegions.back().zmin
                         << " zmax: " << exclusionRegions.back().zmax);
@@ -164,13 +165,13 @@ namespace HelixSolver
                 // check if the point belongs to any region
                 for ( auto region : exclusionRegions ) {
                     if ( region.rmin < r && r < region.rmax && region.zmin < z && z < region.zmax )
-                        return false;
+                        return true;
                 }
-                return true;
+                return false;
                 };
         }
         DEBUG("Selecting all points");
-        return []( float x, float y, float z) { return true; };
+        return [defaultDecision]( float x, float y, float z) { return defaultDecision; };
     }
 
     std::unique_ptr<std::vector<std::shared_ptr<Event>>> Application::loadEventsFromSpacepointsRootFile(const std::string& path) const
@@ -199,26 +200,41 @@ namespace HelixSolver
         hitsTree->SetBranchAddress("y", &y);
         hitsTree->SetBranchAddress("z", &z);
 
-        std::map<Event::EventId, std::unique_ptr<std::vector<Point>>> Points;
-        auto acceptPoint = selector();
+        std::map<Event::EventId, std::unique_ptr<std::vector<Point>>> points;
+        auto excludeRZRegions = selector("excludeRZRegions");
+
         for(int i = 0; hitsTree->LoadTree(i) >= 0; i++)
         {
             hitsTree->GetEntry(i);
 
             if( not config.contains("event") ||
                 (config.contains("event") && eventId == config["event"] ) ){  // to analyse only a single event add "event" property in config file
-                // TODO add handling of innermost layers (maybe drop, maybe load them separately, future work)
-                Points.try_emplace(eventId, std::make_unique<std::vector<Point>>());
-                if ( acceptPoint(x,y,z)) {
-                    Points[eventId]->push_back(Point{x, y, z, layer});
+                points.try_emplace(eventId, std::make_unique<std::vector<Point>>());
+                if ( not excludeRZRegions(x,y,z) ) {
+                    points[eventId]->push_back(Point{x, y, z, layer});
                     CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
                 }
             }
         }
-
+        // clean events from those having hits in undesired region
+        auto excludeEventsWithHitsInRZ = selector("excludeEventsWithHitsInRZ"); 
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
-        for(auto& idAndPoints : Points)
-            events->push_back(std::make_shared<Event>(idAndPoints.first, std::move(idAndPoints.second)));
+        for(auto& idAndPoints : points) {
+            bool takeIt = true;
+            for ( auto data: *idAndPoints.second ) {
+                if ( excludeEventsWithHitsInRZ(data.x, data.y, data.z) ) {
+                    DEBUG("Point in exclusion region, r:" <<  std::hypot(data.x, data.y) << " z:" << data.z << " will skip the event");
+                    takeIt = false;
+                    break;
+                }
+            }
+            if ( takeIt ) {
+                events->push_back(std::make_shared<Event>(idAndPoints.first, std::move(idAndPoints.second)));
+                DEBUG("Will use event");
+            } else {
+                DEBUG("Skipped event because it has hits in exclusion region");
+            }
+        }
         return events;
     }
 
