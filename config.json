@@ -14,6 +14,8 @@
     "R": 600,
     "c": 299792458,
     "threshold": 6,
+    "phi_precision": 0.001,
+    "pt_precision": 0.01,
     "main_accumulator_config": {
         "layers": 8,
         "x_dpi": 64,
@@ -24,8 +26,8 @@
         "y_end": 0.6
     },
     "comment_regions": "specification is rmin, rmax, zmin, zmax. Example of two regions: [[0, 150, -550, 550],[0, 200, -900, -600]]",
-    "excludeRZRegions": [[0, 150, -550, 550],[0, 200, -900, -600], [0, 200, 600, 900]],
-    "excludeEventsWithHitsInRZ": [[0, 200, -1600, -600], [0, 200, 600, 1600], [200,1200, -3000, -1200], [200,1200, 1200, 3000]],
+    "excludeRZRegions_skip": [[0, 150, -550, 550],[0, 200, -900, -600], [0, 200, 600, 900]],
+    "excludeEventsWithHitsInRZ_skip": [[0, 200, -1600, -600], [0, 200, 600, 1600], [200,1200, -3000, -1200], [200,1200, 1200, 3000]],
     "comment_excludeEventsWithHitsInRZ": "ODD specific: do not study events with hits in endcaps",
     "comment_excludeRZRegions": "ODD specific: remove 4 inner pixel barrel layers and 3 end-cap layers"
 }

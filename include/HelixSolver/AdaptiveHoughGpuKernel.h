@@ -38,6 +38,11 @@ namespace HelixSolver
         uint8_t countHits_checkOrder(AccumulatorSection &section) const;
         void addSolution(const AccumulatorSection& section) const;
         void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
+        bool lineInsideAccumulator(const float radius_inverse, const float phi) const;
+        float yLineAtBegin_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const;
+        float yLineAtEnd_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const;
+        bool isIntersectionWithinCell(const AccumulatorSection& section) const;
+        bool isSolutionWithinCell(const AccumulatorSection& section) const;
 
         OptionsBuffer& opt;
         FloatBufferReadAccessor rs;

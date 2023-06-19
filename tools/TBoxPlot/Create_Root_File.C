@@ -36,4 +36,16 @@ void Create_Root_File(){
 	hfile_R_Phi.Close();
 	}
 
+	// to get all the events ised in the procedure
+	ifstream file_Events("data_Events.csv");
+	if (file_Events.peek() != std::ifstream::traits_type::eof()){
+	TFile hfile_Events("hough_events.root","RECREATE","ROOT file containing sorted coordinates of accumulator cells");
+	TTree tree_Events("tree", "tree");
+	tree_Events.ReadFile("data_Events.csv", "event_id/I");
+
+	tree_Events.Fill();
+	tree_Events.Write();
+	hfile_Events.Close();
+	}
+
 }

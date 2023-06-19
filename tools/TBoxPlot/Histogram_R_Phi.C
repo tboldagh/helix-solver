@@ -1,7 +1,7 @@
 void Histogram_R_Phi(){
 
     // histogram of R and Phi
-    TFile *file  =  new TFile("root_file/hough_tree_R_Phi.root");
+    TFile *file  =  new TFile("hough_tree_files/hough_tree_RPhi.root");
     TTree *tree  =  (TTree*)file->Get("tree");
 
     float radius;
