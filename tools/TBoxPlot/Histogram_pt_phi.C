@@ -6,6 +6,9 @@ void Histogram_pt_phi(
     ){
 
 // initial, remove objects
+    std::string filename_hough = "detected-circles_artiArgumecle/detected-circles_single_10k_10_8.root";
+    std::string filename_truth = "particles_initial/particles_initial_single_10k.root";
+
     delete gROOT -> FindObject("canvas");
     delete gROOT -> FindObject("hist_pt_hough");
     delete gROOT -> FindObject("hist_phi_hough");
@@ -32,9 +35,6 @@ void Histogram_pt_phi(
 
 
 // open file
-    std::string filename_hough = "detected-circles.root";
-    std::string filename_truth = "fatras_particles_initial.root";
-
     TFile *file_hough = new TFile(filename_hough.c_str());
     TFile *file_truth = new TFile(filename_truth.c_str());
 

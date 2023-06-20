@@ -154,7 +154,7 @@ namespace HelixSolver
             std::vector<region> exclusionRegions;
             for ( auto conf : config[settingName]) {
                 exclusionRegions.emplace_back( region{conf[0], conf[1], conf[2], conf[3]} );
-                DEBUG("Will skip points from region: rmin: " 
+                DEBUG("Will skip points from region: rmin: "
                         << exclusionRegions.back().rmin
                         << " rmax: " << exclusionRegions.back().rmax
                         << " zmin: " << exclusionRegions.back().zmin
@@ -213,26 +213,28 @@ namespace HelixSolver
                 if ( not inExcludedRZRegions(x,y,z) ) {
                     points[eventId]->push_back(Point{x, y, z, layer});
                     CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
-                }
+                    //DEBUG("Accepted point, r: " << std::hypot(x,y) << ", z: " << z);
+                } //else DEBUG("Rejected point, r: " << std::hypot(x,y) << ", z: " << z);
             }
         }
         // clean events from those having hits in undesired region
-        auto excludeEventsWithHitsInRZ = selector("excludeEventsWithHitsInRZ"); 
+        auto excludeEventsWithHitsInRZ = selector("excludeEventsWithHitsInRZ");
         std::unique_ptr<std::vector<std::shared_ptr<Event>>> events = std::make_unique<std::vector<std::shared_ptr<Event>>>();
         for(auto& idAndPoints : points) {
             bool takeIt = true;
             for ( auto data: *idAndPoints.second ) {
                 if ( excludeEventsWithHitsInRZ(data.x, data.y, data.z) ) {
-                    DEBUG("Point in exclusion region, r:" <<  std::hypot(data.x, data.y) << " z:" << data.z << " will skip the event");
+                    //DEBUG("Point in exclusion region, r:" <<  std::hypot(data.x, data.y) << " z:" << data.z << " will skip the event");
                     takeIt = false;
                     break;
                 }
             }
             if ( takeIt ) {
                 events->push_back(std::make_shared<Event>(idAndPoints.first, std::move(idAndPoints.second)));
-                DEBUG("Will use event");
+                //DEBUG("Will use event");
+                CDEBUG(DISPLAY_OK_EVENTS, idAndPoints.first << ":Events");
             } else {
-                DEBUG("Skipped event because it has hits in exclusion region");
+                //DEBUG("Skipped event because it has hits in exclusion region");
             }
         }
         return events;

@@ -1,6 +1,6 @@
 void Precision_Optimization_Scatterplot(
     const Int_t divisionLevel_min      =  2,
-    const Int_t divisionLevel_max      =  13
+    const Int_t divisionLevel_max      =  14
 ){
 
     // initial lines
@@ -13,18 +13,20 @@ void Precision_Optimization_Scatterplot(
     const Int_t threshold = 6;
 
     // definition of names of file and trees used later
-    std::string spacepoints_file_name = "spacepoints/spacepoints_single_1k.root";
+    std::string spacepoints_file_name = "spacepoints/spacepoints_single_10k.root";
     std::string spacepoints_tree_name = "spacepoints";
 
-    std::string file_name_raw = "detected-circles_divisionLevel/detected-circles_single_1k_";
+    std::string file_name_raw = "detected-circles_article/detected-circles_single_10k_";
     std::string tree_name = "solutions";
 
     // histograms definition
     const Int_t n_bins_hist = divisionLevel_max - divisionLevel_min + 1;
-    TH2F *scatterplot_nsolutions    =   new TH2F("scatterplot_nsolutions", "Average number of solutions by p_{T} and #phi division level;#phi division level;p_{T} division level", n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5, n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5);
-    TH2F *scatterplot_percentage    =   new TH2F("scatterplot_percentage", "Percentage of reconstructed solutions by p_{T} and #phi division level;#phi division level;p_{T} division level", n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5, n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5);
-    TCanvas *canvas  =   new TCanvas("canvas", "canvas", 1100, 900);
+    TH2F *scatterplot_nsolutions    =   new TH2F("scatterplot_nsolutions", ";#varphi division level;q/p_{T} division level", n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5, n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5);
+    TH2F *scatterplot_percentage    =   new TH2F("scatterplot_percentage", ";#varphi division level;q/p_{T} division level", n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5, n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5);
+    TCanvas *canvas  =   new TCanvas("canvas", "canvas", 1200, 1200);
 	gStyle  ->  SetOptStat(0);
+  	gPad 	-> 	SetRightMargin(0.15);
+
 
     // acces data in file spacepoints
     std::unique_ptr<TFile> spacepoints_file(TFile::Open(spacepoints_file_name.c_str()));
@@ -53,7 +55,7 @@ void Precision_Optimization_Scatterplot(
         map_of_spacepoints[event_id_spacepoints] += 1;
     }
 
-    // check number of event, in which solutions could have possibly be found - numbe rof entries greater than threshold
+    // check number of event, in which solutions could have possibly be found - number of entries greater than threshold
     Int_t count_acceptable_events{};
     for (const auto & map_element : map_of_spacepoints){
 
@@ -114,6 +116,7 @@ void Precision_Optimization_Scatterplot(
             std::cout << "... qOverPt precision equal " << qOverPt_precision << " resulted in " << nentries << " solutions" << std::endl;
             std::cout << "... Number of reconstructed events: " << n_event_id << "/" << count_acceptable_events << std::endl;
 
+            count_acceptable_events = 2573;
             scatterplot_nsolutions -> Fill(divisionLevel_phi, divisionLevel_qOverPt, float(nentries)/(n_event_id * pileup_count));
             scatterplot_percentage -> Fill(divisionLevel_phi, divisionLevel_qOverPt, float(n_event_id) / count_acceptable_events);
         }

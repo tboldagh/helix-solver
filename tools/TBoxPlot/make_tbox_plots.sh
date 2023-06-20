@@ -13,6 +13,7 @@ function filter() {
 filter BoxPosition
 filter SolutionPair
 filter RPhi
+filter Events
 echo "Producing plots"
 root -l -q  scripts/Create_Root_File.C
 echo "... done"
@@ -20,3 +21,4 @@ echo "... done"
 rm data_BoxPosition.csv
 rm data_SolutionPair.csv
 rm data_RPhi.csv
+rm data_Events.csv
