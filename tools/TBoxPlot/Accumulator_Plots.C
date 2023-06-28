@@ -1,3 +1,7 @@
+#include <cmath>
+#include <iostream>
+#include <TCanvas.h>
+
 void Accumulator_Plots(
     const float Phi_min      =  -3.2,
 	const float Phi_max      =  3.2,
@@ -12,9 +16,9 @@ void Accumulator_Plots(
 	const bool DISPLAY_SOLUTIONS 			 = 1;
 	const bool DISPLAY_COUNTOUR_LINES 		 = 1;
 
-	const std::string filename_BoxPosition = "hough_tree_files/hough_tree_BoxPosition_event_9445.root";
-	const std::string filename_RPhi = "hough_tree_files/hough_tree_RPhi_event_9445.root";
-	const std::string filename_SolutionPair = "hough_tree_files/hough_tree_SolutionPair_event_9445.root";
+	const std::string filename_BoxPosition = "hough_tree_files/hough_tree_BoxPosition.root";
+	const std::string filename_RPhi = "hough_tree_files/hough_tree_RPhi.root";
+	const std::string filename_SolutionPair = "hough_tree_files/hough_tree_SolutionPair.root";
 
 	const std::string treename_BoxPosition = "tree";
 	const std::string treename_RPhi = "tree";

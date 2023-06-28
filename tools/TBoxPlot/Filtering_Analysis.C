@@ -1,3 +1,7 @@
+#include <cmath>
+#include <iostream>
+#include <TCanvas.h>
+
 void Filtering_Analysis(){
 
     // file names
@@ -5,7 +9,7 @@ void Filtering_Analysis(){
     // compared to default setting.
     // File hough_events.root contsint event_id which passed selection based on r and z regions.
 
-    std::string file_name_ending = "single_10k_count_changes_3_wider_range";
+    std::string file_name_ending = "test";
 
     std::string truth_file_path =  "../../../DATA/ODD_Single_muon_10k/particles_initial.root";
     std::string hough_file_path =  "detected-circles/detected-circles_single_10k_without_filtering_wider_range.root";
@@ -35,7 +39,7 @@ void Filtering_Analysis(){
     delete gROOT -> FindObject("hist_nsolutions_filtering");
 
     TCanvas *canvas1 = new TCanvas("canvas1", "canvas1", 12000, 12000);
-    //canvas1 -> Divide(4, 3);
+    canvas1 -> Divide(4, 3);
 
     const float min_hist_pt = 0.;
     const float max_hist_pt = 11.;
@@ -331,10 +335,11 @@ void Filtering_Analysis(){
     //teff_pt_np_filtering_ok_events -> Draw();
 
     //teff_pt_filtering_ok_events -> Draw();
-    hist_nsolutions_filtering -> Draw("HIST");
-/*
+    //hist_nsolutions_filtering -> Draw("HIST");
+
     // // q/pt
     // not filtered
+
     canvas1 -> cd(1);
     teff_pt_no_filtering_ok_events -> Draw();
 
@@ -369,7 +374,6 @@ void Filtering_Analysis(){
 
     canvas1 -> cd(8);
     hist_phi_filtering -> Draw("SCAT");
-*/
 
     // save the canvas to pdf file
     canvas1 -> SaveAs(pdf_file_name.c_str());
