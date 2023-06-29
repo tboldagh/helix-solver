@@ -66,6 +66,14 @@ else()
 endif()
 
 
+add_executable( spliter experimental/spliter.cpp src/ZPhiPartitioning.cpp )
+target_include_directories( spliter PRIVATE /usr/local/include/sycl/)
+target_link_libraries( spliter PRIVATE  sycl )
+target_compile_options(spliter PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
+target_link_options( spliter PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
+install( TARGETS spliter DESTINATION bin)
+
+
 
 
 FILE(GLOB TBoxScripts tools/TBoxPlot/*.C)

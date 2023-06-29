@@ -1,5 +1,6 @@
 #include <iostream>
 #include <numeric>
+#include <random>
 
 #include <sycl/sycl.hpp>
 
@@ -38,9 +39,20 @@ void devInfo(const sycl::queue &q) {
             << (dev.get_info<sycl::info::device::local_mem_type>() == sycl::info::local_mem_type::global ? "global":"")
             << std::endl;
 }
+static std::random_device rd;
+static std::mt19937 gen(rd());
+static std::uniform_real_distribution<> zDistribution(-3000, 3000);
+static std::uniform_real_distribution<> phiDistribution(-M_PI, M_PI);
+static std::uniform_real_distribution<> rDistribution(200, 1000);
 
-void fill(std::vector<float> &x, float start=0) {
-  std::iota(x.begin(), x.end(), start);
+void fill(std::vector<float> &x, std::vector<float> &y, std::vector<float> &z ) {
+  for ( int i = 0; i < x.size(); ++i ) {
+    z[i]=zDistribution(gen);
+    const double r = rDistribution(gen);
+    const double phi = phiDistribution(gen);
+    
+  }
+  std::uniform_int_distribution<> distrib(1, 6);
   std::cout << "FILLES dummy data of size " << x.size() << std::endl;
 }
 
@@ -52,10 +64,10 @@ constexpr short etaSplit = 7;
 constexpr short totSplit = etaSplit*phiSplit;
 
 
-int belongs_to(float value, int phi_group_id) {
-  constexpr int range = inDataSize/phiSplit;
-  return (phi_group_id*range < value && value < (phi_group_id+1)*range) ? 1 : 0;
-}
+// int belongs_to(float value, int phi_group_id) {
+//   constexpr int range = inDataSize/phiSplit;
+//   return (phi_group_id*range < value && value < (phi_group_id+1)*range) ? 1 : 0;
+// }
 
 // int index(int a) {
 //   return a * etaSplit + b;
@@ -68,7 +80,7 @@ int main() {
   std::vector<float> y(inDataSize, 0);
   std::vector<float> z(inDataSize, 0);
   std::vector<int> count(totSplit, 0);
-  fill(x);
+  fill(x,y,z);
   sycl::buffer<float, 1> xBuffer(x.data(), x.size());
   sycl::buffer<float, 1> yBuffer(y.data(), y.size());
   sycl::buffer<float, 1> zBuffer(z.data(), z.size());
@@ -99,15 +111,15 @@ int main() {
       float b = y[0];
       float c = z[0];
 
-      // region.parallel_for_work_item( sycl::range<1>(1024), [&](sycl::h_item<1> item) {
-      //   // out << "WI ID region " << " " << region[0] << " localID " << item.get_logical_local_id()[0] << " " << item.get_logical_local_range()[0] << "\n";
-      //   const int shift = item.get_logical_local_id()[0];
-      //   const int step = item.get_logical_local_range()[0];
-      //   for ( int i = shift; i < x.size(); i += step) {
-      //     //  lcount += belongs_to(x[i]+y[i]+z[i], region[0]);
-      //     lcount += item.get_logical_local_id()[0];
-      //   }
-      // });
+      region.parallel_for_work_item( sycl::range<1>(256), [&](sycl::h_item<1> item) {
+        // out << "WI ID region " << " " << region[0] << " localID " << item.get_logical_local_id()[0] << " " << item.get_logical_local_range()[0] << "\n";
+        const int shift = item.get_logical_local_id()[0];
+        const int step = item.get_logical_local_range()[0];
+        for ( int i = shift; i < x.size(); i += step) {
+          //  lcount += belongs_to(x[i]+y[i]+z[i], region[0]);
+          lcount += item.get_logical_local_id()[0];
+        }
+      });
       countA[region[0]] =  lcount;
       // out << "count in ID " << " " << region[0] << " " << static_cast<int>(lcount) << "\n";
     }); // EOF parallel_for_work_group
