@@ -5,10 +5,12 @@ static constexpr uint8_t THRESHOLD = 6;
 // if divisionLevel is greater then THRESHOLD_DIVISION_LEVEL_COUNT_HITS_CHECK_ORDER, the alternative function of
 // countHits (countHits_checkOrder) will be triggered. Currently it is best to avoid it (work in progress)
 static constexpr uint8_t THRESHOLD_DIVISION_LEVEL_COUNT_HITS_CHECK_ORDER = 10;
+static constexpr bool USE_GAUSS_FILTERING = 1;
 static constexpr uint8_t MIN_COUNT_CHANGES = 3;
 static constexpr uint8_t N_SIGMA_PHI = 3;
-static constexpr uint8_t N_SIGMA_GAUSS = 3;
+static constexpr uint8_t N_SIGMA_GAUSS = 2;
 static constexpr uint8_t MAX_COUNT_PER_SECTION = 16;
+static constexpr float STDEV_CORRECTION = 0.6;
 
 static_assert(THRESHOLD < MAX_COUNT_PER_SECTION, "Require threshold that is higher than max per cell");
 

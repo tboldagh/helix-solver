@@ -6,6 +6,7 @@ static constexpr bool DISPLAY_BOX_POSITION = 0;
 static constexpr bool DISPLAY_SOLUTION_PAIR = 0;
 static constexpr bool DISPLAY_RPHI = 0;
 static constexpr bool DISPLAY_OK_EVENTS = 0;
+static constexpr bool DISPLAY_MEAN_STDEV = 0;
 
 #define INFO(MSG) std::cout << " . " << MSG << std::endl;
 

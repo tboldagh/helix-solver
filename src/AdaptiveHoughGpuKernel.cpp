@@ -6,8 +6,6 @@
 
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
 
-
-
 namespace HelixSolver
 {
     AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(OptionsBuffer o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : opt(o), rs(rs), phis(phis), solutions(solutions)
@@ -94,9 +92,17 @@ namespace HelixSolver
             ASSURE_THAT( sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE, "Sections buffer depth to small (in y split)");
             sectionsBufferSize += 2;
         } else { // no more splitting, we have a solution
-            //if (isSolutionWithinCell(section)){
+
+            if (USE_GAUSS_FILTERING){
+
+                if (isSolutionWithinCell(section)){
+                    addSolution(section);
+                }
+            } else {
+
                 addSolution(section);
-            //}
+            }
+
         }
     }
 
@@ -147,7 +153,7 @@ namespace HelixSolver
             }
         }
 
-        section.counts =  counter + 1 > MAX_COUNT_PER_SECTION ? section.OUT_OF_RANGE_COUNTS : counter; // setting this counter to 0 == indices are invalid
+        section.counts =  (counter + 1) == MAX_COUNT_PER_SECTION ? section.OUT_OF_RANGE_COUNTS : counter; // setting this counter to 0 == indices are invalid
         return counter;
     }
 
@@ -386,24 +392,21 @@ namespace HelixSolver
 
     bool AdaptiveHoughGpuKernel::isSolutionWithinCell(const AccumulatorSection& section) const
     {
-        if (section.counts > MAX_COUNT_PER_SECTION){
-            return true;
-        }
+        uint8_t max_counts = section.counts == section.OUT_OF_RANGE_COUNTS ? MAX_COUNT_PER_SECTION : section.counts;
+        uint8_t max_n_solutions = max_counts * (max_counts - 1) / 2;
 
-        uint32_t max_n_solutions = section.counts * (section.counts - 1) / 2;
-        uint32_t count_rejected{};
-
+        // array to store solutions, array *_update is used to save solutions which pass criterion of +-N*sigma
         float solutions_phi[max_n_solutions];
-        float solutions_qOverPt[max_n_solutions];
-
         float solutions_phi_update[max_n_solutions];
+        float solutions_qOverPt[max_n_solutions];
         float solutions_qOverPt_update[max_n_solutions];
 
         const float xEnd = section.xBegin + section.xSize;
         const float yEnd = section.yBegin + section.ySize;
 
+        // calculating solutions (defined as intersection point of two lines) for each pair of lines
         uint8_t index_array{};
-        for (uint32_t index_main = 0; index_main < section.counts; ++index_main){
+        for (uint32_t index_main = 0; index_main < max_counts; ++index_main){
             for (uint8_t index_secondary = 0; index_secondary < index_main; ++index_secondary){
 
                 uint32_t line_index_main      = section.indices[index_main];
@@ -415,71 +418,142 @@ namespace HelixSolver
                 float phi_main      = phis[line_index_main];
                 float phi_secondary = phis[line_index_secondary];
 
-                float phi_solution = (phi_main * r_secondary - phi_secondary * r_main) / (r_secondary - r_main);
-                float qOverPt_solution = (phi_solution - phi_main) / (r_main) * INVERSE_A;
+                float phi_solution{};
+                float qOverPt_solution{};
 
-                if (phi_solution > PHI_BEGIN && phi_solution < PHI_END && qOverPt_solution > Q_OVER_PT_BEGIN && qOverPt_solution < Q_OVER_PT_END){
+                // For both lines within accumulator (none of them crosses left or right limit) nothing interesting happens.
+                // If calculated intersection point is within accumulator, it is accepted for further analysis.
+                // For at least one line crossing left or rigth limit:
+                // If intrsection point is to be within accumulator, lines associated with this points must lie on one side of the accumulator ->
+                // both phi > 0 or both phi < 0, which is equivalent to phi_main * phi_secondary > 0. Then solution point is calculated for "raw" line
+                // parameters (r and phi) and for altered values (phi -> phi +- 2*pi depending on limit of accumulator which is crossed.)
+                // If phi_main * phi_secondary < 0 lines lie on opposite sides of the accumulator. Then solution is calculated for either phi
+                // corrected by 2 * pi, and then for another phi corrected by this value. This approach solves the problem of lower efficiency
+                // for phi close to +- pi.
+                if (lineInsideAccumulator(1./r_main, phi_main) && lineInsideAccumulator(1./r_secondary, phi_secondary)) {
 
-                    solutions_phi[index_array] = phi_solution;
-                    solutions_qOverPt[index_array] = qOverPt_solution;
-                    ++index_array;
+                    phi_solution = (phi_main * r_secondary - phi_secondary * r_main) / (r_secondary - r_main);
+                    qOverPt_solution = (phi_solution - phi_main) / (r_main) * INVERSE_A;
+
+                    if (phi_solution > PHI_BEGIN && phi_solution < PHI_END && qOverPt_solution > Q_OVER_PT_BEGIN && qOverPt_solution < Q_OVER_PT_END){
+
+                        solutions_phi[index_array] = phi_solution;
+                        solutions_qOverPt[index_array] = qOverPt_solution;
+                        ++index_array;
+                    }
+                } else if (phi_main * phi_secondary > 0){
+
+                    phi_solution = (phi_main * r_secondary - phi_secondary * r_main) / (r_secondary - r_main);
+                    qOverPt_solution = (phi_solution - phi_main) / (r_main) * INVERSE_A;
+
+                    if (phi_solution > PHI_BEGIN && phi_solution < PHI_END && qOverPt_solution > Q_OVER_PT_BEGIN && qOverPt_solution < Q_OVER_PT_END){
+
+                        solutions_phi[index_array] = phi_solution;
+                        solutions_qOverPt[index_array] = qOverPt_solution;
+                        ++index_array;
+                    }
+
+                    if (phi_main > 0){
+
+                        phi_main -= 2 * M_PI;
+                        phi_secondary -= 2 * M_PI;
+                    } else {
+
+                        phi_main += 2 * M_PI;
+                        phi_secondary += 2 * M_PI;
+                    }
+
+                    phi_solution = (phi_main * r_secondary - phi_secondary * r_main) / (r_secondary - r_main);
+                    qOverPt_solution = (phi_solution - phi_main) / (r_main) * INVERSE_A;
+
+                    if (phi_solution > PHI_BEGIN && phi_solution < PHI_END && qOverPt_solution > Q_OVER_PT_BEGIN && qOverPt_solution < Q_OVER_PT_END){
+
+                        solutions_phi[index_array] = phi_solution;
+                        solutions_qOverPt[index_array] = qOverPt_solution;
+                        ++index_array;
+                    }
                 } else {
 
-                    ++count_rejected;
+                    if (phi_main > 0){
+
+                        phi_main -= 2 * M_PI;
+                    } else {
+
+                        phi_secondary -= 2 * M_PI;
+                    }
+
+                    phi_solution = (phi_main * r_secondary - phi_secondary * r_main) / (r_secondary - r_main);
+                    qOverPt_solution = (phi_solution - phi_main) / (r_main) * INVERSE_A;
+
+                    if (phi_solution > PHI_BEGIN && phi_solution < PHI_END && qOverPt_solution > Q_OVER_PT_BEGIN && qOverPt_solution < Q_OVER_PT_END){
+
+                        solutions_phi[index_array] = phi_solution;
+                        solutions_qOverPt[index_array] = qOverPt_solution;
+                        ++index_array;
+                    }
+
+                    phi_main += 2 * M_PI;
+                    phi_secondary += 2 * M_PI;
+
+                    phi_solution = (phi_main * r_secondary - phi_secondary * r_main) / (r_secondary - r_main);
+                    qOverPt_solution = (phi_solution - phi_main) / (r_main) * INVERSE_A;
+
+                    if (phi_solution > PHI_BEGIN && phi_solution < PHI_END && qOverPt_solution > Q_OVER_PT_BEGIN && qOverPt_solution < Q_OVER_PT_END){
+
+                        solutions_phi[index_array] = phi_solution;
+                        solutions_qOverPt[index_array] = qOverPt_solution;
+                        ++index_array;
+                    }
                 }
             }
         }
 
-        max_n_solutions -= count_rejected;
-        count_rejected = 0;
+        max_n_solutions = index_array;
+        if (!max_n_solutions){
 
-        float mean_phi{};
-        float stdev_phi{};
-        float mean_qOverPt{};
-        float stdev_qOverPt{};
-
-        /////////////////////////////////
-
-        for (uint32_t index = 0; index < max_n_solutions; ++index){
-
-            mean_phi += solutions_phi[index];
-            stdev_phi += solutions_phi[index] * solutions_phi[index];
-
-            mean_qOverPt += solutions_qOverPt[index];
-            stdev_phi += solutions_qOverPt[index] * solutions_qOverPt[index];
+            return false;
         }
 
-        mean_phi /= max_n_solutions;
-        mean_qOverPt /= max_n_solutions;
-        //std::cout << section.xBegin << " " << mean_phi << " " << xEnd << std::endl;
+        double mean_phi{};
+        double stdev_phi{};
+        double mean_qOverPt{};
+        double stdev_qOverPt{};
+        uint32_t count_rejected{};
 
-        stdev_phi     = (stdev_phi / max_n_solutions - mean_phi * mean_phi);
-        stdev_qOverPt = std::sqrt(stdev_qOverPt / max_n_solutions - mean_qOverPt * mean_qOverPt);
-
-        //        if ((mean_phi > section.xBegin && mean_phi < xEnd) && (mean_qOverPt > section.yBegin && mean_qOverPt < yEnd)){
-        //            return true;
-        //        } else {
-        //            return false;
-        //        }
-
+        // As long as solutions are rejected continue calculating mean and stdev and eliminating values outside the +-n*sigma range
         do {
             max_n_solutions -= count_rejected;
             count_rejected = 0;
 
-            for (uint8_t index = 0; index < max_n_solutions; ++index){
+            mean_phi = 0;
+            mean_qOverPt = 0;
+            stdev_phi = 0;
+            stdev_qOverPt = 0;
+
+            for (uint32_t index = 0; index < max_n_solutions; ++index){
 
                 mean_phi += solutions_phi[index];
-                stdev_phi += solutions_phi[index] * solutions_phi[index];
-
                 mean_qOverPt += solutions_qOverPt[index];
-                stdev_phi += solutions_qOverPt[index] * solutions_qOverPt[index];
             }
 
-            mean_phi /= max_n_solutions;
+            mean_phi     /= max_n_solutions;
             mean_qOverPt /= max_n_solutions;
 
-            stdev_phi     = std::sqrt(stdev_phi / max_n_solutions - mean_phi * mean_phi);
-            stdev_qOverPt = std::sqrt(stdev_qOverPt / max_n_solutions - mean_qOverPt * mean_qOverPt);
+            for (uint32_t index = 0; index < max_n_solutions; ++index){
+
+                stdev_phi     += (solutions_phi[index] - mean_phi) * (solutions_phi[index] - mean_phi);
+                stdev_qOverPt += (solutions_qOverPt[index] - mean_qOverPt) * (solutions_qOverPt[index] - mean_qOverPt);
+            }
+
+            stdev_phi     = std::sqrt(stdev_phi / max_n_solutions);
+            stdev_qOverPt = std::sqrt(stdev_qOverPt / max_n_solutions);
+
+            CDEBUG(DISPLAY_MEAN_STDEV, mean_phi << "," << stdev_phi << "," << mean_qOverPt << "," << stdev_qOverPt << ":MeanStdev");
+
+            float phi_lower = mean_phi - N_SIGMA_GAUSS * stdev_phi;
+            float phi_upper = mean_phi + N_SIGMA_GAUSS * stdev_phi;
+            float qOverPt_lower = mean_qOverPt - N_SIGMA_GAUSS * stdev_qOverPt;
+            float qOverPt_upper = mean_qOverPt + N_SIGMA_GAUSS * stdev_qOverPt;
 
             uint8_t index_updates{};
             for (uint8_t index = 0; index < max_n_solutions; ++index){
@@ -487,14 +561,9 @@ namespace HelixSolver
                 float phi_solution     = solutions_phi[index];
                 float qOverPt_solution = solutions_qOverPt[index];
 
-                float phi_lower = mean_phi - N_SIGMA_GAUSS * stdev_phi;
-                float phi_upper = mean_phi + N_SIGMA_GAUSS * stdev_phi;
-                float qOverPt_lower = mean_qOverPt - N_SIGMA_GAUSS * stdev_qOverPt;
-                float qOverPt_upper = mean_qOverPt + N_SIGMA_GAUSS * stdev_qOverPt;
-
                 if ((phi_solution > phi_lower && phi_solution < phi_upper) && (qOverPt_solution > qOverPt_lower && qOverPt_solution < qOverPt_upper)){
 
-                    // intersection powint is within cell
+                    // intersection point is within +- N sigma
                     solutions_phi_update[index_updates]     = phi_solution;
                     solutions_qOverPt_update[index_updates] = qOverPt_solution;
                     ++index_updates;
@@ -503,13 +572,37 @@ namespace HelixSolver
                     ++ count_rejected;
                 }
             }
+
+            for (uint8_t index_2 = 0; index_2 < index_updates; ++index_2){
+
+                solutions_phi[index_2] = solutions_phi_update[index_2];
+                solutions_qOverPt[index_2] = solutions_qOverPt_update[index_2];
+
+                solutions_phi_update[index_2] = 0;
+                solutions_qOverPt_update[index_2] = 0;
+            }
+
         } while (count_rejected);
 
-        if ((mean_phi > section.xBegin && mean_phi < xEnd) && (mean_qOverPt > section.yBegin && mean_qOverPt < yEnd)){
-            return true;
-        } else {
+        // Return false if all intersection points were rejected.
+        if (!max_n_solutions){
+
             return false;
         }
 
+        // Parameter STDEV_CORRECTION allows to include sections for which mean in either coordinate is only slightly outside the cell limits.
+        // Setting value equal 0.6 results in 100% efficiency.
+        float mean_phi_lower = section.xBegin - STDEV_CORRECTION * stdev_phi;
+        float mean_phi_upper = xEnd + STDEV_CORRECTION * stdev_phi;
+        float mean_qOverPt_lower = section.yBegin - STDEV_CORRECTION * stdev_qOverPt;
+        float mean_qOverPt_upper = yEnd + STDEV_CORRECTION * stdev_qOverPt;
+
+        if ((mean_phi > mean_phi_lower && mean_phi < mean_phi_upper) && (mean_qOverPt > mean_qOverPt_lower && mean_qOverPt < mean_qOverPt_upper)){
+
+            return true;
+        } else {
+
+            return false;
+        }
     }
 } // namespace HelixSolver
