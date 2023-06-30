@@ -79,11 +79,17 @@ int main() {
   std::vector<float> x(inDataSize, 0);
   std::vector<float> y(inDataSize, 0);
   std::vector<float> z(inDataSize, 0);
+  std::vector<float> r(inDataSize, 0);
+  std::vector<float> phi(inDataSize, 0);
+
   std::vector<int> count(totSplit, 0);
   fill(x,y,z);
   sycl::buffer<float, 1> xBuffer(x.data(), x.size());
   sycl::buffer<float, 1> yBuffer(y.data(), y.size());
   sycl::buffer<float, 1> zBuffer(z.data(), z.size());
+  sycl::buffer<float, 1> rBuffer(r.data(), r.size());
+  sycl::buffer<float, 1> phiBuffer(phi.data(), phi.size());
+
   sycl::buffer<int, 1> countBuffer(count.data(), count.size());
   sycl::queue q;
   devInfo(q);
@@ -93,7 +99,23 @@ int main() {
     // // Getting write only access to the buffer on a device
     auto x = xBuffer.get_access<sycl::access::mode::read>(cgh);
     auto y = yBuffer.get_access<sycl::access::mode::read>(cgh);
-    auto z = zBuffer.get_access<sycl::access::mode::read>(cgh);
+    auto r = rBuffer.get_access<sycl::access::mode::write>(cgh);
+    auto phi = phiBuffer.get_access<sycl::access::mode::write>(cgh);
+    const int size = x.size();
+    cgh.parallel_for(sycl::range{46}, [=](sycl::item<1> it){
+      for ( int i = it.get_id()[0]; i < size; i += it.get_range()[0]) {
+          r[i] = sycl::hypot(x[i], y[i]);
+          phi[i] = sycl::atan2(y[i], x[i]);
+      }
+    });
+  });
+
+
+  q.submit([&](sycl::handler &cgh) {
+    // // Getting write only access to the buffer on a device
+    auto r = rBuffer.get_access<sycl::access::mode::read>(cgh);
+    auto phi = phiBuffer.get_access<sycl::access::mode::read>(cgh);
+   
     auto countA = countBuffer.get_access<sycl::access::mode::write>(cgh);
     constexpr int maxlocal = 1024;
     auto fragment = sycl::local_accessor<float, 1>(sycl::range{maxlocal}, cgh); 
@@ -107,15 +129,11 @@ int main() {
       using local_atomic_int_ref = sycl::atomic_ref<int, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::local_space>;
       // out << "ID " << " " << region[0] << "\n";
       local_atomic_int_ref lcount(_lcount);
-      float a = x[0];
-      float b = y[0];
-      float c = z[0];
-
       region.parallel_for_work_item( sycl::range<1>(256), [&](sycl::h_item<1> item) {
         // out << "WI ID region " << " " << region[0] << " localID " << item.get_logical_local_id()[0] << " " << item.get_logical_local_range()[0] << "\n";
         const int shift = item.get_logical_local_id()[0];
         const int step = item.get_logical_local_range()[0];
-        for ( int i = shift; i < x.size(); i += step) {
+        for ( int i = shift; i < r.size(); i += step) {
           //  lcount += belongs_to(x[i]+y[i]+z[i], region[0]);
           lcount += item.get_logical_local_id()[0];
         }
