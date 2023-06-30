@@ -67,11 +67,13 @@ endif()
 
 
 add_executable( spliter experimental/spliter.cpp src/ZPhiPartitioning.cpp )
-target_include_directories( spliter PRIVATE /usr/local/include/sycl/)
+target_include_directories( spliter PRIVATE /usr/local/include/sycl/ helix-solver/include/)
 target_link_libraries( spliter PRIVATE  sycl )
+target_compile_definitions( spliter PRIVATE USE_SYCL=0)
 target_compile_options(spliter PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
 target_link_options( spliter PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
-install( TARGETS spliter DESTINATION bin)
+install( TARGETS spliter DESTINATION bin
+)
 
 
 

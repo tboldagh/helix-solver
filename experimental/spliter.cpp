@@ -1,8 +1,8 @@
 #include <iostream>
 #include <numeric>
 #include <random>
-
 #include <sycl/sycl.hpp>
+#include "HelixSolver/ZPhiPartitioning.h"
 
 void devInfo(const sycl::queue &q) {
   auto dev = q.get_device();
@@ -57,10 +57,10 @@ void fill(std::vector<float> &x, std::vector<float> &y, std::vector<float> &z ) 
 }
 
 constexpr size_t inDataSize = 50e3;
-// constexpr short phiSplit = 16;
-// constexpr short etaSplit = 51;
-constexpr short phiSplit = 2;
-constexpr short etaSplit = 7;
+constexpr short phiSplit = 16;
+constexpr short etaSplit = 51;
+// constexpr short phiSplit = 2;
+// constexpr short etaSplit = 7;
 constexpr short totSplit = etaSplit*phiSplit;
 
 
@@ -79,7 +79,7 @@ int main() {
   std::vector<float> x(inDataSize, 0);
   std::vector<float> y(inDataSize, 0);
   std::vector<float> z(inDataSize, 0);
-  std::vector<float> r(inDataSize, 0);
+  std::vector<float> rinv(inDataSize, 0);
   std::vector<float> phi(inDataSize, 0);
 
   std::vector<int> count(totSplit, 0);
@@ -87,7 +87,7 @@ int main() {
   sycl::buffer<float, 1> xBuffer(x.data(), x.size());
   sycl::buffer<float, 1> yBuffer(y.data(), y.size());
   sycl::buffer<float, 1> zBuffer(z.data(), z.size());
-  sycl::buffer<float, 1> rBuffer(r.data(), r.size());
+  sycl::buffer<float, 1> rinvBuffer(rinv.data(), rinv.size());
   sycl::buffer<float, 1> phiBuffer(phi.data(), phi.size());
 
   sycl::buffer<int, 1> countBuffer(count.data(), count.size());
@@ -99,12 +99,12 @@ int main() {
     // // Getting write only access to the buffer on a device
     auto x = xBuffer.get_access<sycl::access::mode::read>(cgh);
     auto y = yBuffer.get_access<sycl::access::mode::read>(cgh);
-    auto r = rBuffer.get_access<sycl::access::mode::write>(cgh);
+    auto rinv = rinvBuffer.get_access<sycl::access::mode::write>(cgh);
     auto phi = phiBuffer.get_access<sycl::access::mode::write>(cgh);
     const int size = x.size();
     cgh.parallel_for(sycl::range{46}, [=](sycl::item<1> it){
       for ( int i = it.get_id()[0]; i < size; i += it.get_range()[0]) {
-          r[i] = sycl::hypot(x[i], y[i]);
+          rinv[i] = sycl::rsqrt(x[i]*x[i] + y[i]*y[i]);
           phi[i] = sycl::atan2(y[i], x[i]);
       }
     });
@@ -113,12 +113,14 @@ int main() {
 
   q.submit([&](sycl::handler &cgh) {
     // // Getting write only access to the buffer on a device
-    auto r = rBuffer.get_access<sycl::access::mode::read>(cgh);
+    auto rinv = rinvBuffer.get_access<sycl::access::mode::read>(cgh);
     auto phi = phiBuffer.get_access<sycl::access::mode::read>(cgh);
+    auto z = zBuffer.get_access<sycl::access::mode::read>(cgh);
    
     auto countA = countBuffer.get_access<sycl::access::mode::write>(cgh);
-    constexpr int maxlocal = 1024;
-    auto fragment = sycl::local_accessor<float, 1>(sycl::range{maxlocal}, cgh); 
+    constexpr int maxlocal = 256;
+    auto rinvFragment = sycl::local_accessor<float, 1>(sycl::range{maxlocal}, cgh); 
+    auto phiFragment = sycl::local_accessor<float, 1>(sycl::range{maxlocal}, cgh); 
 
     // sycl::stream out(1024*16, 1024, cgh);
 
@@ -129,16 +131,24 @@ int main() {
       using local_atomic_int_ref = sycl::atomic_ref<int, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::local_space>;
       // out << "ID " << " " << region[0] << "\n";
       local_atomic_int_ref lcount(_lcount);
+      const int etaIndex = region[0]%etaSplit;
+      const int phiIndex = region[0]/etaSplit;
+      // this fails to compile
+      Wedge wedge;
+      wedge.setup(uniform_split(-M_PI, M_PI, phiIndex, phiSplit),
+          Reg({0, 15}),
+          uniform_split(-4, 4, etaIndex, etaSplit)
+        );
       region.parallel_for_work_item( sycl::range<1>(256), [&](sycl::h_item<1> item) {
         // out << "WI ID region " << " " << region[0] << " localID " << item.get_logical_local_id()[0] << " " << item.get_logical_local_range()[0] << "\n";
         const int shift = item.get_logical_local_id()[0];
         const int step = item.get_logical_local_range()[0];
-        for ( int i = shift; i < r.size(); i += step) {
-          //  lcount += belongs_to(x[i]+y[i]+z[i], region[0]);
-          lcount += item.get_logical_local_id()[0];
+        for ( int i = shift; i < rinv.size(); i += step) {
+          if ( wedge.in_wedge_r_phi_z(1.0f/rinv[i], phi[i], z[i]) ){
+
+          }
         }
       });
-      countA[region[0]] =  lcount;
       // out << "count in ID " << " " << region[0] << " " << static_cast<int>(lcount) << "\n";
     }); // EOF parallel_for_work_group
   }).wait();

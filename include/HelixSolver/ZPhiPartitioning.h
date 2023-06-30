@@ -18,7 +18,11 @@ struct Reg {
  * @brief description of the wedge
  */
 struct Wedge {
-    Wedge( Reg Phi, Reg z, Reg eta);
+    /**
+    * this is constructor in a form suitable fro SYCL
+    */
+    void setup( Reg Phi, Reg z, Reg eta);
+
     Reg m_phi;
     // definition of lines in r - z plane
     float m_aleft, m_bleft;
@@ -47,6 +51,10 @@ struct Wedge {
 
 
 };
+/**
+ * uniform split
+ */
+SYCL_EXTERNAL Reg uniform_split(float min, float max, short index, short splits );
 
 
 
