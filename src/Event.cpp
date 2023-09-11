@@ -46,7 +46,7 @@ namespace HelixSolver
             const float phi = atan2(Point.y, Point.x);
             rs.push_back(r);
             phis.push_back(phi);
-            z.push_back(Point.z);
+            zs.push_back(Point.z);
             layers.push_back(Point.layer);
         }
     }
@@ -65,9 +65,9 @@ namespace HelixSolver
     {
         return phis;
     }
-    std::vector<float>& Event::getZ()
+    std::vector<float>& Event::getZ()   
     {
-        return z;
+        return zs;
     }
 
     std::vector<uint8_t>& Event::getLayers()

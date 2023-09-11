@@ -59,4 +59,16 @@ void Create_Root_File(){
 	tree_Mean.Write();
 	hfile_Mean.Close();
 	}
+
+	// to get number of spacepoints for each wedge
+	ifstream file_Wedge("data_WedgeCounts.csv");
+	if (file_Wedge.peek() != std::ifstream::traits_type::eof()){
+	TFile hfile_Wedge("hough_wedge_counts.root","RECREATE","ROOT file containing sorted coordinates of accumulator cells");
+	TTree tree_Wedge("tree", "tree");
+	tree_Wedge.ReadFile("data_WedgeCounts.csv", "phi:eta:counts/I");
+
+	tree_Wedge.Fill();
+	tree_Wedge.Write();
+	hfile_Wedge.Close();
+	}
 }

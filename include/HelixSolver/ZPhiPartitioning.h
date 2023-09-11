@@ -3,15 +3,16 @@
 
 // this functions assert whether point belongs to a z-phi-eta slice
 // the definition of the region is fiven by:
-// phi center,  delta phi, 
+// phi center,  delta phi,
 // z center, delta z - at the beam line (typically unchanged and covering all +- 20cm)
 // eta center, delta eta
 
 
 
-struct Reg { 
+struct Reg {
     float center;
     float width;
+    Reg(float center_val, float width_val);
 };
 
 /**
@@ -25,13 +26,13 @@ struct Wedge {
     float m_aright, m_bright;
     /**
      * @brief true if point is in the Wedge
-     * 
+     *
      * @param x,y,z - cartesian coordinates
      */
     bool in_wedge_x_y_z( float x, float y, float z ) const;
     /**
      * @brief true if point is in the Wedge
-     * 
+     *
      * @param p, phi, z  - polar coordinates
      */
     bool in_wedge_r_phi_z( float r, float phi, float z ) const;
