@@ -7,6 +7,7 @@
 #include "HelixSolver/EventBuffer.h"
 #include "HelixSolver/AccumulatorSection.h"
 #include "HelixSolver/Options.h"
+#include "HelixSolver/ZPhiPartitioning.h"
 
 #ifdef USE_SYCL
 #include <CL/sycl.hpp>
@@ -28,15 +29,15 @@ namespace HelixSolver
     class AdaptiveHoughGpuKernel
     {
     public:
-        AdaptiveHoughGpuKernel(OptionsBuffer o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor z, SolutionsWriteAccessor solution);
+        AdaptiveHoughGpuKernel(OptionsBuffer o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor zs, SolutionsWriteAccessor solution);
 
         SYCL_EXTERNAL void operator()(Index2D idx) const;
 
     private:
-        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight) const;
-        uint8_t countHits(AccumulatorSection &section) const;
-        uint8_t countHits_checkOrder(AccumulatorSection &section) const;
-        void addSolution(const AccumulatorSection& section) const;
+        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight, std::vector<float> rs_wedge, std::vector<float> phis_wedge, std::vector<float> zs_wedge, float wedge_eta_center) const;
+        uint8_t countHits(AccumulatorSection &section, std::vector<float> rs_wedge, std::vector<float> phis_wedge, std::vector<float> zs_wedge) const;
+        uint8_t countHits_checkOrder(AccumulatorSection &section, std::vector<float> rs_wedge, std::vector<float> phis_wedge, std::vector<float> zs_wedge) const;
+        void addSolution(const AccumulatorSection& section, float wedge_eta_center) const;
         void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
         bool lineInsideAccumulator(const float radius_inverse, const float phi) const;
         float yLineAtBegin_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const;
@@ -47,6 +48,7 @@ namespace HelixSolver
         OptionsBuffer& opt;
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;
+        FloatBufferReadAccessor zs;
         SolutionsWriteAccessor solutions;
     };
 

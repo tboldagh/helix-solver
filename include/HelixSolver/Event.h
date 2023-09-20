@@ -36,7 +36,7 @@ namespace HelixSolver
         std::vector<std::function<float(float)>> PointsFunctions;
         std::vector<float> rs;
         std::vector<float> phis;
-        std::vector<float> z;
+        std::vector<float> zs;
         std::vector<uint8_t> layers;
     };
 
