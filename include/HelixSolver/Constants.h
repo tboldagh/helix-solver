@@ -2,10 +2,12 @@
 #include <stdint.h>
 #include <cmath>
 static constexpr uint8_t THRESHOLD = 6;
+
 static constexpr uint8_t THRESHOLD_DIVISION_LEVEL_COUNT_HITS_CHECK_ORDER = 10;
 static constexpr bool USE_GAUSS_FILTERING = 1;
 static constexpr bool USE_DIVISION_PHI_ETA = 1;
 static constexpr uint8_t MIN_COUNT_CHANGES = 3;
+
 static constexpr uint8_t N_SIGMA_PHI = 3;
 static constexpr uint8_t N_SIGMA_GAUSS = 2;
 static constexpr uint8_t MAX_COUNT_PER_SECTION = 16;
