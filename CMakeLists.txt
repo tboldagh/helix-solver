@@ -66,7 +66,7 @@ else()
 endif()
 
 
-add_executable( spliter experimental/spliter.cpp src/ZPhiPartitioning.cpp )
+add_executable( spliter experimental/spliter.cpp )
 target_include_directories( spliter PRIVATE /usr/local/include/sycl/ helix-solver/include/)
 target_link_libraries( spliter PRIVATE  sycl )
 target_compile_definitions( spliter PRIVATE USE_SYCL=0)
