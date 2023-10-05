@@ -22,14 +22,8 @@ echo "... done"
 
 rm data_BoxPosition.csv
 rm data_SolutionPair.csv
-<<<<<<< Updated upstream
 rm data_RPhi.csv
 rm data_Events.csv
 rm data_MeanStdev.csv
-<<<<<<< HEAD
 rm data_WedgeCounts.csv
-=======
-=======
 rm data_RPhi.csv
->>>>>>> Stashed changes
->>>>>>> tb/main

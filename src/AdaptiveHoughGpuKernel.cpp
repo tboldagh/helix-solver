@@ -20,17 +20,18 @@ namespace HelixSolver
 
             // 'pure" width of wedge which can be used to determine wedge center, obtaine dy division of the full range of
             // variable by number of regions, after addition of excess_wedge_*_width it informs about true wedge width
-            const float wedge_phi_width_index = 2 * M_PI / opt.N_PHI_WEDGE;
+            const float wedge_phi_width_index = (PHI_END - PHI_BEGIN) / opt.N_PHI_WEDGE;
             const float wedge_eta_width_index = (ETA_WEDGE_MAX - ETA_WEDGE_MIN) / opt.N_ETA_WEDGE;
 
             for (uint8_t wedge_index_phi = 0; wedge_index_phi < opt.N_PHI_WEDGE; ++wedge_index_phi){
                 for (uint8_t wedge_index_eta = 0; wedge_index_eta < opt.N_ETA_WEDGE; ++wedge_index_eta){
 
-                    std::vector<float> rs_wedge;
-                    std::vector<float> phis_wedge;
-                    std::vector<float> zs_wedge;
-
-                    const float wedge_phi_center = - M_PI + wedge_phi_width_index * wedge_index_phi;
+                    float rs_wedge [MAX_SPACEPOINTS];
+                    float phis_wedge[MAX_SPACEPOINTS];
+                    float zs_wedge[MAX_SPACEPOINTS];
+                    uint32_t wedge_spacepoints_count{};
+                    
+                    const float wedge_phi_center = PHI_BEGIN + wedge_phi_width_index * wedge_index_phi;
                     const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width_index/2 + wedge_eta_width_index * wedge_index_eta;
 
                     Reg phi_reg = Reg(wedge_phi_center, wedge_phi_width_index / 2 + excess_wedge_phi_width);
@@ -43,22 +44,27 @@ namespace HelixSolver
                     for (uint32_t index = 0; index < maxIndex; ++index){
 
                         if (wedge_index.in_wedge_r_phi_z(rs[index], phis[index], zs[index])){
-                            rs_wedge.push_back(rs[index]);
-                            phis_wedge.push_back(phis[index]);
-                            zs_wedge.push_back(zs[index]);
+                            rs_wedge[wedge_spacepoints_count]   = rs[index];
+                            phis_wedge[wedge_spacepoints_count] = phis[index];
+                            zs_wedge[wedge_spacepoints_count]   = zs[index];
+                            ++wedge_spacepoints_count;
                         }
                     }
 
+                    CDEBUG(DISPLAY_N_WEDGE, wedge_index_phi << "," << wedge_index_eta << "," << wedge_spacepoints_count << ":WedgeCounts");
                     // do not conduct alogorithm calculations for empty region
-                    if (rs_wedge.size() == 0) continue;
+                    if (wedge_spacepoints_count == 0) continue;
 
                     CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel initiated for subregion " << idx[0] << " " << idx[1]);
 
-                    constexpr float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-                    constexpr float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+                    //const float INITIAL_X_SIZE = (2*phi_reg.width) / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+                    const float INITIAL_X_SIZE = ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+                    const float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
 
+                    //const double xBegin = (phi_reg.center - phi_reg.width) + INITIAL_X_SIZE * idx[0];
                     const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
                     const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
+
                     CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << INITIAL_X_SIZE << " y: " << yBegin << " ysz: " << INITIAL_Y_SIZE);
 
                     // we need here a limited set of Points
@@ -74,7 +80,7 @@ namespace HelixSolver
 
                     // scan this region until there is no section to process (i.e. size, initially 1, becomes 0)
                     while (sectionsBufferSize) {
-                        fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge, phis_wedge, zs_wedge, wedge_eta_center);
+                        fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge, phis_wedge, zs_wedge, wedge_eta_center, wedge_spacepoints_count);
                     }
                 }
             }
@@ -87,8 +93,7 @@ namespace HelixSolver
 
             const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
             const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
-            CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << INITIAL_X_SIZE
-                                            << " y: " << yBegin << " ysz: " << INITIAL_Y_SIZE);
+            CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << INITIAL_X_SIZE << " y: " << yBegin << " ysz: " << INITIAL_Y_SIZE);
 
             // we need here a limited set of Points
 
@@ -101,14 +106,28 @@ namespace HelixSolver
             const uint8_t initialDivisionLevel = 0;
             sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin, yBegin, initialDivisionLevel);
 
+            float rs_wedge[MAX_SPACEPOINTS];
+            float phis_wedge[MAX_SPACEPOINTS];
+            float zs_wedge[MAX_SPACEPOINTS];
+            uint32_t wedge_spacepoints_count{};
+
+            const uint32_t maxIndex = rs.size();
+            for (uint32_t index = 0; index < maxIndex; ++index){
+
+                rs_wedge[wedge_spacepoints_count]   = rs[index];
+                phis_wedge[wedge_spacepoints_count] = phis[index];
+                zs_wedge[wedge_spacepoints_count]   = zs[index];
+                ++wedge_spacepoints_count;
+            }            
+
             // scan this region until there is no section to process (i.e. size, initially 1, becomes 0)
             while (sectionsBufferSize) {
-                fillAccumulatorSection(sections, sectionsBufferSize, rs, phis, zs, -1000);
+                fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge, phis_wedge, zs_wedge, -1000, rs.size());
             }
         }
     }
 
-    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint8_t &sectionsBufferSize, std::vector<float> rs_wedge, std::vector<float> phis_wedge, std::vector<float> zs_wedge, float wedge_eta_center) const
+    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint8_t &sectionsBufferSize, float* rs_wedge, float* phis_wedge, float* zs_wedge, float wedge_eta_center, uint32_t wedge_spacepoints_count) const
     {
         CDEBUG(DISPLAY_BASIC, "Regions buffer depth " << static_cast<int>(sectionsBufferSize));
         // pop the region from the top of sections buffer
@@ -121,21 +140,12 @@ namespace HelixSolver
         // countHits_checkOrder checks that condition
         uint16_t count{};
         if (section.divisionLevel < THRESHOLD_DIVISION_LEVEL_COUNT_HITS_CHECK_ORDER){
-            count = countHits(section, rs_wedge, phis_wedge, zs_wedge);
-        } else count = countHits_checkOrder(section, rs_wedge, phis_wedge, zs_wedge);
+            count = countHits(section, rs_wedge, phis_wedge, zs_wedge, wedge_spacepoints_count);
+        } else count = countHits_checkOrder(section, rs_wedge, phis_wedge, zs_wedge, wedge_spacepoints_count);
 
-        CDEBUG(DISPLAY_BASIC, "count of lines in region x:" << section.xBegin
-            << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
+        CDEBUG(DISPLAY_BASIC, "count of lines in region x:" << section.xBegin << " xsz: " << section.xSize << " y: " << section.yBegin << " ysz: " << section.ySize << " divLevel: " << section.divisionLevel << " count: " << count);
         if ( count < THRESHOLD )
             return;
-
-       if (!TO_DISPLAY_PRECISION_PAIR_ONCE){     // so that these values are displayed only once
-            DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " << opt.ACC_X_PRECISION << ", ACC_PT_PRECISION = " << opt.ACC_PT_PRECISION);
-            for (auto i : phis_wedge){
-                std::cout << i << std::endl;
-            }
-       }
-       ++TO_DISPLAY_PRECISION_PAIR_ONCE;
 
         if ( section.xSize > opt.ACC_X_PRECISION && section.ySize > opt.ACC_PT_PRECISION) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
@@ -173,50 +183,23 @@ namespace HelixSolver
         }
     }
 
-    uint8_t AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section, std::vector<float> rs_wedge, std::vector<float> phis_wedge, std::vector<float> zs_wedge) const
+    uint8_t AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const
     {
-        const double xEnd = section.xBegin + section.xSize;
-        const double yEnd = section.yBegin + section.ySize;
         uint16_t counter = 0;
-
         // here we can improve by knowing over which Points to iterate (i.e. indices of measurements), this is related to geometry
         // this can be stored in section object maybe???
 
-        const uint32_t maxIndex = rs_wedge.size();
+        const uint32_t maxIndex = wedge_spacepoints_count;
         for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index)
         {
             const float r = rs_wedge[index];
             const float inverse_r = 1.0/r;
             const float phi = phis_wedge[index];
-            float yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi);
-            float yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi);
 
-            // The code below allows to extend lines which intersect lew or right limit of the accumulator to the other side
-            // This maneuver allows to significantly increase reconsruction efficiency for phi \approx +-pi
+            if (lineInsideCell(section, inverse_r, phi)){
 
-            if (lineInsideAccumulator(inverse_r, phi)){
-
-                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-                {
-                    section.indices[counter] = index;
-                    counter++;
-                }
-            } else {
-
-                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-                {
-                    section.indices[counter] = index;
-                    counter++;
-                }
-
-                yLineAtBegin = yLineAtBegin_modify(inverse_r, phi, section);
-                yLineAtEnd   = yLineAtEnd_modify(inverse_r, phi, section);
-
-                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-                {
-                    section.indices[counter] = index;
-                    counter++;
-                }
+                section.indices[counter] = index;
+                counter++;
             }
         }
 
@@ -224,7 +207,7 @@ namespace HelixSolver
         return counter;
     }
 
-    uint8_t AdaptiveHoughGpuKernel::countHits_checkOrder(AccumulatorSection &section, std::vector<float> rs_wedge, std::vector<float> phis_wedge, std::vector<float> zs_wedge) const
+    uint8_t AdaptiveHoughGpuKernel::countHits_checkOrder(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const
     {
         const double xEnd = section.xBegin + section.xSize;
         const double yEnd = section.yBegin + section.ySize;
@@ -233,12 +216,18 @@ namespace HelixSolver
         // here we can improve by knowing over which Points to iterate (i.e. indices of measurements), this is related to geometry
         // this can be stored in section object maybe???
 
-        const uint32_t maxIndex = rs_wedge.size();
+        const uint32_t maxIndex = wedge_spacepoints_count;
         // 1st value is coordinate of intersection point, the other is r of the given line
-        std::vector<std::pair<float, uint16_t>> cell_intersection_before;
-        std::vector<std::pair<float, uint16_t>> cell_intersection_after;
+        float cell_intersection_before_id[wedge_spacepoints_count];
+        float cell_intersection_before_position[wedge_spacepoints_count];
+        float cell_intersection_after_id[wedge_spacepoints_count];
+        float cell_intersection_after_position[wedge_spacepoints_count];
+        uint32_t before_counter = 0;
+        uint32_t after_counter = 0;
 
-        for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index)
+        //std::cout << wedge_spacepoints_count << std::endl;
+
+        for (uint32_t index = 0; index < maxIndex ; ++index)
         {
             const float r = rs_wedge[index];
             const float inverse_r = 1.0/r;
@@ -246,64 +235,35 @@ namespace HelixSolver
             double yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi);
             double yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi);
 
-            if (lineInsideAccumulator(inverse_r, phi)){
+            if (lineInsideCell(section, inverse_r, phi)){
 
-                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-                {
-                    section.indices[counter] = index;
-                    counter++;
-                }
+                section.indices[counter] = index;
+                counter++;
 
                 if (yLineAtBegin <= yEnd && yLineAtBegin >= section.yBegin){
 
-                    cell_intersection_before.push_back(std::make_pair(1 + (yLineAtBegin - section.yBegin)/section.ySize, counter));
+                    cell_intersection_before_id[before_counter] = counter;
+                    cell_intersection_before_position[before_counter] = 1 + (yLineAtBegin - section.yBegin)/section.ySize;
+                    ++before_counter;
                 } else {
 
                     float xLineAtBegin = phi + section.yBegin / (inverse_r * INVERSE_A);
-                    cell_intersection_before.push_back(std::make_pair((section.xBegin + section.xSize - xLineAtBegin)/section.xSize, counter));
+                    cell_intersection_before_id[before_counter] = counter;
+                    cell_intersection_before_position[before_counter] = (section.xBegin + section.xSize - xLineAtBegin)/section.xSize;
+                    ++before_counter;
                 }
 
                 if (yLineAtEnd <= yEnd && yLineAtBegin >= section.yBegin){
 
-                    cell_intersection_after.push_back(std::make_pair((yLineAtBegin - section.yBegin)/section.ySize, counter));
+                    cell_intersection_after_id[after_counter] = counter;
+                    cell_intersection_after_position[after_counter] = (yLineAtBegin - section.yBegin)/section.ySize;
+                    ++after_counter;
                 } else {
 
                     float xLineAtEnd = phi + (section.yBegin + section.ySize) / (inverse_r * INVERSE_A);
-                    cell_intersection_after.push_back(std::make_pair(1 + (section.xBegin + section.xSize - xLineAtEnd)/section.xSize, counter));
-                }
-            } else {
-
-                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-                {
-                    section.indices[counter] = index;
-                    counter++;
-                }
-
-                if (yLineAtBegin <= yEnd && yLineAtBegin >= section.yBegin){
-
-                    cell_intersection_before.push_back(std::make_pair(1 + (yLineAtBegin - section.yBegin)/section.ySize, counter));
-                } else {
-
-                    float xLineAtBegin = phi + section.yBegin / (inverse_r * INVERSE_A);
-                    cell_intersection_before.push_back(std::make_pair((section.xBegin + section.xSize - xLineAtBegin)/section.xSize, counter));
-                }
-
-                if (yLineAtEnd <= yEnd && yLineAtBegin >= section.yBegin){
-
-                    cell_intersection_after.push_back(std::make_pair((yLineAtBegin - section.yBegin)/section.ySize, counter));
-                } else {
-
-                    float xLineAtEnd = phi + (section.yBegin + section.ySize) / (inverse_r * INVERSE_A);
-                    cell_intersection_after.push_back(std::make_pair(1 + (section.xBegin + section.xSize - xLineAtEnd)/section.xSize, counter));
-                }
-
-                yLineAtBegin = yLineAtBegin_modify(inverse_r, phi, section);
-                yLineAtEnd   = yLineAtEnd_modify(inverse_r, phi, section);
-
-                if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-                {
-                    section.indices[counter] = index;
-                    counter++;
+                    cell_intersection_after_id[after_counter] = counter;
+                    cell_intersection_after_position[after_counter] = 1 + (section.xBegin + section.xSize - xLineAtEnd)/section.xSize;
+                    ++after_counter;
                 }
             }
         }
@@ -314,55 +274,28 @@ namespace HelixSolver
 
         // the lines of code below check whether order of lines at the left and bottom boundary of cells is the same
         // as for right and upper boundary of the cells
-        sort(cell_intersection_before.begin(), cell_intersection_before.end());
-        sort(cell_intersection_after.begin(), cell_intersection_after.end());
-
+        auto sorted_before = sortArrays(cell_intersection_before_position, cell_intersection_before_id, before_counter);
+        auto sorted_after  = sortArrays(cell_intersection_after_position, cell_intersection_after_id, after_counter);
+ 
         int8_t count_changes{};
-        for(int8_t intersection_index; intersection_index < counter; ++intersection_index){
-            if ((cell_intersection_before.at(intersection_index)).second != (cell_intersection_after.at(intersection_index)).second){
+        for(int8_t intersection_index; intersection_index < before_counter; ++intersection_index){
+            if (sorted_before[intersection_index] != sorted_after[intersection_index]){
 
                 ++count_changes;
             }
         }
-
+        
         // we want to reject a cell if not enough intersections were found -> lines only/almost only pararell -> fake solutions
         if (count_changes < MIN_COUNT_CHANGES){
 
             section.counts = 0;
             return 0;
-        }
+        }   
 
         // Next step of solutions number minimization - checking phi of each line
         // Each helix is almost a straight line so we expect very small deviation from the truth value. Outliner in terms of
         // phi indicates that this point does not belong to analyzed track
         // We want to reduce number of counter by number of lines with phi differing from mean by more than n standard deviations
-
-        // calculate mean and standard deviation of phi
-        float mean_phi{};
-        float stdev_phi{};
-        for (uint8_t index = 0; index < counter; ++index){
-
-            uint32_t line_index = section.indices[index];
-
-            mean_phi += phis[line_index];
-            stdev_phi += (phis[line_index]) * (phis[line_index]);
-        }
-        mean_phi /= counter;
-
-        stdev_phi /= counter;
-        stdev_phi -= mean_phi * mean_phi;
-        stdev_phi = std::sqrt(stdev_phi);
-
-        for (uint8_t index = 0; index < counter; ++index){
-
-            uint32_t line_index = section.indices[index];
-            float lower_phi_limit = mean_phi - N_SIGMA_PHI * stdev_phi;
-            float upper_phi_limit = mean_phi + N_SIGMA_PHI * stdev_phi;
-
-            if (phis[line_index] < lower_phi_limit || phis[line_index] > upper_phi_limit){
-                //--counter;
-            }
-        }
 
         section.counts =  counter + 1 == MAX_COUNT_PER_SECTION ? section.OUT_OF_RANGE_COUNTS : counter;
         return counter;
@@ -405,15 +338,6 @@ namespace HelixSolver
                 return;
             }
         }
-/*
-        uint8_t max_counts = section.counts == section.OUT_OF_RANGE_COUNTS ? MAX_COUNT_PER_SECTION : section.counts;
-        for (int8_t index = 0; index < max_counts; ++index){
-
-            rs_wedge.erase(rs.begin() + section.indices[index]);
-            phis_wedge.erase(phis.begin() + section.indices[index]);
-            zs_wedge.erase(zs.begin() + section.indices[index]);
-        }
-*/
         ASSURE_THAT(false, "Could not find place for solution!!");
     }
 
@@ -444,11 +368,11 @@ namespace HelixSolver
 
          if (qOverPt_for_PHI_BEGIN > Q_OVER_PT_BEGIN && qOverPt_for_PHI_BEGIN < Q_OVER_PT_END){
 
-            return radius_inverse * INVERSE_A * (section.xBegin - phi) - 2 * M_PI * radius_inverse * INVERSE_A;
-        } else if (qOverPt_for_PHI_END < Q_OVER_PT_END && qOverPt_for_PHI_END > Q_OVER_PT_BEGIN) {
+            return radius_inverse * INVERSE_A * (section.xBegin - (phi + 2 * M_PI));
+        } else {
 
-            return radius_inverse * INVERSE_A * (section.xBegin - phi) + 2 * M_PI * radius_inverse * INVERSE_A;
-        } else return 0;
+            return radius_inverse * INVERSE_A * (section.xBegin - (phi - 2 * M_PI));
+        } 
     }
 
     float AdaptiveHoughGpuKernel::yLineAtEnd_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const
@@ -462,11 +386,11 @@ namespace HelixSolver
 
          if (qOverPt_for_PHI_BEGIN > Q_OVER_PT_BEGIN && qOverPt_for_PHI_BEGIN < Q_OVER_PT_END){
 
-            return radius_inverse * INVERSE_A * (xEnd - phi) - 2 * M_PI * radius_inverse * INVERSE_A;
+            return radius_inverse * INVERSE_A * (xEnd - (phi + 2 * M_PI));
 
-        } else if (qOverPt_for_PHI_END < Q_OVER_PT_END && qOverPt_for_PHI_END > Q_OVER_PT_BEGIN) {
+        } else {
 
-            return radius_inverse * INVERSE_A * (xEnd - phi) + 2 * M_PI * radius_inverse * INVERSE_A;
+            return radius_inverse * INVERSE_A * (xEnd - (phi - 2 * M_PI));
         }
         return 0;
     }
@@ -685,5 +609,71 @@ namespace HelixSolver
 
             return false;
         }
+    }
+
+    bool AdaptiveHoughGpuKernel::lineInsideCell(const AccumulatorSection section, const float radius_inverse, const float phi) const {
+
+        const double xEnd = section.xBegin + section.xSize;
+        const double yEnd = section.yBegin + section.ySize;
+
+        float yLineAtBegin  = radius_inverse * INVERSE_A * (section.xBegin - phi);
+        float yLineAtEnd    = radius_inverse * INVERSE_A * (xEnd - phi);
+
+        if (lineInsideAccumulator(radius_inverse, phi)){
+
+            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
+            {
+                return true;
+            }
+        } else {
+
+            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
+            {
+                return true;
+            }
+
+            // The code below allows to extend lines which intersect lew or right limit of the accumulator to the other side
+            // This maneuver allows to significantly increase reconsruction efficiency for phi \approx +-pi
+
+            yLineAtBegin = yLineAtBegin_modify(radius_inverse, phi, section);
+            yLineAtEnd   = yLineAtEnd_modify(radius_inverse, phi, section);
+
+            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    float* AdaptiveHoughGpuKernel::sortArrays(const float* distance_array, const float* id_array, const uint32_t counter) const{
+        
+        float* sorted_array = new float[counter];
+        float* copy_distance = new float[counter];
+
+        for (uint32_t index = 0; index < counter; ++index){
+
+            copy_distance[index] = distance_array[index];
+        }
+        
+        for (uint32_t main_index = 0; main_index < counter; ++main_index){
+
+            uint32_t min_index = 0;
+            float min_val = 10.0;
+
+            for (uint32_t index = 0; index < counter; ++index){
+
+                if (copy_distance[index] < min_val){
+
+                    min_index = index;
+                    min_val = copy_distance[index];
+                }
+            }
+
+            copy_distance[min_index] = 10.0;
+            sorted_array[main_index] = id_array[min_index];
+        }
+
+        return sorted_array;
     }
 } // namespace HelixSolver

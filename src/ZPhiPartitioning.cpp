@@ -34,14 +34,12 @@ Wedge::Wedge( Reg p, Reg z, Reg eta)
     //ASSURE_THAT( std::fabs( eta.center + eta.width)> 0.01, "Wedge does not support eta + eta width == 0")
     //ASSURE_THAT( std::fabs( eta.center - eta.width)> 0.01, "Wedge does not support eta - eta width == 0")
 
-    float eta_width_updated = eta.width;
-
     if (std::fabs(eta.center + eta.width) < 0.01){
 
-      eta_width_updated = eta.center < 0 ? 0.01 - eta.center : eta.width = -0.01 - eta.center;
+      eta.width = 0.01 - eta.center;
     } else if (std::fabs(eta.center - eta.width) < 0.01){
 
-      eta_width_updated = eta.center < 0 ? 0.01 + eta.center : eta.width = -0.01 + eta.center;
+      eta.width = 0.01 + eta.center;
     }
 
     m_aleft = std::tan( 2.0 * std::atan( std::exp( - (eta.center-eta.width))));

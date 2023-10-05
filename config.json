@@ -1,33 +1,24 @@
 {
     "platform": "cpu_no_sycl",
     "inputFileType": "root_spacepoints",
-    "inputFile": "inputs/odd_output/spacepoints.root",
-    "outputFile": "detected-circles",
+    "inputFile": "inputs/spacepoints.root",
+    "outputFile": "detected-circles/detected-circles",
     "gpuEventBuffers": 48,
     "gpuComputingWorkers": 24,
     "cpuEventBuffers": 48,
     "cpuComputingWorkers": 12,
     "multiplyEvents": 1,
-    "event": 1,
+    "event_skip": 1,
     "comment_event": "event property can be used to select particular, single event to process, if removed (e.g. name changed to skip_event all events in file will be processed)",
-    "B": 2,
-    "R": 600,
-    "c": 299792458,
-    "threshold": 6,
+    
     "phi_precision": 0.001,
     "pt_precision": 0.01,
-    "main_accumulator_config": {
-        "layers": 8,
-        "x_dpi": 64,
-        "x_begin": -0.2857142857142857,
-        "x_end": 0.2857142857142857,
-        "y_dpi": 256,
-        "y_begin": 0.1,
-        "y_end": 0.6
-    },
+    "n_phi_regions": 8,
+    "n_eta_regions": 39,
+    
     "comment_regions": "specification is rmin, rmax, zmin, zmax. Example of two regions: [[0, 150, -550, 550],[0, 200, -900, -600]]",
-    "excludeRZRegions_skip": [[0, 150, -550, 550],[0, 200, -900, -600], [0, 200, 600, 900]],
-    "excludeEventsWithHitsInRZ_skip": [[0, 200, -1600, -600], [0, 200, 600, 1600], [200,1200, -3000, -1200], [200,1200, 1200, 3000]],
+    "excludeRZRegions": [[0, 150, -550, 550],[0, 200, -900, -600], [0, 200, 600, 900]],
+    "excludeEventsWithHitsInRZ": [[0, 200, -1600, -600], [0, 200, 600, 1600], [200,1200, -3000, -1200], [200,1200, 1200, 3000]],
     "comment_excludeEventsWithHitsInRZ": "ODD specific: do not study events with hits in endcaps",
     "comment_excludeRZRegions": "ODD specific: remove 4 inner pixel barrel layers and 3 end-cap layers"
 }
