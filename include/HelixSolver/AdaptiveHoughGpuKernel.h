@@ -7,6 +7,7 @@
 #include "HelixSolver/EventBuffer.h"
 #include "HelixSolver/AccumulatorSection.h"
 #include "HelixSolver/Options.h"
+#include "HelixSolver/ZPhiPartitioning.h"
 
 #ifdef USE_SYCL
 #include <CL/sycl.hpp>
@@ -34,20 +35,23 @@ namespace HelixSolver
         SYCL_EXTERNAL void operator()(Index2D idx) const;
 
     private:
-        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight) const;
-        uint8_t countHits(AccumulatorSection &section) const;
-        uint8_t countHits_checkOrder(AccumulatorSection &section) const;
-        void addSolution(const AccumulatorSection& section) const;
+        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight, float* rs_wedge, float* phis_wedge, float* zs_wedge, float wedge_eta_center, uint32_t wedge_spacepoints_count) const;
+        uint8_t countHits(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const;
+        uint8_t countHits_checkOrder(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const;
+        void addSolution(const AccumulatorSection& section, float wedge_eta_center) const;
         void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
         bool lineInsideAccumulator(const float radius_inverse, const float phi) const;
         float yLineAtBegin_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const;
         float yLineAtEnd_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const;
         bool isIntersectionWithinCell(const AccumulatorSection& section) const;
         bool isSolutionWithinCell(const AccumulatorSection& section) const;
+        bool lineInsideCell(const AccumulatorSection section, const float radius_inverse, const float phi) const;
+        float* sortArrays(const float* distance_array, const float* id_array, const uint32_t counter) const;
 
         OptionsAccessor opts;
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;
+        FloatBufferReadAccessor zs;
         SolutionsWriteAccessor solutions;
     };
 

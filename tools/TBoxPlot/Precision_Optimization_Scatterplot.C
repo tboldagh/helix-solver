@@ -1,3 +1,7 @@
+#include <cmath>
+#include <iostream>
+#include <TCanvas.h>
+
 void Precision_Optimization_Scatterplot(
     const Int_t divisionLevel_min      =  2,
     const Int_t divisionLevel_max      =  14
@@ -21,8 +25,8 @@ void Precision_Optimization_Scatterplot(
 
     // histograms definition
     const Int_t n_bins_hist = divisionLevel_max - divisionLevel_min + 1;
-    TH2F *scatterplot_nsolutions    =   new TH2F("scatterplot_nsolutions", ";#varphi division level;q/p_{T} division level", n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5, n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5);
-    TH2F *scatterplot_percentage    =   new TH2F("scatterplot_percentage", ";#varphi division level;q/p_{T} division level", n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5, n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5);
+    TH2F *scatterplot_nsolutions    =   new TH2F("scatterplot_nsolutions", ";division levels in #veta;division levels in q/p_{T}", n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5, n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5);
+    TH2F *scatterplot_percentage    =   new TH2F("scatterplot_percentage", ";division levels in #varphi;division levels in q/p_{T}", n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5, n_bins_hist, divisionLevel_min - 0.5, divisionLevel_max + 0.5);
     TCanvas *canvas  =   new TCanvas("canvas", "canvas", 1200, 1200);
 	gStyle  ->  SetOptStat(0);
   	gPad 	-> 	SetRightMargin(0.15);
@@ -123,10 +127,10 @@ void Precision_Optimization_Scatterplot(
     }
 
     scatterplot_percentage -> Draw("COLZ");
-    canvas -> SaveAs("precision_optimization_scatterplot_percentage.pdf");
+    canvas -> SaveAs("output/precision_optimization_scatterplot_percentage.pdf");
 
     canvas -> SetLogz();
     scatterplot_nsolutions -> Draw("COLZ");
-    canvas -> SaveAs("precision_optimization_scatterplot_nsolutions.pdf");
+    canvas -> SaveAs("output/precision_optimization_scatterplot_nsolutions.pdf");
 
 }

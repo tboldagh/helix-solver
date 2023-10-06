@@ -18,7 +18,7 @@ public:
   int divisionLevel = 0; // number of divisions needed from the original acc
   short indices[MAX_COUNT_PER_SECTION];
   uint8_t counts = 0;
-  int8_t OUT_OF_RANGE_COUNTS = -100;
+  int8_t OUT_OF_RANGE_COUNTS = 111;
   inline bool canUseIndices() const { return counts != 0; }
 
   AccumulatorSection bottomLeft(float xFraction = 0.5,
@@ -70,6 +70,18 @@ public:
   AccumulatorSection right(float xFraction = 0.5) const {
     return bottomRight(xFraction, 1.0);
   }
+  float distCC(float a, float b) const {
+    const float y = a * (xBegin + xSize) + b;
+    const float yEnd = yBegin+ySize;
+    return y <= yEnd ? (xSize + (yEnd - y)) : ((yEnd - b)/a - xBegin);
+  }
+
+  float distACC(float a, float b) const {
+    const float y = a * xBegin + b;
+    return y <= yBegin ? (ySize + (yBegin-b)/a - xBegin) : (yBegin+ySize - y );
+  }
+
+
 };
 
 } // namespace HelixSolver

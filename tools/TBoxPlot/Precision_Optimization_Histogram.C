@@ -114,13 +114,13 @@ void Precision_Optimization_Histogram(
     }
 
     scatterplot -> Draw("SCAT");
-    canvas -> SaveAs("precision_optimization_scatterplot_0.01.pdf");
+    canvas -> SaveAs("output/precision_optimization_scatterplot_0.01.pdf");
 
     canvas -> Clear();
     hist -> SetMarkerStyle(5);
     hist -> SetMarkerSize(2.0);
     hist -> Draw("HIST P");
     hist -> Draw("HIST SAME");
-    canvas -> SaveAs("precision_optimization_histogram_0.01.pdf");
+    canvas -> SaveAs("output/precision_optimization_histogram_0.01.pdf");
 
 }
