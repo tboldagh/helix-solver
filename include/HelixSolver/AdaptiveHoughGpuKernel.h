@@ -12,6 +12,7 @@
 #include <CL/sycl.hpp>
 using FloatBufferReadAccessor = sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device>;
 using SolutionsWriteAccessor = sycl::accessor<HelixSolver::SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device>;
+using OptionsAccessor = sycl::accessor<HelixSolver::Options, 1, sycl::access::mode::read, sycl::access::target::device>;
 using Index2D = sycl::id<2>;
 #else
 #include <vector>
@@ -19,7 +20,7 @@ using Index2D = sycl::id<2>;
 using FloatBufferReadAccessor = const FloatBuffer &;
 using SolutionsWriteAccessor = std::vector<HelixSolver::SolutionCircle> &;
 using Index2D = std::array<int, 2>;
-using OptionsBuffer = const HelixSolver::Options&;
+using OptionsAccessor = const OptionsBuffer &;
 #define SYCL_EXTERNAL
 #endif
 
@@ -28,7 +29,7 @@ namespace HelixSolver
     class AdaptiveHoughGpuKernel
     {
     public:
-        AdaptiveHoughGpuKernel(OptionsBuffer o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor z, SolutionsWriteAccessor solution);
+        AdaptiveHoughGpuKernel(OptionsAccessor o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor z, SolutionsWriteAccessor solution);
 
         SYCL_EXTERNAL void operator()(Index2D idx) const;
 
@@ -44,7 +45,7 @@ namespace HelixSolver
         bool isIntersectionWithinCell(const AccumulatorSection& section) const;
         bool isSolutionWithinCell(const AccumulatorSection& section) const;
 
-        OptionsBuffer& opt;
+        OptionsAccessor opts;
         FloatBufferReadAccessor rs;
         FloatBufferReadAccessor phis;
         SolutionsWriteAccessor solutions;

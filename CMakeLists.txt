@@ -29,52 +29,36 @@ FILE(GLOB Sources src/*.cpp)
 
 
 find_package( IntelSYCL )
-if( NOT IntelSYCL_FOUND )
-   message( STATUS "SYCL compilation is not available, not building SYCL targets" )
+# if( NOT IntelSYCL_FOUND )
+#    message( STATUS "SYCL compilation is not available, not building SYCL targets" )
 
-   add_executable( ht_no_sycl ${Sources})
+#    add_executable( ht_no_sycl ${Sources})
 
-   target_link_libraries(ht_no_sycl
-       PRIVATE
-       ${libs}
-   )
+#    target_link_libraries(ht_no_sycl
+#        PRIVATE
+#        ${libs}
+#    )
 
-   target_compile_definitions(ht_no_sycl
-       PRIVATE
-       PRINT_DEBUG # control here debug messages
-       PRINT_CDEBUG # control here cdebug messages
-       PRINT_VERBOSE # control here verbose messages
-   )
-   install(TARGETS ht_no_sycl
-       DESTINATION bin
-   )
+#    target_compile_definitions(ht_no_sycl
+#        PRIVATE
+#        PRINT_DEBUG # control here debug messages
+#        PRINT_CDEBUG # control here cdebug messages
+#        PRINT_VERBOSE # control here verbose messages
+#    )
+#    install(TARGETS ht_no_sycl
+#        DESTINATION bin
+#    )
 
-else()
+# else()
     add_executable( ht_sycl ${Sources})
-    target_link_libraries(ht_sycl
-        PRIVATE
-        ${libs}
+    target_link_libraries(ht_sycl PRIVATE sycl ${libs} )
+    target_compile_definitions(ht_sycl PRIVATE USE_SYCL=1
     )
-    target_compile_definitions(ht_sycl PRIVATE
-        USE_SYCL=1
-        R__HAS_STD_STRING_VIEW
-    )
-    add_sycl_to_target(TARGET ht_sycl SOURCES ${Sources})
-    install(TARGETS ht_sycl DESTINATION bin
-)
-
-endif()
-
-
-add_executable( spliter experimental/spliter.cpp )
-target_include_directories( spliter PRIVATE /usr/local/include/sycl/ helix-solver/include/)
-target_link_libraries( spliter PRIVATE  sycl )
-target_compile_definitions( spliter PRIVATE USE_SYCL=0)
-target_compile_options(spliter PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
-target_link_options( spliter PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda)
-install( TARGETS spliter DESTINATION bin
-)
-
+#    add_sycl_to_target(TARGET ht_sycl SOURCES ${Sources})
+    target_compile_options(ht_sycl PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda )
+    target_link_options( ht_sycl PRIVATE -fsycl -fsycl-targets=nvptx64-nvidia-cuda )
+    install( TARGETS ht_sycl DESTINATION bin )
+# endif()
 
 
 

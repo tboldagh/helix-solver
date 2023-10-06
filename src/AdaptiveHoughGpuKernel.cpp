@@ -10,7 +10,7 @@
 
 namespace HelixSolver
 {
-    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(OptionsBuffer o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : opt(o), rs(rs), phis(phis), solutions(solutions)
+    AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(OptionsAccessor o, FloatBufferReadAccessor rs, FloatBufferReadAccessor phis, FloatBufferReadAccessor /*z*/, SolutionsWriteAccessor solutions) : opts(o), rs(rs), phis(phis), solutions(solutions)
     {
         CDEBUG(DISPLAY_BASIC, ".. AdaptiveHoughKernel instantiated with " << rs.size() << " measurements ");
     }
@@ -66,11 +66,11 @@ namespace HelixSolver
         if ( count < THRESHOLD )
             return;
 
-       if (!TO_DISPLAY_PRECISION_PAIR_ONCE){     // so that these values are displayed only once
-            DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " << opt.ACC_X_PRECISION << ", ACC_PT_PRECISION = " << opt.ACC_PT_PRECISION);
-       }
-       ++TO_DISPLAY_PRECISION_PAIR_ONCE;
-
+    //    if (!TO_DISPLAY_PRECISION_PAIR_ONCE){     // so that these values are displayed only once
+    //         DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " << opt.ACC_X_PRECISION << ", ACC_PT_PRECISION = " << opt.ACC_PT_PRECISION);
+    //    }
+    //    ++TO_DISPLAY_PRECISION_PAIR_ONCE;
+        HelixSolver::Options opt = opts[0];
         if ( section.xSize > opt.ACC_X_PRECISION && section.ySize > opt.ACC_PT_PRECISION) {
             CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
             // by the order here we steer the direction of the search of image space

@@ -25,7 +25,7 @@ static constexpr bool DISPLAY_OK_EVENTS = 0;
 #endif
 #define CDEBUG(COND, MSG) { if ( COND == true ) { std::cout << " ... " << MSG << std::endl; } }
 #else
-#define CDEBUG(MSG)
+#define CDEBUG(CMD, MSG)
 #endif
 
 #ifdef PRINT_VERBOSE
