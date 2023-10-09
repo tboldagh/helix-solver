@@ -70,12 +70,21 @@ public:
   AccumulatorSection right(float xFraction = 0.5) const {
     return bottomRight(xFraction, 1.0);
   }
+
+  bool isLineInside( float a, float b ) const {
+    const float yB = a * xBegin + b;
+    const float yE = a * (xBegin+xSize) + b;
+    return yB < yBegin+ySize && yE > yBegin;
+  }
+
+  // counter clock wise distance from upper left corner
+  // a and b are line parameters y = ax + b
   float distCC(float a, float b) const {
     const float y = a * (xBegin + xSize) + b;
     const float yEnd = yBegin+ySize;
     return y <= yEnd ? (xSize + (yEnd - y)) : ((yEnd - b)/a - xBegin);
   }
-
+  // anti-counter clock wise distance from upper left corner
   float distACC(float a, float b) const {
     const float y = a * xBegin + b;
     return y <= yBegin ? (ySize + (yBegin-b)/a - xBegin) : (yBegin+ySize - y );

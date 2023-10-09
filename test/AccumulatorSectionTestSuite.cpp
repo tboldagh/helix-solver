@@ -133,7 +133,6 @@ TEST_F(SubDivTestSuite, DistAntiClockWise) {
   ASSERT_FLOAT_EQ(m_8x10.distACC(0.5, -2), 18); 
   ASSERT_FLOAT_EQ(m_8x10.distACC(0.5, -1), 16); 
   ASSERT_FLOAT_EQ(m_8x10.distACC(0.5, 1), 12); 
-
 }
 
 

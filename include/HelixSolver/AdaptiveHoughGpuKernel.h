@@ -41,10 +41,8 @@ namespace HelixSolver
         void addSolution(const AccumulatorSection& section, float wedge_eta_center) const;
         void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
         bool lineInsideAccumulator(const float radius_inverse, const float phi) const;
-        float yLineAtBegin_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const;
-        float yLineAtEnd_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const;
         bool isIntersectionWithinCell(const AccumulatorSection& section) const;
-        bool isSolutionWithinCell(const AccumulatorSection& section) const;
+        bool isPeakWithinCell(const AccumulatorSection& section) const;
         bool lineInsideCell(const AccumulatorSection section, const float radius_inverse, const float phi) const;
         float* sortArrays(const float* distance_array, const float* id_array, const uint32_t counter) const;
 

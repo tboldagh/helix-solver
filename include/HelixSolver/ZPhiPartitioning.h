@@ -49,6 +49,10 @@ struct Wedge {
   }
 
   Reg m_phi;
+
+  float phi_min() const { return m_phi.center - m_phi.width; }
+  float phi_max() const { return m_phi.center + m_phi.width; }
+
   // definition of lines in r - z plane
   float m_aleft, m_bleft;
   float m_aright, m_bright;

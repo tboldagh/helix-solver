@@ -3,7 +3,7 @@
 #include <iostream>
 #endif
 #include "HelixSolver/Debug.h"
-
+#include "HelixSolver/Sorting.h"
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
 
 namespace HelixSolver
@@ -38,14 +38,21 @@ namespace HelixSolver
                     Reg z_reg = Reg(wedge_z_center, wedge_z_width);
                     Reg eta_reg = Reg(wedge_eta_center, wedge_eta_width_index / 2 + excess_wedge_eta_width);
 
-                    Wedge wedge_index = Wedge(phi_reg, z_reg, eta_reg);
+                    Wedge wedge = Wedge(phi_reg, z_reg, eta_reg);
 
                     const uint32_t maxIndex = rs.size();
                     for (uint32_t index = 0; index < maxIndex; ++index){
-
-                        if (wedge_index.in_wedge_r_phi_z(rs[index], phis[index], zs[index])){
+                        if (wedge.in_wedge_r_phi_z(rs[index], phis[index], zs[index])){
                             rs_wedge[wedge_spacepoints_count]   = rs[index];
                             phis_wedge[wedge_spacepoints_count] = phis[index];
+
+                            // take care about phi wrapping around +-PI
+                            // this is done bye moving the points by 2 PI
+                            if ( wedge.phi_min() < - M_PI && phis_wedge[wedge_spacepoints_count] > wedge.phi_max())
+                                phis_wedge[wedge_spacepoints_count] += 2.0*M_PI;
+                            if ( wedge.phi_max() > M_PI && phis_wedge[wedge_spacepoints_count] < wedge.phi_min())
+                                phis_wedge[wedge_spacepoints_count] -= 2.0*M_PI;
+
                             zs_wedge[wedge_spacepoints_count]   = zs[index];
                             ++wedge_spacepoints_count;
                         }
@@ -178,8 +185,11 @@ namespace HelixSolver
         } else { // no more splitting, we have a solution
 
             if (USE_GAUSS_FILTERING){
-
-                if (isSolutionWithinCell(section)){
+                // Next step of solutions number minimization - checking phi of each line
+                // Each helix is almost a straight line so we expect very small deviation from the truth value. Outliner in terms of
+                // phi indicates that this point does not belong to analyzed track
+                // We want to reduce number of counter by number of lines with phi differing from mean by more than n standard deviations
+                if (isPeakWithinCell(section)){
                     addSolution(section, wedge_eta_center);
                 }
             } else {
@@ -223,74 +233,39 @@ namespace HelixSolver
         // this can be stored in section object maybe???
 
         const uint32_t maxIndex = wedge_spacepoints_count;
-        // 1st value is coordinate of intersection point, the other is r of the given line
-        float cell_intersection_before_id[wedge_spacepoints_count];
-        float cell_intersection_before_position[wedge_spacepoints_count];
-        float cell_intersection_after_id[wedge_spacepoints_count];
-        float cell_intersection_after_position[wedge_spacepoints_count];
+
+        uint32_t cell_intersection_acc_id[wedge_spacepoints_count];
+        float cell_intersection_acc_distance[wedge_spacepoints_count];
+        uint32_t cell_intersection_cc_id[wedge_spacepoints_count];
+        float cell_intersection_cc_distance[wedge_spacepoints_count];
         uint32_t before_counter = 0;
         uint32_t after_counter = 0;
 
-        //std::cout << wedge_spacepoints_count << std::endl;
-
+        // candidate for parallel_for
         for (uint32_t index = 0; index < maxIndex ; ++index)
         {
             const float r = rs_wedge[index];
             const float inverse_r = 1.0/r;
             const float phi = phis_wedge[index];
-
-            if (lineInsideCell(section, inverse_r, phi)){
-
+            const float a = inverse_r * INVERSE_A;
+            const float b = - inverse_r * INVERSE_A * phi;
+            if ( section.isLineInside(a, b)) {
                 section.indices[counter] = index;
+                cell_intersection_acc_id[counter] = counter;
+                cell_intersection_acc_distance[counter] = section.distACC(a, b); // anti clockwise
+
+                cell_intersection_cc_id[counter] = counter;
+                cell_intersection_cc_distance[counter] = section.distCC(a, b); // clockwise
                 counter++;
-
-                double yLineAtBegin  = inverse_r * INVERSE_A * (section.xBegin - phi);
-                double yLineAtEnd    = inverse_r * INVERSE_A * (xEnd - phi);
-                
-                if (yLineAtBegin <= yEnd && yLineAtBegin >= section.yBegin){
-
-                    cell_intersection_before_id[before_counter] = counter;
-                    cell_intersection_before_position[before_counter] = 1 + (yLineAtBegin - section.yBegin)/section.ySize;
-                    ++before_counter;
-                } else {
-
-                    float xLineAtBegin = phi + section.yBegin / (inverse_r * INVERSE_A);
-                    cell_intersection_before_id[before_counter] = counter;
-                    cell_intersection_before_position[before_counter] = (section.xBegin + section.xSize - xLineAtBegin)/section.xSize;
-                    ++before_counter;
-                }
-
-                if (yLineAtEnd <= yEnd && yLineAtBegin >= section.yBegin){
-
-                    cell_intersection_after_id[after_counter] = counter;
-                    cell_intersection_after_position[after_counter] = (yLineAtBegin - section.yBegin)/section.ySize;
-                    ++after_counter;
-                } else {
-
-                    float xLineAtEnd = phi + (section.yBegin + section.ySize) / (inverse_r * INVERSE_A);
-                    cell_intersection_after_id[after_counter] = counter;
-                    cell_intersection_after_position[after_counter] = 1 + (section.xBegin + section.xSize - xLineAtEnd)/section.xSize;
-                    ++after_counter;
-                }
             }
         }
-
         if (counter < THRESHOLD){
             return 0;
         }
-
-        // the lines of code below check whether order of lines at the left and bottom boundary of cells is the same
-        // as for right and upper boundary of the cells
-        auto sorted_before = sortArrays(cell_intersection_before_position, cell_intersection_before_id, before_counter);
-        auto sorted_after  = sortArrays(cell_intersection_after_position, cell_intersection_after_id, after_counter);
- 
-        int8_t count_changes{};
-        for(int8_t intersection_index; intersection_index < before_counter; ++intersection_index){
-            if (sorted_before[intersection_index] != sorted_after[intersection_index]){
-
-                ++count_changes;
-            }
-        }
+        // sort indices according to distance
+        CrossingsSorter::sort(cell_intersection_acc_distance, cell_intersection_acc_id, counter);
+        CrossingsSorter::sort(cell_intersection_cc_distance, cell_intersection_cc_id, counter);
+        const uint32_t count_changes = CrossingsSorter::count(cell_intersection_acc_id, cell_intersection_cc_id, counter);
         
         // we want to reject a cell if not enough intersections were found -> lines only/almost only pararell -> fake solutions
         if (count_changes < MIN_COUNT_CHANGES){
@@ -298,12 +273,6 @@ namespace HelixSolver
             section.counts = 0;
             return 0;
         }   
-
-        // Next step of solutions number minimization - checking phi of each line
-        // Each helix is almost a straight line so we expect very small deviation from the truth value. Outliner in terms of
-        // phi indicates that this point does not belong to analyzed track
-        // We want to reduce number of counter by number of lines with phi differing from mean by more than n standard deviations
-
         section.counts =  counter + 1 == MAX_COUNT_PER_SECTION ? section.OUT_OF_RANGE_COUNTS : counter;
         return counter;
     }
@@ -364,45 +333,7 @@ namespace HelixSolver
         } else return false;
     }
 
-    float AdaptiveHoughGpuKernel::yLineAtBegin_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const
-    {
-
-        const double qOverPt_for_PHI_BEGIN = radius_inverse * INVERSE_A * (PHI_BEGIN - phi);
-        const double qOverPt_for_PHI_END   = radius_inverse * INVERSE_A * (PHI_END - phi);
-
-        const double xEnd = section.xBegin + section.xSize;
-        const double yEnd = section.yBegin + section.ySize;
-
-         if (qOverPt_for_PHI_BEGIN > Q_OVER_PT_BEGIN && qOverPt_for_PHI_BEGIN < Q_OVER_PT_END){
-
-            return radius_inverse * INVERSE_A * (section.xBegin - (phi + 2 * M_PI));
-        } else {
-
-            return radius_inverse * INVERSE_A * (section.xBegin - (phi - 2 * M_PI));
-        } 
-    }
-
-    float AdaptiveHoughGpuKernel::yLineAtEnd_modify(const float radius_inverse, const float phi, const AccumulatorSection& section) const
-    {
-
-        const double qOverPt_for_PHI_BEGIN = radius_inverse * INVERSE_A * (PHI_BEGIN - phi);
-        const double qOverPt_for_PHI_END   = radius_inverse * INVERSE_A * (PHI_END - phi);
-
-        const double xEnd = section.xBegin + section.xSize;
-        const double yEnd = section.yBegin + section.ySize;
-
-         if (qOverPt_for_PHI_BEGIN > Q_OVER_PT_BEGIN && qOverPt_for_PHI_BEGIN < Q_OVER_PT_END){
-
-            return radius_inverse * INVERSE_A * (xEnd - (phi + 2 * M_PI));
-
-        } else {
-
-            return radius_inverse * INVERSE_A * (xEnd - (phi - 2 * M_PI));
-        }
-        return 0;
-    }
-
-    bool AdaptiveHoughGpuKernel::isSolutionWithinCell(const AccumulatorSection& section) const
+    bool AdaptiveHoughGpuKernel::isPeakWithinCell(const AccumulatorSection& section) const
     {
         uint8_t max_counts = section.counts == section.OUT_OF_RANGE_COUNTS ? MAX_COUNT_PER_SECTION : section.counts;
         uint8_t max_n_solutions = max_counts * (max_counts - 1) / 2;
@@ -435,8 +366,8 @@ namespace HelixSolver
 
                 // For both lines within accumulator (none of them crosses left or right limit) nothing interesting happens.
                 // If calculated intersection point is within accumulator, it is accepted for further analysis.
-                // For at least one line crossing left or rigth limit:
-                // If intrsection point is to be within accumulator, lines associated with this points must lie on one side of the accumulator ->
+                // For at least one line crossing left or right limit:
+                // If intersection point is to be within accumulator, lines associated with this points must lie on one side of the accumulator ->
                 // both phi > 0 or both phi < 0, which is equivalent to phi_main * phi_secondary > 0. Then solution point is calculated for "raw" line
                 // parameters (r and phi) and for altered values (phi -> phi +- 2*pi depending on limit of accumulator which is crossed.)
                 // If phi_main * phi_secondary < 0 lines lie on opposite sides of the accumulator. Then solution is calculated for either phi
@@ -627,61 +558,14 @@ namespace HelixSolver
         float yLineAtEnd    = radius_inverse * INVERSE_A * (xEnd - phi);
 
         if (lineInsideAccumulator(radius_inverse, phi)){
-
-            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-            {
+            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd){
                 return true;
             }
         } else {
-
-            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-            {
-                return true;
-            }
-
-            // The code below allows to extend lines which intersect lew or right limit of the accumulator to the other side
-            // This maneuver allows to significantly increase reconsruction efficiency for phi \approx +-pi
-
-            yLineAtBegin = yLineAtBegin_modify(radius_inverse, phi, section);
-            yLineAtEnd   = yLineAtEnd_modify(radius_inverse, phi, section);
-
-            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd)
-            {
+            if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd){
                 return true;
             }
         }
         return false;
-    }
-
-    float* AdaptiveHoughGpuKernel::sortArrays(const float* distance_array, const float* id_array, const uint32_t counter) const{
-        
-        float sorted_array[MAX_SPACEPOINTS]; // TODO to large array probably 
-        float copy_distance[MAX_SPACEPOINTS];
-
-
-        for (uint32_t index = 0; index < counter; ++index){
-
-            copy_distance[index] = distance_array[index];
-        }
-        
-        for (uint32_t main_index = 0; main_index < counter; ++main_index){
-
-            uint32_t min_index = 0;
-            float min_val = 10.0;
-
-            for (uint32_t index = 0; index < counter; ++index){
-
-                if (copy_distance[index] < min_val){
-
-                    min_index = index;
-                    min_val = copy_distance[index];
-                }
-            }
-
-            copy_distance[min_index] = 10.0;
-            sorted_array[main_index] = id_array[min_index];
-        }
-
-        return sorted_array;
     }
 } // namespace HelixSolver
