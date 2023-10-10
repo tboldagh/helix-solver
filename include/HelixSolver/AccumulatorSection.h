@@ -15,7 +15,7 @@ public:
   double ySize;
   double xBegin;
   double yBegin;
-  int divisionLevel = 0; // number of divisions needed from the original acc
+  uint32_t divisionLevel = 0; // number of divisions needed from the original acc
   short indices[MAX_COUNT_PER_SECTION];
   uint8_t counts = 0;
   int8_t OUT_OF_RANGE_COUNTS = 111;
@@ -70,6 +70,27 @@ public:
   AccumulatorSection right(float xFraction = 0.5) const {
     return bottomRight(xFraction, 1.0);
   }
+
+  bool isLineInside( float a, float b ) const {
+    const float yB = fma(a, xBegin, b);
+    const float yE = fma(a, (xBegin+xSize), b);
+    return yB < yBegin+ySize && yE > yBegin;
+  }
+
+  // counter clock wise distance from upper left corner
+  // a and b are line parameters y = ax + b
+  float distCC(float a, float b) const {
+    const float y = fma(a, (xBegin + xSize), b);
+    const float yEnd = yBegin+ySize;
+    return y <= yEnd ? (xSize + (yEnd - y)) : ((yEnd - b)/a - xBegin);
+  }
+  // anti-counter clock wise distance from upper left corner
+  float distACC(float a, float b) const {
+    const float y = fma(a, xBegin, b);
+    return y <= yBegin ? (ySize + (yBegin-b)/a - xBegin) : (yBegin+ySize - y );
+  }
+
+
 };
 
 } // namespace HelixSolver

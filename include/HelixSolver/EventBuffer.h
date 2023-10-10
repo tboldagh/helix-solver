@@ -10,7 +10,6 @@
     #include <vector>
     using FloatBuffer=std::vector<float>;
     using SolutionBuffer=std::vector<HelixSolver::SolutionCircle>;
-
 #endif
 
 
