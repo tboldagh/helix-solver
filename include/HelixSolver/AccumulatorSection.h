@@ -15,7 +15,7 @@ public:
   double ySize;
   double xBegin;
   double yBegin;
-  int divisionLevel = 0; // number of divisions needed from the original acc
+  uint32_t divisionLevel = 0; // number of divisions needed from the original acc
   short indices[MAX_COUNT_PER_SECTION];
   uint8_t counts = 0;
   int8_t OUT_OF_RANGE_COUNTS = 111;

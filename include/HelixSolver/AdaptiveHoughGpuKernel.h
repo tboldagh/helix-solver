@@ -35,7 +35,7 @@ namespace HelixSolver
         SYCL_EXTERNAL void operator()(Index2D idx) const;
 
     private:
-        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint8_t &sectionsHeight, float* rs_wedge, float* phis_wedge, float* zs_wedge, float wedge_eta_center, uint32_t wedge_spacepoints_count) const;
+        void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint32_t &sectionsHeight, float* rs_wedge, float* phis_wedge, float* zs_wedge, float wedge_eta_center, uint32_t wedge_spacepoints_count) const;
         uint8_t countHits(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const;
         uint8_t countHits_checkOrder(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const;
         void addSolution(const AccumulatorSection& section, float wedge_eta_center) const;

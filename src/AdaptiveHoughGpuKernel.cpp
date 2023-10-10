@@ -48,14 +48,10 @@ namespace HelixSolver
                             // take care about phi wrapping around +-PI
                             // this is done bye moving the points by 2 PI
                             if ( wedge.phi_min() < - M_PI && phis_wedge[wedge_spacepoints_count] > wedge.phi_max()){
-                                // DEBUG(" wrapping phi -2PI " << phis_wedge[wedge_spacepoints_count] );
-
                                 phis_wedge[wedge_spacepoints_count] -= 2.0*M_PI;
                             }
 
                             if ( wedge.phi_max() > M_PI && phis_wedge[wedge_spacepoints_count] < wedge.phi_min()) {
-                                // DEBUG("wrapping phi +2PI " << phis_wedge[wedge_spacepoints_count] );
-
                                 phis_wedge[wedge_spacepoints_count] += 2.0*M_PI;
                             }
 
@@ -87,8 +83,8 @@ namespace HelixSolver
                     // for now it is an arbitrary constant + checks that we stay within this limit
 
                     AccumulatorSection sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image will be recorded
-                    uint8_t sectionsBufferSize = 1;
-                    const uint8_t initialDivisionLevel = 0;
+                    uint32_t sectionsBufferSize = 1;
+                    const uint32_t initialDivisionLevel = 0;
                     sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin, yBegin, initialDivisionLevel);
 
                     // scan this region until there is no section to process (i.e. size, initially 1, becomes 0)
@@ -108,15 +104,13 @@ namespace HelixSolver
             const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
             CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: " << xBegin << " xsz: " << INITIAL_X_SIZE << " y: " << yBegin << " ysz: " << INITIAL_Y_SIZE);
 
-            // we need here a limited set of Points
-
             // the size os somewhat arbitrary, for regular algorithm dividing into 4 sub-sections it defined by the depth allowed
             // but for more flexible algorithms that is less predictable
             // for now it is an arbitrary constant + checks that we stay within this limit
 
             AccumulatorSection sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image will be recorded
-            uint8_t sectionsBufferSize = 1;
-            const uint8_t initialDivisionLevel = 0;
+            uint32_t sectionsBufferSize = 1;
+            const uint32_t initialDivisionLevel = 0;
             sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin, yBegin, initialDivisionLevel);
 
             float rs_wedge[MAX_SPACEPOINTS];
@@ -140,7 +134,7 @@ namespace HelixSolver
         }
     }
 
-    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint8_t &sectionsBufferSize, float* rs_wedge, float* phis_wedge, float* zs_wedge, float wedge_eta_center, uint32_t wedge_spacepoints_count) const
+    void AdaptiveHoughGpuKernel::fillAccumulatorSection(AccumulatorSection *sections, uint32_t &sectionsBufferSize, float* rs_wedge, float* phis_wedge, float* zs_wedge, float wedge_eta_center, uint32_t wedge_spacepoints_count) const
     {
         HelixSolver::Options opt = opts[0];
 
