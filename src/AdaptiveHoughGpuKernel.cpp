@@ -20,23 +20,22 @@ namespace HelixSolver
 
             // 'pure" width of wedge which can be used to determine wedge center, obtaine dy division of the full range of
             // variable by number of regions, after addition of excess_wedge_*_width it informs about true wedge width
-            const float wedge_phi_width_index = (PHI_END - PHI_BEGIN) / opt.N_PHI_WEDGE;
-            const float wedge_eta_width_index = (ETA_WEDGE_MAX - ETA_WEDGE_MIN) / opt.N_ETA_WEDGE;
+            const float wedge_phi_width = (PHI_END - PHI_BEGIN) / opt.N_PHI_WEDGE;
+            const float wedge_eta_width = (ETA_WEDGE_MAX - ETA_WEDGE_MIN) / opt.N_ETA_WEDGE;
 
             for (uint8_t wedge_index_phi = 0; wedge_index_phi < opt.N_PHI_WEDGE; ++wedge_index_phi){
                 for (uint8_t wedge_index_eta = 0; wedge_index_eta < opt.N_ETA_WEDGE; ++wedge_index_eta){
-
                     float rs_wedge [MAX_SPACEPOINTS];
                     float phis_wedge[MAX_SPACEPOINTS];
                     float zs_wedge[MAX_SPACEPOINTS];
                     uint32_t wedge_spacepoints_count{};
                     
-                    const float wedge_phi_center = PHI_BEGIN + wedge_phi_width_index * wedge_index_phi;
-                    const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width_index/2 + wedge_eta_width_index * wedge_index_eta;
+                    const float wedge_phi_center = PHI_BEGIN + wedge_phi_width * wedge_index_phi + wedge_phi_width/2.0;
+                    const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width/2 + wedge_eta_width * wedge_index_eta;
 
-                    Reg phi_reg = Reg(wedge_phi_center, wedge_phi_width_index / 2 + excess_wedge_phi_width);
+                    Reg phi_reg = Reg(wedge_phi_center, wedge_phi_width / 2.0 + excess_wedge_phi_width);
                     Reg z_reg = Reg(wedge_z_center, wedge_z_width);
-                    Reg eta_reg = Reg(wedge_eta_center, wedge_eta_width_index / 2 + excess_wedge_eta_width);
+                    Reg eta_reg = Reg(wedge_eta_center, wedge_eta_width / 2.0 + excess_wedge_eta_width);
 
                     Wedge wedge = Wedge(phi_reg, z_reg, eta_reg);
 
@@ -48,10 +47,17 @@ namespace HelixSolver
 
                             // take care about phi wrapping around +-PI
                             // this is done bye moving the points by 2 PI
-                            if ( wedge.phi_min() < - M_PI && phis_wedge[wedge_spacepoints_count] > wedge.phi_max())
-                                phis_wedge[wedge_spacepoints_count] += 2.0*M_PI;
-                            if ( wedge.phi_max() > M_PI && phis_wedge[wedge_spacepoints_count] < wedge.phi_min())
+                            if ( wedge.phi_min() < - M_PI && phis_wedge[wedge_spacepoints_count] > wedge.phi_max()){
+                                // DEBUG(" wrapping phi -2PI " << phis_wedge[wedge_spacepoints_count] );
+
                                 phis_wedge[wedge_spacepoints_count] -= 2.0*M_PI;
+                            }
+
+                            if ( wedge.phi_max() > M_PI && phis_wedge[wedge_spacepoints_count] < wedge.phi_min()) {
+                                // DEBUG("wrapping phi +2PI " << phis_wedge[wedge_spacepoints_count] );
+
+                                phis_wedge[wedge_spacepoints_count] += 2.0*M_PI;
+                            }
 
                             zs_wedge[wedge_spacepoints_count]   = zs[index];
                             ++wedge_spacepoints_count;
