@@ -21,4 +21,17 @@ target_link_libraries(AccumulatorSectionTest
   GTest::GTest)
 target_include_directories(AccumulatorSectionTest PRIVATE ../include)
 
-  add_test(AccumulatorSectionTest_getst AccumulatorSectionTest)  
+add_test(AccumulatorSectionTest_getst AccumulatorSectionTest)  
+
+
+add_executable(
+  SorterTest
+  SorterTestSuite.cpp  
+)
+
+target_link_libraries(SorterTest
+ PRIVATE
+  GTest::GTest)
+target_include_directories(SorterTest PRIVATE ../include)
+
+add_test(SorterTest_getst SorterTest)  
