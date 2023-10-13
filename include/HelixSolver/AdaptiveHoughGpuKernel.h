@@ -36,8 +36,8 @@ namespace HelixSolver
 
     private:
         void fillAccumulatorSection(AccumulatorSection *sectionsStack, uint32_t &sectionsHeight, float* rs_wedge, float* phis_wedge, float* zs_wedge, float wedge_eta_center, uint32_t wedge_spacepoints_count) const;
-        uint8_t countHits(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const;
-        uint8_t countHits_checkOrder(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const;
+        uint16_t countHits(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const;
+        uint16_t countHits_checkOrder(AccumulatorSection &section, float* rs_wedge, float* phis_wedge, float* zs_wedge, uint32_t wedge_spacepoints_count) const;
         void addSolution(const AccumulatorSection& section, float wedge_eta_center) const;
         void fillPreciseSolution(const AccumulatorSection& section, SolutionCircle& s) const;
         bool lineInsideAccumulator(const float radius_inverse, const float phi) const;

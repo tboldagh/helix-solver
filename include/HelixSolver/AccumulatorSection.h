@@ -17,7 +17,7 @@ public:
   double yBegin;
   uint32_t divisionLevel = 0; // number of divisions needed from the original acc
   short indices[MAX_COUNT_PER_SECTION];
-  uint8_t counts = 0;
+  uint16_t counts = 0;
   int8_t OUT_OF_RANGE_COUNTS = 111;
   inline bool canUseIndices() const { return counts != 0; }
 
