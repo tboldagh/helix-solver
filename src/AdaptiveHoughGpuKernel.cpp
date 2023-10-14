@@ -19,160 +19,111 @@ AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(OptionsAccessor o,
 
 void AdaptiveHoughGpuKernel::operator()(Index2D idx) const {
   HelixSolver::Options opt = opts[0];
-  if (USE_DIVISION_PHI_ETA) {
+  
+  // 'pure" width of wedge which can be used to determine wedge center,
+  // obtaine dy division of the full range of variable by number of regions,
+  // after addition of excess_wedge_*_width it informs about true wedge width
+  const float wedge_phi_width = (PHI_END - PHI_BEGIN) / opt.N_PHI_WEDGE;
+  const float wedge_eta_width =
+      (ETA_WEDGE_MAX - ETA_WEDGE_MIN) / opt.N_ETA_WEDGE;
 
-    // 'pure" width of wedge which can be used to determine wedge center,
-    // obtaine dy division of the full range of variable by number of regions,
-    // after addition of excess_wedge_*_width it informs about true wedge width
-    const float wedge_phi_width = (PHI_END - PHI_BEGIN) / opt.N_PHI_WEDGE;
-    const float wedge_eta_width =
-        (ETA_WEDGE_MAX - ETA_WEDGE_MIN) / opt.N_ETA_WEDGE;
+  for (uint16_t wedge_index_phi = 0; wedge_index_phi < opt.N_PHI_WEDGE;
+        ++wedge_index_phi) {
+    for (uint16_t wedge_index_eta = 0; wedge_index_eta < opt.N_ETA_WEDGE;
+          ++wedge_index_eta) {
+      float rs_wedge[MAX_SPACEPOINTS];
+      float phis_wedge[MAX_SPACEPOINTS];
+      float zs_wedge[MAX_SPACEPOINTS];
+      uint32_t wedge_spacepoints_count{};
 
-    for (uint8_t wedge_index_phi = 0; wedge_index_phi < opt.N_PHI_WEDGE;
-         ++wedge_index_phi) {
-      for (uint8_t wedge_index_eta = 0; wedge_index_eta < opt.N_ETA_WEDGE;
-           ++wedge_index_eta) {
-        float rs_wedge[MAX_SPACEPOINTS];
-        float phis_wedge[MAX_SPACEPOINTS];
-        float zs_wedge[MAX_SPACEPOINTS];
-        uint32_t wedge_spacepoints_count{};
+      const float wedge_phi_center = PHI_BEGIN +
+                                      wedge_phi_width * wedge_index_phi +
+                                      wedge_phi_width / 2.0;
+      const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width / 2 +
+                                      wedge_eta_width * wedge_index_eta;
 
-        const float wedge_phi_center = PHI_BEGIN +
-                                       wedge_phi_width * wedge_index_phi +
-                                       wedge_phi_width / 2.0;
-        const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width / 2 +
-                                       wedge_eta_width * wedge_index_eta;
+      Reg phi_reg = Reg(wedge_phi_center,
+                        wedge_phi_width / 2.0 + excess_wedge_phi_width);
+      Reg z_reg = Reg(wedge_z_center, wedge_z_width);
+      Reg eta_reg = Reg(wedge_eta_center,
+                        wedge_eta_width / 2.0 + excess_wedge_eta_width);
 
-        Reg phi_reg = Reg(wedge_phi_center,
-                          wedge_phi_width / 2.0 + excess_wedge_phi_width);
-        Reg z_reg = Reg(wedge_z_center, wedge_z_width);
-        Reg eta_reg = Reg(wedge_eta_center,
-                          wedge_eta_width / 2.0 + excess_wedge_eta_width);
+      Wedge wedge = Wedge(phi_reg, z_reg, eta_reg);
 
-        Wedge wedge = Wedge(phi_reg, z_reg, eta_reg);
+      const uint32_t maxIndex = rs.size();
+      for (uint32_t index = 0; index < maxIndex; ++index) {
+        if (wedge.in_wedge_r_phi_z(rs[index], phis[index], zs[index])) {
+          rs_wedge[wedge_spacepoints_count] = rs[index];
+          phis_wedge[wedge_spacepoints_count] = phis[index];
 
-        const uint32_t maxIndex = rs.size();
-        for (uint32_t index = 0; index < maxIndex; ++index) {
-          if (wedge.in_wedge_r_phi_z(rs[index], phis[index], zs[index])) {
-            rs_wedge[wedge_spacepoints_count] = rs[index];
-            phis_wedge[wedge_spacepoints_count] = phis[index];
-
-            // take care about phi wrapping around +-PI
-            // this is done bye moving the points by 2 PI
-            if (wedge.phi_min() < -M_PI &&
-                phis_wedge[wedge_spacepoints_count] > wedge.phi_max()) {
-              phis_wedge[wedge_spacepoints_count] -= 2.0 * M_PI;
-            }
-
-            if (wedge.phi_max() > M_PI &&
-                phis_wedge[wedge_spacepoints_count] < wedge.phi_min()) {
-              phis_wedge[wedge_spacepoints_count] += 2.0 * M_PI;
-            }
-
-            zs_wedge[wedge_spacepoints_count] = zs[index];
-            ++wedge_spacepoints_count;
+          // take care about phi wrapping around +-PI
+          // this is done bye moving the points by 2 PI
+          if (wedge.phi_min() < -M_PI &&
+              phis_wedge[wedge_spacepoints_count] > wedge.phi_max()) {
+            phis_wedge[wedge_spacepoints_count] -= 2.0 * M_PI;
           }
-        }
 
-        CDEBUG(DISPLAY_N_WEDGE, wedge_index_phi << "," << wedge_index_eta << ","
-                                                << wedge_spacepoints_count
-                                                << ":WedgeCounts");
-        // do not conduct alogorithm calculations for empty region
-        if (wedge_spacepoints_count == 0)
-          continue;
+          if (wedge.phi_max() > M_PI &&
+              phis_wedge[wedge_spacepoints_count] < wedge.phi_min()) {
+            phis_wedge[wedge_spacepoints_count] += 2.0 * M_PI;
+          }
 
-        CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel initiated for subregion "
-                                  << idx[0] << " " << idx[1]);
-
-        // const float INITIAL_X_SIZE = (2*phi_reg.width) /
-        // ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-        const float INITIAL_X_SIZE =
-            ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-        const float INITIAL_Y_SIZE =
-            ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-
-        // const double xBegin = (phi_reg.center - phi_reg.width) +
-        // INITIAL_X_SIZE * idx[0];
-        const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
-        const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
-
-        CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: "
-                                  << xBegin << " xsz: " << INITIAL_X_SIZE
-                                  << " y: " << yBegin
-                                  << " ysz: " << INITIAL_Y_SIZE);
-
-        // we need here a limited set of Points
-
-        // the size os somewhat arbitrary, for regular algorithm dividing into 4
-        // sub-sections it defined by the depth allowed but for more flexible
-        // algorithms that is less predictable for now it is an arbitrary
-        // constant + checks that we stay within this limit
-
-        AccumulatorSection
-            sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image
-                                                // will be recorded
-        uint32_t sectionsBufferSize = 1;
-        const uint32_t initialDivisionLevel = 0;
-        sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin,
-                                         yBegin, initialDivisionLevel);
-
-        // scan this region until there is no section to process (i.e. size,
-        // initially 1, becomes 0)
-        while (sectionsBufferSize) {
-          fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge,
-                                 phis_wedge, zs_wedge, wedge_eta_center,
-                                 wedge_spacepoints_count);
+          zs_wedge[wedge_spacepoints_count] = zs[index];
+          ++wedge_spacepoints_count;
         }
       }
-    }
-  } else {
 
-    CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel initiated for subregion "
-                              << idx[0] << " " << idx[1]);
+      CDEBUG(DISPLAY_N_WEDGE, wedge_index_phi << "," << wedge_index_eta << ","
+                                              << wedge_spacepoints_count
+                                              << ":WedgeCounts");
+      // do not conduct alogorithm calculations for empty region
+      if (wedge_spacepoints_count == 0)
+        continue;
 
-    constexpr float INITIAL_X_SIZE =
-        ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-    constexpr float INITIAL_Y_SIZE =
-        ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+      CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel initiated for subregion "
+                                << idx[0] << " " << idx[1]);
 
-    const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
-    const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
-    CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: "
-                              << xBegin << " xsz: " << INITIAL_X_SIZE << " y: "
-                              << yBegin << " ysz: " << INITIAL_Y_SIZE);
+      // const float INITIAL_X_SIZE = (2*phi_reg.width) /
+      // ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+      const float INITIAL_X_SIZE =
+          ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+      const float INITIAL_Y_SIZE =
+          ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
 
-    // the size os somewhat arbitrary, for regular algorithm dividing into 4
-    // sub-sections it defined by the depth allowed but for more flexible
-    // algorithms that is less predictable for now it is an arbitrary constant +
-    // checks that we stay within this limit
+      // const double xBegin = (phi_reg.center - phi_reg.width) +
+      // INITIAL_X_SIZE * idx[0];
+      const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
+      const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
 
-    AccumulatorSection
-        sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image will be
-                                            // recorded
-    uint32_t sectionsBufferSize = 1;
-    const uint32_t initialDivisionLevel = 0;
-    sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin,
-                                     yBegin, initialDivisionLevel);
+      CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: "
+                                << xBegin << " xsz: " << INITIAL_X_SIZE
+                                << " y: " << yBegin
+                                << " ysz: " << INITIAL_Y_SIZE);
 
-    float rs_wedge[MAX_SPACEPOINTS];
-    float phis_wedge[MAX_SPACEPOINTS];
-    float zs_wedge[MAX_SPACEPOINTS];
-    uint32_t wedge_spacepoints_count{};
+      // we need here a limited set of Points
 
-    const uint32_t maxIndex = rs.size();
-    for (uint32_t index = 0; index < maxIndex; ++index) {
+      // the size os somewhat arbitrary, for regular algorithm dividing into 4
+      // sub-sections it defined by the depth allowed but for more flexible
+      // algorithms that is less predictable for now it is an arbitrary
+      // constant + checks that we stay within this limit
 
-      rs_wedge[wedge_spacepoints_count] = rs[index];
-      phis_wedge[wedge_spacepoints_count] = phis[index];
-      zs_wedge[wedge_spacepoints_count] = zs[index];
-      ++wedge_spacepoints_count;
-    }
+      AccumulatorSection
+          sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image
+                                              // will be recorded
+                                              
+      uint32_t sectionsBufferSize = 1;
+      const uint32_t initialDivisionLevel = 0;
+      sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin,
+                                        yBegin, initialDivisionLevel);
 
-    // scan this region until there is no section to process (i.e. size,
-    // initially 1, becomes 0)
-    while (sectionsBufferSize) {
-      fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge, phis_wedge,
-                             zs_wedge, -1000, rs.size());
+      // scan this region until there is no section to process (i.e. size,
+      // initially 1, becomes 0)
+      while (sectionsBufferSize) {
+        fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge,
+                                phis_wedge, zs_wedge, wedge_eta_center,
+                                wedge_spacepoints_count);
+
+      }
     }
   }
 }
@@ -227,26 +178,26 @@ void AdaptiveHoughGpuKernel::fillAccumulatorSection(
     CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
     // by the order here we steer the direction of the search of image space
     // it may be relevant depending on the data ordering??? to be testes
+    ASSURE_THAT(sectionsBufferSize + 3 < MAX_SECTIONS_BUFFER_SIZE,
+                "Sections buffer depth to small (in 4 subregions split)");
     sections[sectionsBufferSize] = section.bottomLeft();
     sections[sectionsBufferSize + 1] = section.topLeft();
     sections[sectionsBufferSize + 2] = section.topRight();
     sections[sectionsBufferSize + 3] = section.bottomRight();
-    ASSURE_THAT(sectionsBufferSize + 3 < MAX_SECTIONS_BUFFER_SIZE,
-                "Sections buffer depth to small (in 4 subregions split)");
     sectionsBufferSize += 4;
   } else if (section.xSize > opt.ACC_X_PRECISION) {
     CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in x direction");
-    sections[sectionsBufferSize] = section.left();
-    sections[sectionsBufferSize + 1] = section.right();
     ASSURE_THAT(sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE,
                 "Sections buffer depth to small (in x split)");
+    sections[sectionsBufferSize] = section.left();
+    sections[sectionsBufferSize + 1] = section.right();
     sectionsBufferSize += 2;
   } else if (section.ySize > opt.ACC_PT_PRECISION) {
     CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in y direction");
+    ASSURE_THAT(sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE,
+                "Sections buffer depth to small (in x split)");
     sections[sectionsBufferSize] = section.bottom();
     sections[sectionsBufferSize + 1] = section.top();
-    ASSURE_THAT(sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE,
-                "Sections buffer depth to small (in y split)");
     sectionsBufferSize += 2;
   } else { // no more splitting, we have a solution
 
@@ -267,7 +218,7 @@ void AdaptiveHoughGpuKernel::fillAccumulatorSection(
   }
 }
 
-uint8_t
+uint16_t
 AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section, float *rs_wedge,
                                   float *phis_wedge, float *zs_wedge,
                                   uint32_t wedge_spacepoints_count) const {
@@ -297,7 +248,7 @@ AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section, float *rs_wedge,
   return counter;
 }
 
-uint8_t AdaptiveHoughGpuKernel::countHits_checkOrder(
+uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
     AccumulatorSection &section, float *rs_wedge, float *phis_wedge,
     float *zs_wedge, uint32_t wedge_spacepoints_count) const {
   const double xEnd = section.xBegin + section.xSize;
@@ -314,15 +265,13 @@ uint8_t AdaptiveHoughGpuKernel::countHits_checkOrder(
   float cell_intersection_acc_distance[wedge_spacepoints_count];
   uint32_t cell_intersection_cc_id[wedge_spacepoints_count];
   float cell_intersection_cc_distance[wedge_spacepoints_count];
-  uint32_t before_counter = 0;
-  uint32_t after_counter = 0;
 
   // candidate for parallel_for
-  for (uint32_t index = 0; index < maxIndex; ++index) {
+  for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index) {
     const float r = rs_wedge[index];
     const float inverse_r = 1.0 / r;
     const float phi = phis_wedge[index];
-    const float a = inverse_r * INVERSE_A;
+    const float a =  inverse_r * INVERSE_A;
     const float b = -inverse_r * INVERSE_A * phi;
     if (section.isLineInside(a, b)) {
       section.indices[counter] = index;
@@ -429,10 +378,10 @@ bool AdaptiveHoughGpuKernel::lineInsideAccumulator(const float radius_inverse,
 
 bool AdaptiveHoughGpuKernel::isPeakWithinCell(
     const AccumulatorSection &section) const {
-  uint8_t max_counts = section.counts == section.OUT_OF_RANGE_COUNTS
+  const uint32_t max_counts = section.counts == section.OUT_OF_RANGE_COUNTS
                            ? MAX_COUNT_PER_SECTION
                            : section.counts;
-  uint8_t max_n_solutions = max_counts * (max_counts - 1) / 2;
+  uint32_t max_n_solutions = max_counts * (max_counts - 1) / 2;
 
   // array to store solutions, array *_update is used to save solutions which
   // pass criterion of +-N*sigma
@@ -446,9 +395,9 @@ bool AdaptiveHoughGpuKernel::isPeakWithinCell(
 
   // calculating solutions (defined as intersection point of two lines) for each
   // pair of lines
-  uint8_t index_array{};
+  uint32_t index_array{};
   for (uint32_t index_main = 0; index_main < max_counts; ++index_main) {
-    for (uint8_t index_secondary = 0; index_secondary < index_main;
+    for (uint32_t index_secondary = 0; index_secondary < index_main;
          ++index_secondary) {
 
       uint32_t line_index_main = section.indices[index_main];
@@ -620,8 +569,8 @@ bool AdaptiveHoughGpuKernel::isPeakWithinCell(
     float qOverPt_lower = mean_qOverPt - N_SIGMA_GAUSS * stdev_qOverPt;
     float qOverPt_upper = mean_qOverPt + N_SIGMA_GAUSS * stdev_qOverPt;
 
-    uint8_t index_updates{};
-    for (uint8_t index = 0; index < max_n_solutions; ++index) {
+    uint32_t index_updates = 0;
+    for (uint32_t index = 0; index < max_n_solutions; ++index) {
 
       float phi_solution = solutions_phi[index];
       float qOverPt_solution = solutions_qOverPt[index];
@@ -640,7 +589,7 @@ bool AdaptiveHoughGpuKernel::isPeakWithinCell(
       }
     }
 
-    for (uint8_t index_2 = 0; index_2 < index_updates; ++index_2) {
+    for (uint32_t index_2 = 0; index_2 < index_updates; ++index_2) {
 
       solutions_phi[index_2] = solutions_phi_update[index_2];
       solutions_qOverPt[index_2] = solutions_qOverPt_update[index_2];
