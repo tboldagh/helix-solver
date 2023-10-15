@@ -259,8 +259,6 @@ uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
   // here we can improve by knowing over which Points to iterate (i.e. indices
   // of measurements), this is related to geometry this can be stored in section
   // object maybe???
-
-
   uint32_t cell_intersection_acc_id[MAX_COUNT_PER_SECTION];
   float cell_intersection_acc_distance[MAX_COUNT_PER_SECTION];
   uint32_t cell_intersection_cc_id[MAX_COUNT_PER_SECTION];

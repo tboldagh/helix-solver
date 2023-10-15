@@ -34,7 +34,7 @@ static constexpr float ACC_X_SIZE = PHI_END - PHI_BEGIN;
 static constexpr float ACC_Y_SIZE = Q_OVER_PT_END - Q_OVER_PT_BEGIN;
 
 static constexpr uint32_t MAX_SPACEPOINTS = 100000;
-static constexpr uint32_t MAX_SOLUTIONS   = 1000; // an arbitrary size, need to get it experimentally (ideally configurable)
+static constexpr uint32_t MAX_SOLUTIONS   = 10000; // an arbitrary size, need to get it experimentally (ideally configurable)
 
 static int32_t TO_DISPLAY_PRECISION_PAIR_ONCE = 1;
 

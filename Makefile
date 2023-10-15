@@ -188,6 +188,19 @@ AccumulatorSectionTest/fast:
 .PHONY : AccumulatorSectionTest/fast
 
 #=============================================================================
+# Target rules for targets named SorterTest
+
+# Build rule for target.
+SorterTest: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 SorterTest
+.PHONY : SorterTest
+
+# fast build rule for target.
+SorterTest/fast:
+	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/SorterTest.dir/build.make test/CMakeFiles/SorterTest.dir/build
+.PHONY : SorterTest/fast
+
+#=============================================================================
 # Target rules for targets named gmock_main
 
 # Build rule for target.
@@ -444,6 +457,7 @@ help:
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... AccumulatorSectionTest"
+	@echo "... SorterTest"
 	@echo "... gmock"
 	@echo "... gmock_main"
 	@echo "... gtest"
