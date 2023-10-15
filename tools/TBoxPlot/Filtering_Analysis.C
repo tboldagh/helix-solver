@@ -8,10 +8,10 @@ void Filtering_Analysis(){
     // compared to default setting. File hough_events.root contains event_id which passed selection based on r and z regions.
     std::string file_name_ending = "muon_1k";
 
-    std::string truth_file_path =  "../../../DATA/ODD_Single_muon_1k/particles_initial_single_1k_0.root";
+    std::string truth_file_path =  "../../../DATA/ODD_Single_muon_10k/particles_initial.root";
     std::string hough_file_path =  "../../../build/detected-circles/detected-circles.root";
     std::string hough_filtered_file_path =  "../../../build/detected-circles/detected-circles.root";
-    std::string events_file_path =  "hough_events_1k.root";
+    std::string events_file_path =  "hough_events_10k.root";
     std::string wedge_counts_file_path =  "../../../build/hough_wedge_counts.root";
     std::string output_path = "output/output_histograms_filtering_analysis_" + file_name_ending + ".root";
     std::string pdf_file_name = "output/filtering_analysis_" + file_name_ending + ".pdf";
@@ -112,7 +112,7 @@ void Filtering_Analysis(){
     std::unique_ptr<TFile> file_hough(TFile::Open(hough_file_path.c_str()));
     std::unique_ptr<TFile> file_hough_filtered(TFile::Open(hough_filtered_file_path.c_str()));
     std::unique_ptr<TFile> file_events(TFile::Open(events_file_path.c_str()));
-    std::unique_ptr<TFile> file_wedge_counts(TFile::Open(wedge_counts_file_path.c_str()));
+    //std::unique_ptr<TFile> file_wedge_counts(TFile::Open(wedge_counts_file_path.c_str()));
 
     TFile* file_output = new TFile(output_path.c_str(), "RECREATE"); // ROOT file to save all the output histograms
 
@@ -132,16 +132,16 @@ void Filtering_Analysis(){
         throw std::runtime_error("Can't open input file: " + events_file_path);
     }
 
-    if (file_wedge_counts == nullptr) {
-        throw std::runtime_error("Can't open input file: " + wedge_counts_file_path);
-    }
+    //if (file_wedge_counts == nullptr) {
+    //    throw std::runtime_error("Can't open input file: " + wedge_counts_file_path);
+    //}
 
     // access trees in the files
     std::unique_ptr<TTree> tree_truth(file_truth->Get<TTree>(truth_tree_name.c_str()));
     std::unique_ptr<TTree> tree_hough(file_hough->Get<TTree>(hough_tree_name.c_str()));
     std::unique_ptr<TTree> tree_hough_filtered(file_hough_filtered->Get<TTree>(hough_filtered_tree_name.c_str()));
     std::unique_ptr<TTree> tree_events(file_events->Get<TTree>(events_tree_name.c_str()));
-    std::unique_ptr<TTree> tree_wedge_counts(file_wedge_counts->Get<TTree>(wedge_counts_tree_name.c_str()));
+    //std::unique_ptr<TTree> tree_wedge_counts(file_wedge_counts->Get<TTree>(wedge_counts_tree_name.c_str()));
 
 
     if (tree_truth == nullptr) {
@@ -158,9 +158,9 @@ void Filtering_Analysis(){
     if (tree_events == nullptr) {
         throw std::runtime_error("Can't access tree in the ROOT file: " + events_file_path);
     }
-    if (tree_wedge_counts == nullptr) {
-        throw std::runtime_error("Can't access tree in the ROOT file: " + wedge_counts_file_path);
-    }
+    //if (tree_wedge_counts == nullptr) {
+    //    throw std::runtime_error("Can't access tree in the ROOT file: " + wedge_counts_file_path);
+    //}
 
     // set branch address - truth solutions
     UInt_t event_id_truth_branch;
@@ -213,14 +213,14 @@ void Filtering_Analysis(){
     const Int_t all_events_nentries = tree_events -> GetEntries();
 
     // set branch address and access solution pairs - phi and eta center and number of spacepoints
-    float wedge_phi_branch;
-    float wedge_eta_branch;
-    Int_t wedge_counts_branch;
+    // float wedge_phi_branch;
+    // float wedge_eta_branch;
+    // Int_t wedge_counts_branch;
 
-    tree_wedge_counts -> SetBranchAddress("phi", &wedge_phi_branch);
-    tree_wedge_counts -> SetBranchAddress("eta", &wedge_eta_branch);
-    tree_wedge_counts -> SetBranchAddress("counts", &wedge_counts_branch);
-    const Int_t all_wedge_nentries = tree_wedge_counts -> GetEntries();
+    // tree_wedge_counts -> SetBranchAddress("phi", &wedge_phi_branch);
+    // tree_wedge_counts -> SetBranchAddress("eta", &wedge_eta_branch);
+    // tree_wedge_counts -> SetBranchAddress("counts", &wedge_counts_branch);
+    // const Int_t all_wedge_nentries = tree_wedge_counts -> GetEntries();
 
     // saving data to std::vector makes it possible to search values
     std::vector<Int_t> vector_events;
@@ -359,11 +359,11 @@ void Filtering_Analysis(){
 
 
     // scatterpot of number of spacepoints in each wedge
-    for (Int_t index_wedge = 0; index_wedge < all_wedge_nentries; ++index_wedge){
+    // for (Int_t index_wedge = 0; index_wedge < all_wedge_nentries; ++index_wedge){
 
-        tree_wedge_counts -> GetEntry(index_wedge);
-        wedge_counts_scatter -> Fill(wedge_eta_branch, wedge_phi_branch, wedge_counts_branch);
-    }
+    //     tree_wedge_counts -> GetEntry(index_wedge);
+    //     wedge_counts_scatter -> Fill(wedge_eta_branch, wedge_phi_branch, wedge_counts_branch);
+    // }
 
 
     ////////////////////////////////////////
@@ -451,9 +451,9 @@ void Filtering_Analysis(){
     //wedge_counts_scatter->GetXaxis()->SetRangeUser(-3.5, 3.5);
     //wedge_counts_scatter -> Draw("COLZ2");
 
-    //canvas1 -> Divide(4, 3);
+    canvas1 -> Divide(4, 3);
 
-    /*
+    
     canvas1 -> cd(1);
     teff_pt_no_filtering_ok_events -> Draw();
 
@@ -465,7 +465,7 @@ void Filtering_Analysis(){
 
     // filtered
     canvas1 -> cd(2);
-    teff_pt_filtering_ok_events -> Draw();
+    teff_eta_filtering_ok_events -> Draw();
 
     canvas1 -> cd(6);
     hist_pt_filtering -> Draw("SCAT");
@@ -489,9 +489,9 @@ void Filtering_Analysis(){
     canvas1 -> cd(8);
     hist_phi_filtering -> Draw("SCAT");
 
-    */
-    canvas1 -> cd(11);
-    teff_eta_filtering_ok_events -> Draw();
+    
+    //canvas1 -> cd(11);
+    //teff_eta_filtering_ok_events -> Draw();
 
     //canvas1 -> cd(12);
 
