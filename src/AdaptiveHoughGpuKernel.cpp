@@ -151,13 +151,14 @@ void AdaptiveHoughGpuKernel::fillAccumulatorSection(
   // based also on the condition none of the lines intersects within the cell
   // boundaries, countHits_checkOrder checks that condition
   uint16_t count{};
-  if (section.divisionLevel < THRESHOLD_DIVISION_LEVEL_COUNT_HITS_CHECK_ORDER) {
+  if (section.divisionLevel < THRESHOLD_DIVISION_LEVEL_COUNT_HITS_ORDER_CHECK) {
     count = countHits(section, rs_wedge, phis_wedge, zs_wedge,
                       wedge_spacepoints_count);
-  } else
-    count = countHits_checkOrder(section, rs_wedge, phis_wedge, zs_wedge,
-                                 wedge_spacepoints_count);
-
+    if ( count < MAX_COUNT_PER_SECTION ) {
+      count = countHits_checkOrder(section, rs_wedge, phis_wedge, zs_wedge,
+                                   wedge_spacepoints_count);
+    }
+  }
   CDEBUG(DISPLAY_BASIC,
          "count of lines in region x:"
              << section.xBegin << " xsz: " << section.xSize
@@ -249,8 +250,8 @@ AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section, float *rs_wedge,
 }
 
 uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
-    AccumulatorSection &section, float *rs_wedge, float *phis_wedge,
-    float *zs_wedge, uint32_t wedge_spacepoints_count) const {
+    AccumulatorSection &section, const float *rs_wedge, const float *phis_wedge,
+    const float *zs_wedge, const uint32_t wedge_spacepoints_count) const {
   const double xEnd = section.xBegin + section.xSize;
   const double yEnd = section.yBegin + section.ySize;
   uint16_t counter = 0;
@@ -258,16 +259,13 @@ uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
   // here we can improve by knowing over which Points to iterate (i.e. indices
   // of measurements), this is related to geometry this can be stored in section
   // object maybe???
-
-  const uint32_t maxIndex = wedge_spacepoints_count;
-
-  uint32_t cell_intersection_acc_id[wedge_spacepoints_count];
-  float cell_intersection_acc_distance[wedge_spacepoints_count];
-  uint32_t cell_intersection_cc_id[wedge_spacepoints_count];
-  float cell_intersection_cc_distance[wedge_spacepoints_count];
+  uint32_t cell_intersection_acc_id[MAX_COUNT_PER_SECTION];
+  float cell_intersection_acc_distance[MAX_COUNT_PER_SECTION];
+  uint32_t cell_intersection_cc_id[MAX_COUNT_PER_SECTION];
+  float cell_intersection_cc_distance[MAX_COUNT_PER_SECTION];
 
   // candidate for parallel_for
-  for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION; ++index) {
+  for (uint32_t index = 0; index < wedge_spacepoints_count && counter < MAX_COUNT_PER_SECTION; ++index) {
     const float r = rs_wedge[index];
     const float inverse_r = 1.0 / r;
     const float phi = phis_wedge[index];
@@ -299,7 +297,6 @@ uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
   // we want to reject a cell if not enough intersections were found -> lines
   // only/almost only pararell -> fake solutions
   if (count_changes < MIN_COUNT_CHANGES) {
-
     section.counts = 0;
     return 0;
   }
@@ -385,10 +382,11 @@ bool AdaptiveHoughGpuKernel::isPeakWithinCell(
 
   // array to store solutions, array *_update is used to save solutions which
   // pass criterion of +-N*sigma
-  float solutions_phi[max_n_solutions];
-  float solutions_phi_update[max_n_solutions];
-  float solutions_qOverPt[max_n_solutions];
-  float solutions_qOverPt_update[max_n_solutions];
+  constexpr uint16_t SOLUTIONS_ARRAY_SIZE = MAX_COUNT_PER_SECTION*(MAX_COUNT_PER_SECTION/2)+1;
+  float solutions_phi[SOLUTIONS_ARRAY_SIZE];
+  float solutions_phi_update[SOLUTIONS_ARRAY_SIZE];
+  float solutions_qOverPt[SOLUTIONS_ARRAY_SIZE];
+  float solutions_qOverPt_update[SOLUTIONS_ARRAY_SIZE];
 
   const float xEnd = section.xBegin + section.xSize;
   const float yEnd = section.yBegin + section.ySize;
