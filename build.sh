@@ -13,7 +13,7 @@ if [ "$clean" = true ]; then
 fi
 
 if [ "${SETVARS_COMPLETED:-}" != "1" ]; then
-    source /opt/intel/oneapi/setvars.sh
+    source ./source_setvars.sh
 fi
 
 cd build
