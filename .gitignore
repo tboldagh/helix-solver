@@ -62,3 +62,6 @@ detected-circles.txt
 *.sh.o*
 *.sh.e*
 logs/
+
+# build dir
+build
