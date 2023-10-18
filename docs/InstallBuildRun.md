@@ -20,3 +20,6 @@ To build the project run `build.sh` in the root directory. Build result will be 
 build.sh clean
 ```
 Makes a clean build by removing whole `build` directory before build.
+
+# Run unit tests
+Build process generates `TestSuitesList.txt` file which contains a list of all unit test suites in the framework and application. You can run them manually or using `run_test.sh`. The script runs all suites, saves log for each suite next to its binary, and generates a summary of the test results. For more info see `run_test.md`.
