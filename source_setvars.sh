@@ -1,3 +1,3 @@
 #!/bin/bash
 
-source /opt/intel/oneapi/setvars.sh
+source /opt/intel/oneapi/setvars.sh --include-intel-llvm --force
