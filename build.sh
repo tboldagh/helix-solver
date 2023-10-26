@@ -8,6 +8,11 @@ if [ "$#" -gt 0 ]; then
     fi
 fi
 
+# Create build directory if it doesn't exist
+if [ ! -d "build" ]; then
+    mkdir "build"
+fi
+
 if [ "$clean" = true ]; then
     rm -rf build/*
 fi
@@ -17,5 +22,5 @@ if [ "${SETVARS_COMPLETED:-}" != "1" ]; then
 fi
 
 cd build
-cmake ../CMakeLists.txt
+cmake ..
 make
