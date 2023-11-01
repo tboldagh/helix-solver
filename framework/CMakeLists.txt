@@ -1,2 +1,3 @@
 add_subdirectory(ConstSizeVector)
+add_subdirectory(Debug)
 add_subdirectory(UtSyclHelpers)
