@@ -64,22 +64,15 @@ struct Wedge {
 Reg uniform_split(float min, float max, short index, short splits );
 
 
-
-float phi_wrap( float phi ) {
-  while ( phi > M_PI ) {
-    phi -= 2.0*M_PI;
-  } 
-  while ( phi <= -M_PI ) {
-    phi += 2.0*M_PI;
-  }
-  return phi;
+float phi_wrap( float phi )
+{
+    return std::fmod(phi, 2.0 * M_PI);
 }
 
 float phi_dist ( float phi1, float phi2 ) {
-  float dphi  = phi1 - phi2;
+  float dphi = phi1 - phi2; // ? Is phi_dist supposed to be distance? If so, then why is not absolute?
   return phi_wrap(dphi);
 }
-
 
 void Wedge::setup(Reg p, Reg z, Reg eta) 
 {
@@ -94,11 +87,13 @@ void Wedge::setup(Reg p, Reg z, Reg eta)
     m_bright = - m_aright/(z.center + z.width);
 }
 
-
-bool Wedge::in_wedge_x_y_z( float x, float y, float z ) const {
+bool Wedge::in_wedge_x_y_z( float x, float y, float z ) const
+{
     return in_wedge_r_phi_z(std::hypot(x,y), std::atan2(y, x), z);
 }
-bool Wedge::in_wedge_r_phi_z( float r, float phi, float z ) const {
+
+bool Wedge::in_wedge_r_phi_z( float r, float phi, float z ) const
+{
     ASSURE_THAT( std::fabs(r) > 0.1, "Strange r, it needs to be larger than 0.1 (meaning larger than 0)");
     if ( std::fabs(phi_dist(phi, m_phi.center)) > m_phi.width) return false;
 
@@ -116,14 +111,15 @@ bool Wedge::in_wedge_r_phi_z( float r, float phi, float z ) const {
 }
 
 
-
- Reg uniform_split(float min, float max, short index, short splits ) {
+ Reg uniform_split(float min, float max, short index, short splits )
+ {
    float width = (max-min)/splits;
    return {min + width*index + 0.5f*width, 0.5f*width};
  }
 
 
-void devInfo(const sycl::queue &q) {
+void devInfo(const sycl::queue &q)
+{
   auto dev = q.get_device();
   std::cout << "Device " << (dev.is_cpu() ? "cpu" : "")
             << (dev.is_gpu() ? "gpu" : "") << std::endl;
@@ -158,13 +154,16 @@ void devInfo(const sycl::queue &q) {
             << (dev.get_info<sycl::info::device::local_mem_type>() == sycl::info::local_mem_type::global ? "global":"")
             << std::endl;
 }
+
+
 static std::random_device rd;
 static std::mt19937 gen(rd());
 static std::uniform_real_distribution<> zDistribution(-3000, 3000);
 static std::uniform_real_distribution<> phiDistribution(-M_PI, M_PI);
 static std::uniform_real_distribution<> rDistribution(200, 1000);
 
-void fill(std::vector<float> &x, std::vector<float> &y, std::vector<float> &z ) {
+void fill(std::vector<float> &x, std::vector<float> &y, std::vector<float> &z )
+{
   for ( int i = 0; i < x.size(); ++i ) {
     z[i]=zDistribution(gen);
     const double r = rDistribution(gen);
@@ -183,7 +182,8 @@ constexpr short etaSplit = 51;
 // constexpr short etaSplit = 7;
 constexpr short totSplit = etaSplit*phiSplit;
 
-int main() {
+int main()
+{
   std::cout << "---\n";
 
   std::vector<float> x(inDataSize, 0);
@@ -205,17 +205,20 @@ int main() {
   devInfo(q);
   auto t1 = std::chrono::steady_clock::now();   // Start timing
 
-  q.submit([&](sycl::handler &cgh) {
+  q.submit([&](sycl::handler &handler)
+  {
     // Getting write only access to the buffer on a device
-    auto x = xBuffer.get_access<sycl::access::mode::read>(cgh);
-    auto y = yBuffer.get_access<sycl::access::mode::read>(cgh);
-    auto rinv = rinvBuffer.get_access<sycl::access::mode::write>(cgh);
-    auto phi = phiBuffer.get_access<sycl::access::mode::write>(cgh);
+    auto x = xBuffer.get_access<sycl::access::mode::read>(handler);
+    auto y = yBuffer.get_access<sycl::access::mode::read>(handler);
+    auto rinv = rinvBuffer.get_access<sycl::access::mode::write>(handler);
+    auto phi = phiBuffer.get_access<sycl::access::mode::write>(handler);
     const int size = x.size();
-    // sycl::stream out(1024*48, 1024, cgh);
+    // sycl::stream out(1024*48, 1024, handler);
 
-    cgh.parallel_for(sycl::range{46}, [=](sycl::item<1> it){
-      for ( int i = it.get_id()[0]; i < size; i += it.get_range()[0]) {
+    handler.parallel_for(sycl::range{46}, [=](sycl::item<1> it)
+    {
+      for ( int i = it.get_id()[0]; i < size; i += it.get_range()[0])
+      {
           rinv[i] = sycl::rsqrt(x[i]*x[i] + y[i]*y[i]);
           phi[i] = sycl::atan2(y[i], x[i]);
           // out << "r: " << 1.0f/rinv[i] << " phi: " << phi[i] << "\n";
@@ -224,20 +227,21 @@ int main() {
   });
 
 
-  q.submit([&](sycl::handler &cgh) {
-    auto rinv = rinvBuffer.get_access<sycl::access::mode::read>(cgh);
-    auto phi = phiBuffer.get_access<sycl::access::mode::read>(cgh);
-    auto z = zBuffer.get_access<sycl::access::mode::read>(cgh);
+  q.submit([&](sycl::handler &handler)
+  {
+    auto rinv = rinvBuffer.get_access<sycl::access::mode::read>(handler);
+    auto phi = phiBuffer.get_access<sycl::access::mode::read>(handler);
+    auto z = zBuffer.get_access<sycl::access::mode::read>(handler);
    
-    // auto countA = countBuffer.get_access<sycl::access::mode::write>(cgh);
+    // auto countA = countBuffer.get_access<sycl::access::mode::write>(handler);
     constexpr int maxlocal = 256;
-    auto rinvFragment = sycl::local_accessor<float, 1>(sycl::range{maxlocal}, cgh); 
-    auto phiFragment = sycl::local_accessor<float, 1>(sycl::range{maxlocal}, cgh); 
+    auto rinvFragment = sycl::local_accessor<float, 1>(sycl::range{maxlocal}, handler); 
+    auto phiFragment = sycl::local_accessor<float, 1>(sycl::range{maxlocal}, handler); 
 
-    // sycl::stream out(1024*48, 1024, cgh);
+    // sycl::stream out(1024*48, 1024, handler);
 
 
-    cgh.parallel_for_work_group(sycl::range{totSplit}, sycl::range{1}, [=](sycl::group<1> region){
+    handler.parallel_for_work_group(sycl::range{totSplit}, sycl::range{1}, [=](sycl::group<1> region){
       int _lcount=0;
       using local_atomic_int_ref = sycl::atomic_ref<int, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::local_space>;
       // out << "ID " << " " << region[0] << "\n";
@@ -284,6 +288,4 @@ int main() {
   //   std::cout << " " << count[i];
   // }
   std::cout << "\n---\n";
-
-
 }
