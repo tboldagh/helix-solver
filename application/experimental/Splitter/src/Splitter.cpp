@@ -204,8 +204,8 @@ int main()
 //   sycl::queue q;
   sycl::queue q(sycl::gpu_selector_v);
   devInfo(q);
-  auto t1 = std::chrono::steady_clock::now();   // Start timing
 
+    std::chrono::time_point<std::chrono::steady_clock> task1StartTime = std::chrono::steady_clock::now();
   q.submit([&](sycl::handler &handler)
   {
     // Getting write only access to the buffer on a device
@@ -225,9 +225,10 @@ int main()
           // out << "r: " << 1.0f/rinv[i] << " phi: " << phi[i] << "\n";
       }
     });
-  });
+  }).wait();
+    std::chrono::time_point<std::chrono::steady_clock> task1EndTime = std::chrono::steady_clock::now();
 
-
+  std::chrono::time_point<std::chrono::steady_clock> task2StartTime = std::chrono::steady_clock::now();
   q.submit([&](sycl::handler &handler)
   {
     auto rinv = rinvBuffer.get_access<sycl::access::mode::read>(handler);
@@ -280,8 +281,10 @@ int main()
       // out << "count in ID " << " " << region[0] << " " << static_cast<int>(lcount) << "\n";
     }); // EOF parallel_for_work_group
   }).wait();
-  auto t2 = std::chrono::steady_clock::now(); 
-  std::cout << "TIME ms " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << std::endl;
+  std::chrono::time_point<std::chrono::steady_clock> task2EndTime = std::chrono::steady_clock::now();
+
+  std::cout << "task 1 us " << std::chrono::duration_cast<std::chrono::microseconds>(task1EndTime - task1StartTime).count() << std::endl;
+  std::cout << "task 2 us " << std::chrono::duration_cast<std::chrono::microseconds>(task2EndTime - task2StartTime).count() << std::endl;
 
   // auto countBack = countBuffer.get_access<sycl::access::mode::read>();
   // std::cout << "counts size"  << countBack.size() << " " << count.size() << std::endl;
