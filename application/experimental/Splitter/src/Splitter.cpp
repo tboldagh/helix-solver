@@ -66,7 +66,7 @@ Reg uniform_split(float min, float max, short index, short splits );
 
 float phi_wrap( float phi )
 {
-    std::fmod(phi + M_PI, 2.0 * M_PI) + (-1.0 + 2.0 * static_cast<float>(phi + M_PI < 0.0)) * M_PI;
+    return std::fmod(phi + M_PI, 2.0 * M_PI) + (-1.0 + 2.0 * static_cast<float>(phi + M_PI < 0.0)) * M_PI;
 }
 
 float phi_dist ( float phi1, float phi2 ) {
