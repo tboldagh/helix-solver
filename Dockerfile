@@ -10,6 +10,7 @@ RUN apt-get -y install cmake libgtest-dev nano build-essential
 
 COPY ./ ./
 
+ENV PATH="${PATH}:/cuda/bin"
 RUN sh codeplay/oneapi-for-nvidia-gpus-2023.2.1-cuda-12.0-linux.sh
 
 # docker run --gpus all --rm -it -v /usr/local/cuda-12.1:/cuda -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro helix-solver-docker
