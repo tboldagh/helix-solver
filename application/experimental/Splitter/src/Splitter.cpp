@@ -81,8 +81,8 @@ void Wedge::setup(Reg p, Reg z, Reg eta)
     ASSURE_THAT( eta.width > 0.1, "Wedge is very narrow in eta < 0.1, not good idea (also do not support negative widths)")
     ASSURE_THAT( std::fabs( eta.center + eta.width)> 0.01, "Wedge does not support eta + eta width == 0")
     ASSURE_THAT( std::fabs( eta.center - eta.width)> 0.01, "Wedge does not support eta - eta width == 0")
-    m_aleft = std::tan( 2.0 * std::atan( std::exp( - (eta.center-eta.width))));
-    m_aright = std::tan( 2.0 * std::atan( std::exp( - (eta.center+eta.width))));
+    m_aleft = std::tan( 2.0 * std::atan( sycl::exp( - (eta.center-eta.width))));
+    m_aright = std::tan( 2.0 * std::atan( sycl::exp( - (eta.center+eta.width))));
     m_bleft = - m_aleft/(z.center - z.width);
     m_bright = - m_aright/(z.center + z.width);
 }
@@ -201,7 +201,8 @@ int main()
   sycl::buffer<float, 1> phiBuffer(phi.data(), phi.size());
 
   sycl::buffer<int, 1> countBuffer(count.data(), count.size());
-  sycl::queue q;
+//   sycl::queue q;
+  sycl::queue q(sycl::gpu_selector_v);
   devInfo(q);
   auto t1 = std::chrono::steady_clock::now();   // Start timing
 
