@@ -66,18 +66,32 @@ namespace HelixSolver
 
     void ComputingWorker::scheduleTasksToQueue()
     {
+        std::vector<HelixSolver::Options> opt(1);
+
+        opt[0].ACC_X_PRECISION = config["phi_precision"];
+        opt[0].ACC_PT_PRECISION = config["pt_precision"];
+        opt[0].N_PHI_WEDGE = config["n_phi_regions"];
+        opt[0].N_ETA_WEDGE = config["n_eta_regions"];
+
 #ifdef USE_SYCL
         solutions = std::make_unique<std::vector<SolutionCircle>>();
         solutions->insert(solutions->begin(), MAX_SOLUTIONS, SolutionCircle{});
         solutionsBuffer = std::make_unique<sycl::buffer<SolutionCircle, 1>>(sycl::buffer<SolutionCircle, 1>(solutions->begin(), solutions->end()));
 
+        OptionsBuffer optbuff(opt.data(), 1);
+
         computingEvent = queue->submit([&](sycl::handler& handler)
         {
+            sycl::accessor<HelixSolver::Options, 1, sycl::access::mode::read, sycl::access::target::device> opts(optbuff, handler, sycl::read_only);
+
             sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs(*eventBuffer->getRBuffer(), handler, sycl::read_only);
+
             sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> phis(*eventBuffer->getPhiBuffer(), handler, sycl::read_only);
+
             sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> zs(*eventBuffer->getZBuffer(), handler, sycl::read_only);
+
             sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions(*solutionsBuffer, handler, sycl::write_only);
-            AdaptiveHoughGpuKernel kernel(rs, phis, zs, solutions);
+            AdaptiveHoughGpuKernel kernel(opts, rs, phis, zs, solutions);
             handler.parallel_for(sycl::range<2>(ADAPTIVE_KERNEL_INITIAL_DIVISIONS, ADAPTIVE_KERNEL_INITIAL_DIVISIONS), kernel);
         });
 
@@ -86,9 +100,7 @@ namespace HelixSolver
 #else
     // in pure CPU code we do not wait for anything
     solutions = std::make_unique<std::vector<SolutionCircle>>(MAX_SOLUTIONS);
-    HelixSolver::Options opt;
-    opt.ACC_X_PRECISION = config["phi_precision"];
-    opt.ACC_PT_PRECISION = config["pt_precision"];
+
     AdaptiveHoughGpuKernel kernel(opt, *eventBuffer->getRBuffer(), *eventBuffer->getPhiBuffer(), *eventBuffer->getZBuffer(), *solutions);
     for ( uint8_t div1 = 0; div1 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div1 ) {
         for ( uint8_t div2 = 0; div2 < ADAPTIVE_KERNEL_INITIAL_DIVISIONS; ++div2 ) {

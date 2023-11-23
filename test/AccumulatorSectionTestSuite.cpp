@@ -6,10 +6,15 @@ namespace HelixSolver {
 
 class SubDivTestSuite : public ::testing::Test {
 protected:
-  void SetUp() override { m_10x10 = AccumulatorSection(10, 10, 2, 2, 3); } // 10 x 10 rooted at (2,2)
+  void SetUp() override { 
+    m_10x10 = AccumulatorSection(10, 10, 2, 2, 0); // 10 x 10 rooted at (2,2)
+    m_8x10 = AccumulatorSection(8, 10, 0, 2, 0);   // 8 x 18  rooted at (0, 2)
+    } 
 
   void TearDown() override {}
   AccumulatorSection m_10x10;
+  AccumulatorSection m_8x10;
+
 };
 
 TEST_F(SubDivTestSuite, UnofrimSplit) {
@@ -77,5 +82,58 @@ TEST_F(SubDivTestSuite, Halves) {
   ASSERT_FLOAT_EQ(r.yBegin, 2);
 
 }
+
+TEST_F(SubDivTestSuite, DistClockWise) {
+  // check counter clockwise from upper left section corner
+  //       /      /
+  // +----/------+
+  //     /      /|
+  //    a)    b) |/
+  //             /
+  //            /|
+  //           c)
+
+  // a)
+  ASSERT_FLOAT_EQ(m_10x10.distCC(0.5, 8), 6); // 8 - 2 (the later is because section is shifted by 2)
+  ASSERT_FLOAT_EQ(m_8x10.distCC(0.5, 10), 4); // (the later is because section is shifted by 2)
+
+  // b) - this is trivial case
+  ASSERT_FLOAT_EQ(m_10x10.distCC(1, 0), m_10x10.xSize); // line going through the top right kernel
+  ASSERT_FLOAT_EQ(m_8x10.distCC(1, 4), m_8x10.xSize); // line going through the top right kernel
+
+  // c)
+  ASSERT_FLOAT_EQ(m_10x10.distCC(1, -2), 12);
+  ASSERT_FLOAT_EQ(m_8x10.distCC(1, -2), 14); 
+}
+
+
+TEST_F(SubDivTestSuite, DistAntiClockWise) {
+  // check counter clockwise from upper left section corner
+  //    +
+  //    |
+  //    |/
+  //    /
+  //   /| /   /
+  //  a)+----/-----
+  //   /    /
+  // b)    c)
+
+  // a)
+  ASSERT_FLOAT_EQ(m_10x10.distACC(0.5, 8), 3); // 8 - 2 (the later is because section is shifted by 2)
+  ASSERT_FLOAT_EQ(m_8x10.distACC(0.5, 8), 4); // (the later is because section is shifted by 2)
+
+  // b) - this is trivial case
+  ASSERT_FLOAT_EQ(m_10x10.distACC(1, 0), m_10x10.ySize); // line going through bottom left
+  ASSERT_FLOAT_EQ(m_8x10.distACC(1, 2), m_8x10.ySize); // line going through bottom left
+  ASSERT_FLOAT_EQ(m_8x10.distACC(0.33, 2), m_8x10.ySize); // line going through bottom left (the slope does not matter)
+
+  // c)
+  ASSERT_FLOAT_EQ(m_10x10.distACC(1, -2), 12);
+  ASSERT_FLOAT_EQ(m_8x10.distACC(1, -2), 14); 
+  ASSERT_FLOAT_EQ(m_8x10.distACC(0.5, -2), 18); 
+  ASSERT_FLOAT_EQ(m_8x10.distACC(0.5, -1), 16); 
+  ASSERT_FLOAT_EQ(m_8x10.distACC(0.5, 1), 12); 
+}
+
 
 } // namespace HelixSolver

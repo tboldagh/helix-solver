@@ -1,10 +1,14 @@
+#include <cmath>
+#include <iostream>
+#include <TCanvas.h>
+
 void Reconstruction_Efficiency_Single(){
 
-// file names
-    std::string truth_file_path =  "particles_initial/particles_initial_single_10k.root";
-    std::string hough_file_path =  "detected-circles/detected-circles_this_should_work.root";
-    std::string spacepoints_file_path =  "spacepoints/spacepoints_single_10k.root";
-    std::string output_path = "output_histograms_single_10k_this_should_work.root";
+// file names   
+    std::string truth_file_path =  "../../../DATA/ODD_Single_muon_10k/particles_initial.root";
+    std::string hough_file_path =  "detected-circles/detected-circles.root";
+    std::string spacepoints_file_path =  "../../../DATA/ODD_Single_muon_10k/spacepoints.root";
+    std::string output_path = "output/output_histograms_reconstruction_efficiency.root";
 
     std::string truth_tree_name = "particles";
     std::string hough_tree_name = "solutions";
@@ -191,8 +195,8 @@ void Reconstruction_Efficiency_Single(){
 
 // calculate efficiencies
     Int_t bool_tefficiency{};
-    const float symmetric_cut_on_eta = 3.;
-    const float symmetric_cut_on_phi = 4.;
+    const float symmetric_cut_on_eta = 10.;
+    const float symmetric_cut_on_phi = 10.;
     std::vector<float> all_delta_pt;
     std::vector<float> all_delta_phi;
     std::map<Int_t, std::vector<float>> all_delta_by_event_pt;

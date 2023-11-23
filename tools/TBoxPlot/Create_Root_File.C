@@ -36,4 +36,39 @@ void Create_Root_File(){
 	hfile_R_Phi.Close();
 	}
 
+	// to get all the events ised in the procedure
+	ifstream file_Events("data_Events.csv");
+	if (file_Events.peek() != std::ifstream::traits_type::eof()){
+	TFile hfile_Events("hough_events.root","RECREATE","ROOT file containing sorted coordinates of accumulator cells");
+	TTree tree_Events("tree", "tree");
+	tree_Events.ReadFile("data_Events.csv", "event_id/I");
+
+	tree_Events.Fill();
+	tree_Events.Write();
+	hfile_Events.Close();
+	}
+
+	// to get mean and standard deviation for each cell
+	ifstream file_Mean("data_MeanStdev.csv");
+	if (file_Mean.peek() != std::ifstream::traits_type::eof()){
+	TFile hfile_Mean("hough_mean_stdev.root","RECREATE","ROOT file containing sorted coordinates of accumulator cells");
+	TTree tree_Mean("tree", "tree");
+	tree_Mean.ReadFile("data_MeanStdev.csv", "mean_phi:stdev_phi:qOverPt_mean:qOverPt_stdev");
+
+	tree_Mean.Fill();
+	tree_Mean.Write();
+	hfile_Mean.Close();
+	}
+
+	// to get number of spacepoints for each wedge
+	ifstream file_Wedge("data_WedgeCounts.csv");
+	if (file_Wedge.peek() != std::ifstream::traits_type::eof()){
+	TFile hfile_Wedge("hough_wedge_counts.root","RECREATE","ROOT file containing sorted coordinates of accumulator cells");
+	TTree tree_Wedge("tree", "tree");
+	tree_Wedge.ReadFile("data_WedgeCounts.csv", "phi:eta:counts/I");
+
+	tree_Wedge.Fill();
+	tree_Wedge.Write();
+	hfile_Wedge.Close();
+	}
 }

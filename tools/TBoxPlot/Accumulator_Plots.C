@@ -1,15 +1,12 @@
-//#include <TFile.h>
-//#include <TTree.h>
-//#include <TROOT.h>
-//#include <TStyle.h>
-//#include <TH2F.h>
-//#include <TCanvas.h>
+#include <cmath>
+#include <iostream>
+#include <TCanvas.h>
 
 void Accumulator_Plots(
-    const float Phi_min      =  1.103,
-	const float Phi_max      =  1.113,
-	const float qOverPt_min  =  -0.296,
-	const float qOverPt_max  =   -0.27){
+    const float Phi_min      =  -3.2,
+	const float Phi_max      =  3.2,
+	const float qOverPt_min  =  -1.1,
+	const float qOverPt_max  =  1.1){
 
 
 	// define initial values
@@ -18,6 +15,14 @@ void Accumulator_Plots(
 	const bool DISPLAY_LINES 				 = 1;
 	const bool DISPLAY_SOLUTIONS 			 = 1;
 	const bool DISPLAY_COUNTOUR_LINES 		 = 1;
+
+	const std::string filename_BoxPosition = "hough_tree_files/hough_tree_BoxPosition.root";
+	const std::string filename_RPhi = "hough_tree_files/hough_tree_RPhi.root";
+	const std::string filename_SolutionPair = "hough_tree_files/hough_tree_SolutionPair.root";
+
+	const std::string treename_BoxPosition = "tree";
+	const std::string treename_RPhi = "tree";
+	const std::string treename_SolutionPair = "tree";
 
     const float Phi_size = Phi_max - Phi_min;
     const float Phi_min_hist      =  Phi_min-Phi_size*0.05;
@@ -34,16 +39,14 @@ void Accumulator_Plots(
 	// histogram declaration
 	const int n_bins  =  1000;
 
-	TH2F *hist   =   new TH2F("hist", ";#phi;q/p_{T}", n_bins, Phi_min_hist, Phi_max_hist, n_bins, qOverPt_min_hist, qOverPt_max_hist);
-	TCanvas *c1  =   new TCanvas("c1", "c1", 11000, 9000);
-	gStyle       ->  SetOptStat(0);
-	hist         ->  Draw();
+	TH2F *hist   =   new TH2F("hist", ";#varphi [rad];q/p_{T} [GeV^{-1}]", n_bins, Phi_min_hist, Phi_max_hist, n_bins, qOverPt_min_hist, qOverPt_max_hist);
+	TCanvas *c1  =   new TCanvas("c1", "c1", 12000, 12000);
+	gPad 	-> 	SetLeftMargin(0.15);
+	gStyle  ->  SetOptStat(0);
+	hist    ->  Draw();
 
 
 	// file hough_tree_BoxPosition.root
-	const std::string filename_BoxPosition = "hough_tree_BoxPosition_single_1.root";
-	const std::string treename_BoxPosition = "tree";
-
 	std::unique_ptr<TFile> file_BoxPosition(TFile::Open(filename_BoxPosition.c_str()));
 	if ( file_BoxPosition == nullptr ) {
         throw std::runtime_error("Can't open input file: " + filename_BoxPosition);
@@ -54,7 +57,7 @@ void Accumulator_Plots(
     if ( tree_BoxPosition == nullptr ) {
         throw std::runtime_error("Can't access tree in the ROOT file: " + treename_BoxPosition);
     }
-    std::cout << "... Accessed input tree: " << treename_BoxPosition << " in "  << filename_BoxPosition << ", numer of entries: " << nentries_BoxPosition << std::endl;
+    std::cout << "... Accessed input tree: " << treename_BoxPosition << " in "  << filename_BoxPosition << ", number of entries: " << nentries_BoxPosition << std::endl;
 
 	float Phi_begin;
 	float Phi_end;
@@ -73,9 +76,6 @@ void Accumulator_Plots(
 
 
 	// file hough_tree_RPhi.root
-	const std::string filename_RPhi = "hough_tree_RPhi_single_1.root";
-	const std::string treename_RPhi = "tree";
-
 	std::unique_ptr<TFile> file_RPhi(TFile::Open(filename_RPhi.c_str()));
 	if ( file_RPhi == nullptr ) {
         throw std::runtime_error("Can't open input file: " + filename_RPhi);
@@ -86,7 +86,7 @@ void Accumulator_Plots(
 	if ( tree_RPhi == nullptr ) {
         throw std::runtime_error("Can't access tree in the ROOT file: " + treename_RPhi);
     }
-    std::cout << "... Accessed input tree: " << treename_RPhi << " in "  << filename_RPhi << ", numer of entries: " << nentries_RPhi << std::endl;
+    std::cout << "... Accessed input tree: " << treename_RPhi << " in "  << filename_RPhi << ", number of entries: " << nentries_RPhi << std::endl;
 
 	float radius;
 	float phi;
@@ -96,9 +96,6 @@ void Accumulator_Plots(
 
 
 	// file hough_tree_SolutionPair.root
-	const std::string filename_SolutionPair = "hough_tree_SolutionPair_single_1.root";
-	const std::string treename_SolutionPair = "tree";
-
 	std::unique_ptr<TFile> file_SolutionPair(TFile::Open(filename_SolutionPair.c_str()));
 	if ( file_SolutionPair == nullptr ) {
         throw std::runtime_error("Can't open input file: " + filename_SolutionPair);
@@ -109,7 +106,7 @@ void Accumulator_Plots(
     if ( tree_SolutionPair == nullptr ) {
         throw std::runtime_error("Can't access tree in the ROOT file: " + treename_SolutionPair);
     }
-    std::cout << "... Accessed input tree: " << treename_SolutionPair << " in "  << filename_SolutionPair << ", numer of entries: " << nentries_SolutionPair << "\n" << std::endl;
+    std::cout << "... Accessed input tree: " << treename_SolutionPair << " in "  << filename_SolutionPair << ", number of entries: " << nentries_SolutionPair << "\n" << std::endl;
 
 	float Phi_solution;
 	float qOverPt_solution;
@@ -227,7 +224,7 @@ void Accumulator_Plots(
     	float x_Left;
     	float x_Right;
 
-		for(Int_t index_solutions = 0; index_solutions < nentries_SolutionPair; ++index_solutions){
+		for(Int_t index_solutions = 0; index_solutions < nentries_RPhi; ++index_solutions){
 			tree_RPhi -> GetEntry(index_solutions);
 
 			y_Left   = qOverPt_min;
@@ -239,7 +236,7 @@ void Accumulator_Plots(
 			if(x_Left > Phi_min && x_Right < Phi_max)
 			{
 				TLine *line = new TLine(x_Left, y_Left, x_Right, y_Right);
-				line  ->  SetLineColor(kCyan);
+				line  ->  SetLineColor(kBlack);
 				line  ->  SetLineWidth(1);
 				line  ->  Draw("same");
 
@@ -249,7 +246,7 @@ void Accumulator_Plots(
 				y_Left = (x_Left - phi)/(A_const * radius);
 
 				TLine *line = new TLine(x_Left, y_Left, x_Right, y_Right);
-				line  ->  SetLineColor(kCyan);
+				line  ->  SetLineColor(kBlack);
 				line  ->  SetLineWidth(1);
 				line  ->  Draw("same");
 			} else if(x_Left > Phi_min && x_Left < Phi_max && x_Right > Phi_max)
@@ -258,7 +255,19 @@ void Accumulator_Plots(
 				y_Right = (x_Right - phi)/(A_const * radius);
 
 				TLine *line = new TLine(x_Left, y_Left, x_Right, y_Right);
-				line  ->  SetLineColor(kCyan);
+				line  ->  SetLineColor(kBlack);
+				line  ->  SetLineWidth(1);
+				line  ->  Draw("same");
+			} else {
+
+				x_Left = Phi_min;
+				y_Left = (x_Left - phi)/(A_const * radius);
+
+				x_Right = Phi_max;
+				y_Right = (x_Right - phi)/(A_const * radius);
+
+				TLine *line = new TLine(x_Left, y_Left, x_Right, y_Right);
+				line  ->  SetLineColor(kBlack);
 				line  ->  SetLineWidth(1);
 				line  ->  Draw("same");
 			}
@@ -324,7 +333,7 @@ void Accumulator_Plots(
 			if (Phi_solution > Phi_min && Phi_solution < Phi_max && qOverPt_solution > qOverPt_min && qOverPt_solution < qOverPt_max){
 				TMarker *point = new TMarker(Phi_solution, qOverPt_solution, 8);
 				point -> Draw("same");
-				point -> SetMarkerColor(kMagenta);
+				point -> SetMarkerColor(kGreen);
 				point -> SetMarkerSize(4);
 			}
 		}
@@ -333,7 +342,7 @@ void Accumulator_Plots(
     cout << ".. In the selected range of phi and q/pt " << count_solutions_in_ares << " solutions are present." << endl;
     cout << ".. Min divisio level: " << divLevel_min << ", max: " << divLevel_max << ", average division level: " << float(divLevel_avg) / count_solutions_in_ares << ".\n" << endl;
 
-
-	c1 -> SaveAs("Accumulator_plot.pdf");
+	//hist  -> GetYaxis() -> SetTitleOffset(1.);
+	c1 -> SaveAs("output/Accumulator_Plot.pdf");
 
 }

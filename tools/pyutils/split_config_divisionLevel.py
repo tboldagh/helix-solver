@@ -9,17 +9,17 @@ with open("config.json", "r") as infile:
 print(".. loaded config.json")
 
 outputFile_prefix_json = "config_"
-outputFile_prefix_root = "detected-circles/detected-circles_single_1k_"
+outputFile_prefix_root = "detected-circles/detected-circles_single_10k_"
 
 phi_range = 6.28
 pt_range = 2
-correction_factor = 1.05
+correction_factor = 0.95
 
 min_divisionLevel = 2
-max_divisionLevel = 22
+max_divisionLevel = 14
 
-phi_precision_array = [correction_factor * phi_range / math.pow(2, i) for i in range(min_divisionLevel, max_divisionLevel + 1)]
-pt_precision_array  = [correction_factor * pt_range  / math.pow(2, i) for i in range(min_divisionLevel, max_divisionLevel + 1)]
+phi_precision_array = [round(correction_factor * phi_range / math.pow(2, i), 5) for i in range(min_divisionLevel, max_divisionLevel + 1)]
+pt_precision_array  = [round(correction_factor * pt_range  / math.pow(2, i), 5) for i in range(min_divisionLevel, max_divisionLevel + 1)]
 
 index_i = 1
 index_j = 1
@@ -40,3 +40,4 @@ for i in phi_precision_array:
         with open(outputFile_name_json, "w") as outfile:
             json.dump(inconfig, outfile, indent=4)
     index_i = index_i + 1
+
