@@ -2,6 +2,7 @@
 #include "HelixSolver/ComputingWorker.h"
 #include "HelixSolver/AdaptiveHoughGpuKernel.h"
 #include "HelixSolver/Options.h"
+#include "HelixSolver/Constants.h"
 extern nlohmann::json config;
 
 namespace HelixSolver
@@ -70,8 +71,22 @@ namespace HelixSolver
 
         opt[0].ACC_X_PRECISION = config["phi_precision"];
         opt[0].ACC_PT_PRECISION = config["pt_precision"];
+
         opt[0].N_PHI_WEDGE = config["n_phi_regions"];
         opt[0].N_ETA_WEDGE = config["n_eta_regions"];
+
+        opt[0].THRESHOLD_PT_THRESHOLD = config["threshold_pt_threshold"];
+        opt[0].LOW_PT_THRESHOLD   = config["low_pt_threshold"];
+        opt[0].HIGH_PT_THRESHOLD = config["high_pt_threshold"];
+
+        opt[0].N_SIGMA_GAUSS = config["n_sigma_gauss"];
+        opt[0].STDEV_CORRECTION = config["stdev_correction"];
+        opt[0].MIN_LINES_GAUSS = config["min_lines_gauss"];
+
+        opt[0].THRESHOLD_X_PRECISION  = config["threshold_x_precision"];
+        opt[0].THRESHOLD_PT_PRECISION = config["threshold_pt_precision"];
+        opt[0].THRESHOLD_COUNTER = config["threshold_counter"];
+
 
 #ifdef USE_SYCL
         solutions = std::make_unique<std::vector<SolutionCircle>>();

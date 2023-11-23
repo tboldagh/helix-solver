@@ -39,7 +39,7 @@ void AdaptiveHoughGpuKernel::operator()(Index2D idx) const {
       const float wedge_phi_center = PHI_BEGIN +
                                       wedge_phi_width * wedge_index_phi +
                                       wedge_phi_width / 2.0;
-      const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width / 2 +
+      const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width / 2.0 +
                                       wedge_eta_width * wedge_index_eta;
 
       Reg phi_reg = Reg(wedge_phi_center,
@@ -53,9 +53,10 @@ void AdaptiveHoughGpuKernel::operator()(Index2D idx) const {
       const uint32_t maxIndex = rs.size();
       for (uint32_t index = 0; index < maxIndex; ++index) {
         if (wedge.in_wedge_r_phi_z(rs[index], phis[index], zs[index])) {
-          rs_wedge[wedge_spacepoints_count] = rs[index];
+          rs_wedge[wedge_spacepoints_count]   = rs[index];
           phis_wedge[wedge_spacepoints_count] = phis[index];
-
+          zs_wedge[wedge_spacepoints_count]   = zs[index];
+          
           // take care about phi wrapping around +-PI
           // this is done bye moving the points by 2 PI
           if (wedge.phi_min() < -M_PI &&
@@ -68,7 +69,6 @@ void AdaptiveHoughGpuKernel::operator()(Index2D idx) const {
             phis_wedge[wedge_spacepoints_count] += 2.0 * M_PI;
           }
 
-          zs_wedge[wedge_spacepoints_count] = zs[index];
           ++wedge_spacepoints_count;
         }
       }
@@ -83,16 +83,10 @@ void AdaptiveHoughGpuKernel::operator()(Index2D idx) const {
       CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel initiated for subregion "
                                 << idx[0] << " " << idx[1]);
 
-      // const float INITIAL_X_SIZE = (2*phi_reg.width) /
-      // ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-      const float INITIAL_X_SIZE =
-          ACC_X_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-      const float INITIAL_Y_SIZE =
-          ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+      const float INITIAL_X_SIZE = (2*phi_reg.width) / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+      const float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
 
-      // const double xBegin = (phi_reg.center - phi_reg.width) +
-      // INITIAL_X_SIZE * idx[0];
-      const double xBegin = PHI_BEGIN + INITIAL_X_SIZE * idx[0];
+      const double xBegin = (phi_reg.center - phi_reg.width) + INITIAL_X_SIZE * idx[0];
       const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
 
       CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: "
@@ -120,7 +114,7 @@ void AdaptiveHoughGpuKernel::operator()(Index2D idx) const {
       // initially 1, becomes 0)
       while (sectionsBufferSize) {
         fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge,
-                                phis_wedge, zs_wedge, wedge_eta_center,
+                                phis_wedge, zs_wedge, wedge_phi_center, wedge_eta_center,
                                 wedge_spacepoints_count);
 
       }
@@ -130,7 +124,7 @@ void AdaptiveHoughGpuKernel::operator()(Index2D idx) const {
 
 void AdaptiveHoughGpuKernel::fillAccumulatorSection(
     AccumulatorSection *sections, uint32_t &sectionsBufferSize, float *rs_wedge,
-    float *phis_wedge, float *zs_wedge, float wedge_eta_center,
+    float *phis_wedge, float *zs_wedge, float wedge_phi_center, float wedge_eta_center,
     uint32_t wedge_spacepoints_count) const {
   HelixSolver::Options opt = opts[0];
 
@@ -150,73 +144,88 @@ void AdaptiveHoughGpuKernel::fillAccumulatorSection(
   // if we are sufficently far in division algorithm, cells can be rejected
   // based also on the condition none of the lines intersects within the cell
   // boundaries, countHits_checkOrder checks that condition
-  uint16_t count{};
-  if (section.divisionLevel < THRESHOLD_DIVISION_LEVEL_COUNT_HITS_ORDER_CHECK) {
-    count = countHits(section, rs_wedge, phis_wedge, zs_wedge,
-                      wedge_spacepoints_count);
-    if ( count < MAX_COUNT_PER_SECTION ) {
+  uint16_t count = countHits(section, rs_wedge, phis_wedge, zs_wedge, wedge_spacepoints_count);
+
+  if (section.divisionLevel >= THRESHOLD_DIVISION_LEVEL_COUNT_HITS_ORDER_CHECK) {
+    if (count < MAX_COUNT_PER_SECTION ) {
+
       count = countHits_checkOrder(section, rs_wedge, phis_wedge, zs_wedge,
                                    wedge_spacepoints_count);
     }
   }
+
   CDEBUG(DISPLAY_BASIC,
          "count of lines in region x:"
              << section.xBegin << " xsz: " << section.xSize
              << " y: " << section.yBegin << " ysz: " << section.ySize
              << " divLevel: " << section.divisionLevel << " count: " << count);
-  if (count < THRESHOLD)
+
+  float threshold = std::fabs(1./section.xBegin) < opt.THRESHOLD_PT_THRESHOLD ? opt.LOW_PT_THRESHOLD : opt.HIGH_PT_THRESHOLD;
+  if (count < threshold)
     return;
 
-  //    if (!TO_DISPLAY_PRECISION_PAIR_ONCE){     // so that these values are
-  //    displayed only once
-  //         DEBUG("AdaptiveHoughGpuKernel.cpp: ACC_X_PRECISION = " <<
-  //         opt.ACC_X_PRECISION << ", ACC_PT_PRECISION = " <<
-  //         opt.ACC_PT_PRECISION);
-  //    }
-  //    ++TO_DISPLAY_PRECISION_PAIR_ONCE;
-  if (section.xSize > opt.ACC_X_PRECISION &&
-      section.ySize > opt.ACC_PT_PRECISION) {
-    CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
-    // by the order here we steer the direction of the search of image space
-    // it may be relevant depending on the data ordering??? to be testes
-    ASSURE_THAT(sectionsBufferSize + 3 < MAX_SECTIONS_BUFFER_SIZE,
-                "Sections buffer depth to small (in 4 subregions split)");
-    sections[sectionsBufferSize] = section.bottomLeft();
-    sections[sectionsBufferSize + 1] = section.topLeft();
-    sections[sectionsBufferSize + 2] = section.topRight();
-    sections[sectionsBufferSize + 3] = section.bottomRight();
-    sectionsBufferSize += 4;
-  } else if (section.xSize > opt.ACC_X_PRECISION) {
-    CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in x direction");
-    ASSURE_THAT(sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE,
-                "Sections buffer depth to small (in x split)");
-    sections[sectionsBufferSize] = section.left();
-    sections[sectionsBufferSize + 1] = section.right();
-    sectionsBufferSize += 2;
-  } else if (section.ySize > opt.ACC_PT_PRECISION) {
-    CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in y direction");
-    ASSURE_THAT(sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE,
-                "Sections buffer depth to small (in x split)");
-    sections[sectionsBufferSize] = section.bottom();
-    sections[sectionsBufferSize + 1] = section.top();
-    sectionsBufferSize += 2;
-  } else { // no more splitting, we have a solution
+  // if (section.xSize < opt.THRESHOLD_X_PRECISION && section.ySize < opt.THRESHOLD_PT_PRECISION && count < opt.THRESHOLD_COUNTER){
 
-    if (USE_GAUSS_FILTERING) {
-      // Next step of solutions number minimization - checking phi of each line
-      // Each helix is almost a straight line so we expect very small deviation
-      // from the truth value. Outliner in terms of phi indicates that this
-      // point does not belong to analyzed track We want to reduce number of
-      // counter by number of lines with phi differing from mean by more than n
-      // standard deviations
-      if (isPeakWithinCell(section)) {
-        addSolution(section, wedge_eta_center);
+  //   if (USE_GAUSS_FILTERING) {
+  //       // Next step of solutions number minimization - checking phi of each line
+  //       // Each helix is almost a straight line so we expect very small deviation
+  //       // from the truth value. Outliner in terms of phi indicates that this
+  //       // point does not belong to analyzed track We want to reduce number of
+  //       // counter by number of lines with phi differing from mean by more than n
+  //       // standard deviations
+  //       if (isPeakWithinCell(section, rs_wedge, phis_wedge, zs_wedge, wedge_spacepoints_count)) {
+  //         //if (CrossingsSorter::checkLinearity_R2(section, rs_wedge, phis_wedge, zs_wedge)){
+  //         //if (CrossingsSorter::checkLinearity_Simple(section, rs_wedge, phis_wedge, zs_wedge)){
+  //           addSolution(section, wedge_phi_center, wedge_eta_center);
+  //         //}
+  //       }
+  //     } else {
+  //       addSolution(section, wedge_phi_center, wedge_eta_center);
+  //     }
+
+  // } else {
+
+    if (section.xSize > opt.ACC_X_PRECISION &&
+        section.ySize > opt.ACC_PT_PRECISION) {
+      CDEBUG(DISPLAY_BASIC, "Splitting region into 4");
+      // by the order here we steer the direction of the search of image space
+      // it may be relevant depending on the data ordering??? to be testes
+      ASSURE_THAT(sectionsBufferSize + 3 < MAX_SECTIONS_BUFFER_SIZE,
+                  "Sections buffer depth to small (in 4 subregions split)");
+      sections[sectionsBufferSize] = section.bottomLeft();
+      sections[sectionsBufferSize + 1] = section.topLeft();
+      sections[sectionsBufferSize + 2] = section.topRight();
+      sections[sectionsBufferSize + 3] = section.bottomRight();
+      sectionsBufferSize += 4;
+    } else if (section.xSize > opt.ACC_X_PRECISION) {
+      CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in x direction");
+      ASSURE_THAT(sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE,
+                  "Sections buffer depth to small (in x split)");
+      sections[sectionsBufferSize] = section.left();
+      sections[sectionsBufferSize + 1] = section.right();
+      sectionsBufferSize += 2;
+    } else if (section.ySize > opt.ACC_PT_PRECISION) {
+      CDEBUG(DISPLAY_BASIC, "Splitting region into 2 in y direction");
+      ASSURE_THAT(sectionsBufferSize + 1 < MAX_SECTIONS_BUFFER_SIZE,
+                  "Sections buffer depth to small (in x split)");
+      sections[sectionsBufferSize] = section.bottom();
+      sections[sectionsBufferSize + 1] = section.top();
+      sectionsBufferSize += 2;
+    } else { // no more splitting, we have a solution
+
+      if (USE_GAUSS_FILTERING) {
+
+        if (isPeakWithinCell(section, rs_wedge, phis_wedge, zs_wedge, wedge_spacepoints_count)) {
+          //if (CrossingsSorter::checkLinearity_R2(section, rs_wedge, phis_wedge, zs_wedge)){
+          //if (CrossingsSorter::checkLinearity_Simple(section, rs_wedge, phis_wedge, zs_wedge)){
+            addSolution(section, wedge_phi_center, wedge_eta_center);
+          //}
+        }
+      } else {
+        addSolution(section, wedge_phi_center, wedge_eta_center);
       }
-    } else {
-
-      addSolution(section, wedge_eta_center);
     }
-  }
+  //}
 }
 
 uint16_t
@@ -228,14 +237,15 @@ AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section, float *rs_wedge,
   // of measurements), this is related to geometry this can be stored in section
   // object maybe???
 
-  const uint32_t maxIndex = wedge_spacepoints_count;
-  for (uint32_t index = 0; index < maxIndex && counter < MAX_COUNT_PER_SECTION;
+  for (uint32_t index = 0; index < wedge_spacepoints_count && counter < MAX_COUNT_PER_SECTION;
        ++index) {
     const float r = rs_wedge[index];
     const float inverse_r = 1.0 / r;
     const float phi = phis_wedge[index];
+    const float a =  inverse_r * INVERSE_A;
+    const float b = -inverse_r * INVERSE_A * phi;
 
-    if (lineInsideCell(section, inverse_r, phi)) {
+    if (section.isLineInside(a, b)) {
 
       section.indices[counter] = index;
       counter++;
@@ -252,6 +262,9 @@ AdaptiveHoughGpuKernel::countHits(AccumulatorSection &section, float *rs_wedge,
 uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
     AccumulatorSection &section, const float *rs_wedge, const float *phis_wedge,
     const float *zs_wedge, const uint32_t wedge_spacepoints_count) const {
+
+  HelixSolver::Options opt = opts[0];
+
   const double xEnd = section.xBegin + section.xSize;
   const double yEnd = section.yBegin + section.ySize;
   uint16_t counter = 0;
@@ -264,6 +277,9 @@ uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
   uint32_t cell_intersection_cc_id[MAX_COUNT_PER_SECTION];
   float cell_intersection_cc_distance[MAX_COUNT_PER_SECTION];
 
+  float mean_phi{};
+  float sd_phi{};
+
   // candidate for parallel_for
   for (uint32_t index = 0; index < wedge_spacepoints_count && counter < MAX_COUNT_PER_SECTION; ++index) {
     const float r = rs_wedge[index];
@@ -271,6 +287,9 @@ uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
     const float phi = phis_wedge[index];
     const float a =  inverse_r * INVERSE_A;
     const float b = -inverse_r * INVERSE_A * phi;
+
+    if (CrossingsSorter::isPhiOnTheRightSide(section, phi) == 0) continue;
+
     if (section.isLineInside(a, b)) {
       section.indices[counter] = index;
       cell_intersection_acc_id[counter] = counter;
@@ -281,9 +300,27 @@ uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
       cell_intersection_cc_distance[counter] =
           section.distCC(a, b); // clockwise
       counter++;
+
+      mean_phi += phi;
+      sd_phi   += phi * phi;
     }
   }
-  if (counter < THRESHOLD) {
+
+  mean_phi /= counter;
+  sd_phi = std::sqrt(sd_phi / counter - mean_phi * mean_phi);
+
+  for (uint32_t index = 0; index < counter; ++index) {
+  
+    float phi = phis_wedge[section.indices[index]];
+
+    if (phi < (mean_phi - N_SIGMA_PHI * sd_phi) || phi > (mean_phi + N_SIGMA_PHI * sd_phi)){
+
+      --counter;
+    }
+  }  
+
+  float threshold = std::fabs(1./section.xBegin) < opt.THRESHOLD_PT_THRESHOLD ? opt.LOW_PT_THRESHOLD : opt. HIGH_PT_THRESHOLD;
+  if (counter < threshold) {
     return 0;
   }
   // sort indices according to distance
@@ -307,7 +344,7 @@ uint16_t AdaptiveHoughGpuKernel::countHits_checkOrder(
 }
 
 void AdaptiveHoughGpuKernel::addSolution(const AccumulatorSection &section,
-                                         float wedge_eta_center) const {
+                                         float wedge_phi_center, float wedge_eta_center) const {
   const double qOverPt = section.yBegin + 0.5 * section.ySize;
   const double phi_0 = section.xBegin + 0.5 * section.xSize;
 
@@ -334,15 +371,18 @@ void AdaptiveHoughGpuKernel::addSolution(const AccumulatorSection &section,
         CDEBUG(DISPLAY_BASIC,
                "AdaptiveHoughKernel solution count: " << int(section.counts));
       } // but for now it is always the simple one
-      solutions[index].pt = 1. / qOverPt;
+      solutions[index].pt = std::fabs(1. / qOverPt);
       solutions[index].phi = phi_0;
       // temporary solution - eta of a particle is equal to ea of the region
       solutions[index].eta = wedge_eta_center;
+      solutions[index].nhits = section.counts;
+      solutions[index].q = qOverPt < 0 ? -1. : 1.;
 
       CDEBUG(DISPLAY_BASIC, "AdaptiveHoughKernel solution q/pt:"
                                 << qOverPt << " phi: " << phi_0);
       CDEBUG(DISPLAY_SOLUTION_PAIR,
-             qOverPt << "," << phi_0 << "," << section.xBegin << ","
+             qOverPt << "," << phi_0 << "," << wedge_phi_center << "," << wedge_eta_center 
+                     << "," << section.xBegin << ","
                      << section.yBegin << "," << section.xBegin + section.xSize
                      << "," << section.yBegin + section.ySize << ","
                      << section.divisionLevel << ":SolutionPair");
@@ -358,31 +398,20 @@ void AdaptiveHoughGpuKernel::fillPreciseSolution(
   // TODO complete it
 }
 
-bool AdaptiveHoughGpuKernel::lineInsideAccumulator(const float radius_inverse,
-                                                   const float phi) const {
-
-  const double qOverPt_for_PHI_BEGIN =
-      radius_inverse * INVERSE_A * (PHI_BEGIN - phi);
-  const double qOverPt_for_PHI_END =
-      radius_inverse * INVERSE_A * (PHI_END - phi);
-
-  if (qOverPt_for_PHI_BEGIN <= Q_OVER_PT_BEGIN &&
-      qOverPt_for_PHI_END >= Q_OVER_PT_END) {
-    return true;
-  } else
-    return false;
-}
-
 bool AdaptiveHoughGpuKernel::isPeakWithinCell(
-    const AccumulatorSection &section) const {
-  const uint32_t max_counts = section.counts == section.OUT_OF_RANGE_COUNTS
-                           ? MAX_COUNT_PER_SECTION
-                           : section.counts;
-  uint32_t max_n_solutions = max_counts * (max_counts - 1) / 2;
+                                  AccumulatorSection &section, float *rs_wedge,
+                                  float *phis_wedge, float *zs_wedge,
+                                  uint32_t wedge_spacepoints_count) const {
+
+  HelixSolver::Options opt = opts[0];
+          
+  const uint32_t max_counts = section.returnCounter();
+  uint32_t array_size = section.indices[max_counts - 1];
+  uint32_t max_n_solutions{};
 
   // array to store solutions, array *_update is used to save solutions which
   // pass criterion of +-N*sigma
-  constexpr uint16_t SOLUTIONS_ARRAY_SIZE = MAX_COUNT_PER_SECTION*(MAX_COUNT_PER_SECTION/2)+1;
+  constexpr uint16_t SOLUTIONS_ARRAY_SIZE = MAX_COUNT_PER_SECTION*(MAX_COUNT_PER_SECTION - 1) / 2;
   float solutions_phi[SOLUTIONS_ARRAY_SIZE];
   float solutions_phi_update[SOLUTIONS_ARRAY_SIZE];
   float solutions_qOverPt[SOLUTIONS_ARRAY_SIZE];
@@ -391,195 +420,194 @@ bool AdaptiveHoughGpuKernel::isPeakWithinCell(
   const float xEnd = section.xBegin + section.xSize;
   const float yEnd = section.yBegin + section.ySize;
 
-  // calculating solutions (defined as intersection point of two lines) for each
-  // pair of lines
+  // For both lines within accumulator (none of them crosses left or right
+  // limit) nothing interesting happens. If calculated intersection point is
+  // within accumulator, it is accepted for further analysis. For at least
+  // one line crossing left or right limit: If intersection point is to be
+  // within accumulator, lines associated with this points must lie on one
+  // side of the accumulator -> both phi > 0 or both phi < 0, which is
+  // equivalent to phi_main * phi_secondary > 0. Then solution point is
+  // calculated for "raw" line parameters (r and phi) and for altered values
+  // (phi -> phi +- 2*pi depending on limit of accumulator which is
+  // crossed.) If phi_main * phi_secondary < 0 lines lie on opposite sides
+  // of the accumulator. Then solution is calculated for either phi
+  // corrected by 2 * pi, and then for another phi corrected by this value.
+  // This approach solves the problem of lower efficiency for phi close to
+  // +- pi.
+
   uint32_t index_array{};
+  float phis_wedge_rotate[MAX_SPACEPOINTS];
+  bool detector_geometry_rotated{};
+
+  const float max_delta_r = 6.0;
+  const float max_delta_phi = 0.0006;
+
+  // find pairs of lines which are pararell and select only one of them
   for (uint32_t index_main = 0; index_main < max_counts; ++index_main) {
-    for (uint32_t index_secondary = 0; index_secondary < index_main;
-         ++index_secondary) {
+    for (uint32_t index_secondary = 0; index_secondary < index_main; ++index_secondary){
 
-      uint32_t line_index_main = section.indices[index_main];
-      uint32_t line_index_secondary = section.indices[index_secondary];
+      if (section.indices[index_main] < 0) continue;
+      if (section.indices[index_secondary] < 0) continue; 
 
-      float r_main = rs[line_index_main];
-      float r_secondary = rs[line_index_secondary];
+      float r_main = rs_wedge[section.indices[index_main]];
+      float r_secondary = rs_wedge[section.indices[index_secondary]];
 
-      float phi_main = phis[line_index_main];
-      float phi_secondary = phis[line_index_secondary];
+      float phi_main = phis_wedge[section.indices[index_main]];
+      float phi_secondary = phis_wedge[section.indices[index_secondary]];
 
-      float phi_solution{};
-      float qOverPt_solution{};
+      if (std::fabs(r_main - r_secondary) < max_delta_r){
 
-      // For both lines within accumulator (none of them crosses left or right
-      // limit) nothing interesting happens. If calculated intersection point is
-      // within accumulator, it is accepted for further analysis. For at least
-      // one line crossing left or right limit: If intersection point is to be
-      // within accumulator, lines associated with this points must lie on one
-      // side of the accumulator -> both phi > 0 or both phi < 0, which is
-      // equivalent to phi_main * phi_secondary > 0. Then solution point is
-      // calculated for "raw" line parameters (r and phi) and for altered values
-      // (phi -> phi +- 2*pi depending on limit of accumulator which is
-      // crossed.) If phi_main * phi_secondary < 0 lines lie on opposite sides
-      // of the accumulator. Then solution is calculated for either phi
-      // corrected by 2 * pi, and then for another phi corrected by this value.
-      // This approach solves the problem of lower efficiency for phi close to
-      // +- pi.
-      if (lineInsideAccumulator(1. / r_main, phi_main) &&
-          lineInsideAccumulator(1. / r_secondary, phi_secondary)) {
+        // such a close lines in terms of r can originate from a single track which was detected
+        // twice in a single layer - then it's ok, or it is a fake line from another particle - 
+        // reject line whch is further from the center of section
 
-        phi_solution = (phi_main * r_secondary - phi_secondary * r_main) /
-                       (r_secondary - r_main);
-        qOverPt_solution = (phi_solution - phi_main) / (r_main)*INVERSE_A;
+        if (Wedge::phi_dist(phi_main, phi_secondary) > max_delta_phi){
 
-        if (phi_solution > PHI_BEGIN && phi_solution < PHI_END &&
-            qOverPt_solution > Q_OVER_PT_BEGIN &&
-            qOverPt_solution < Q_OVER_PT_END) {
-          solutions_phi[index_array] = phi_solution;
-          solutions_qOverPt[index_array] = qOverPt_solution;
+          float dist1 = CrossingsSorter::distanceSectionCenter(section, 1./r_main, phi_main);
+          float dist2 = CrossingsSorter::distanceSectionCenter(section, 1./r_secondary, phi_secondary);
+
+          if (dist1 < dist2){
+
+            section.indices[index_main] = -100;
+          } else {
+
+            section.indices[index_secondary] = -100;
+          }
+        }
+      }
+    }
+  }
+
+  // intersecton point in the most basic approach - phi parameter not 
+  // wrapped around accumulator yet
+  if (CrossingsSorter::areAllSectionLinesInsideAccumulator(section, rs_wedge, phis_wedge)){
+
+    for (uint32_t index_main = 0; index_main < max_counts; ++index_main) {
+      for (uint32_t index_secondary = 0; index_secondary < index_main;
+            ++index_secondary) {
+
+        if (section.indices[index_main] < 0) continue;
+        if (section.indices[index_secondary] < 0) continue; 
+
+        float r_main = rs_wedge[section.indices[index_main]];
+        float r_secondary = rs_wedge[section.indices[index_secondary]];
+
+        float phi_main = phis_wedge[section.indices[index_main]];
+        float phi_secondary = phis_wedge[section.indices[index_secondary]];
+
+        // run simple test to determine if these two lines can originate from the same track
+        if (CrossingsSorter::isCurvatureRight(section, r_main, phi_main, r_secondary, r_secondary) == 0) continue;
+
+        // calculating solutions (defined as intersection point of two lines) 
+        // for each pair of lines
+        float phi_intersection     = CrossingsSorter::PhiIntersection(section, index_main, index_secondary, rs_wedge, phis_wedge);
+        float qOverPt_intersection = CrossingsSorter::qOverPtIntersection(section, index_main, index_secondary, rs_wedge, phis_wedge);
+    
+        if (CrossingsSorter::isIntersectionCloseEnough(phi_intersection, qOverPt_intersection)) {
+
+          solutions_phi[index_array] = phi_intersection;
+          solutions_qOverPt[index_array] = qOverPt_intersection;
           ++index_array;
         }
-      } else if (phi_main * phi_secondary > 0) {
+      }
+    }
+  } else {
 
-        phi_solution = (phi_main * r_secondary - phi_secondary * r_main) /
-                       (r_secondary - r_main);
-        qOverPt_solution = (phi_solution - phi_main) / (r_main)*INVERSE_A;
+    // rotate detector by pi so that spacepoints corresponding to +- pi, 
+    // will have "temporary" spacepoints with phi close to 0
+    CrossingsSorter::copyArray(phis_wedge, phis_wedge_rotate, array_size);
 
-        if (phi_solution > PHI_BEGIN && phi_solution < PHI_END &&
-            qOverPt_solution > Q_OVER_PT_BEGIN &&
-            qOverPt_solution < Q_OVER_PT_END) {
+    detector_geometry_rotated = 1;
+    if (section.xBegin > 0){
 
-          solutions_phi[index_array] = phi_solution;
-          solutions_qOverPt[index_array] = qOverPt_solution;
-          ++index_array;
-        }
+      CrossingsSorter::rotateDetector(phis_wedge_rotate, array_size, -M_PI);
+    } else{
 
-        if (phi_main > 0) {
+      CrossingsSorter::rotateDetector(phis_wedge_rotate, array_size,  M_PI);
+    }
+    CrossingsSorter::phiWrap(phis_wedge_rotate, array_size);
 
-          phi_main -= 2 * M_PI;
-          phi_secondary -= 2 * M_PI;
-        } else {
+    for (uint32_t index_main = 0; index_main < max_counts; ++index_main) {
+      for (uint32_t index_secondary = 0; index_secondary < index_main;
+            ++index_secondary) {
 
-          phi_main += 2 * M_PI;
-          phi_secondary += 2 * M_PI;
-        }
+        float r_main = rs_wedge[section.indices[index_main]];
+        float r_secondary = rs_wedge[section.indices[index_secondary]];
 
-        phi_solution = (phi_main * r_secondary - phi_secondary * r_main) /
-                       (r_secondary - r_main);
-        qOverPt_solution = (phi_solution - phi_main) / (r_main)*INVERSE_A;
+        float phi_main = phis_wedge_rotate[section.indices[index_main]];
+        float phi_secondary = phis_wedge_rotate[section.indices[index_secondary]];
 
-        if (phi_solution > PHI_BEGIN && phi_solution < PHI_END &&
-            qOverPt_solution > Q_OVER_PT_BEGIN &&
-            qOverPt_solution < Q_OVER_PT_END) {
+        // calculating solutions (defined as intersection point of two lines) 
+        // for each pair of lines
+        float phi_intersection     = CrossingsSorter::PhiIntersection(section, index_main, index_secondary, rs_wedge, phis_wedge_rotate);
+        float qOverPt_intersection = CrossingsSorter::qOverPtIntersection(section, index_main, index_secondary, rs_wedge, phis_wedge_rotate);
+    
+        if (CrossingsSorter::isIntersectionCloseEnough(phi_intersection, qOverPt_intersection)) {
 
-          solutions_phi[index_array] = phi_solution;
-          solutions_qOverPt[index_array] = qOverPt_solution;
-          ++index_array;
-        }
-      } else {
-        if (phi_main > 0) {
-          phi_main -= 2 * M_PI;
-        } else {
-
-          phi_secondary -= 2 * M_PI;
-        }
-
-        phi_solution = (phi_main * r_secondary - phi_secondary * r_main) /
-                       (r_secondary - r_main);
-        qOverPt_solution = (phi_solution - phi_main) / (r_main)*INVERSE_A;
-
-        if (phi_solution > PHI_BEGIN && phi_solution < PHI_END &&
-            qOverPt_solution > Q_OVER_PT_BEGIN &&
-            qOverPt_solution < Q_OVER_PT_END) {
-
-          solutions_phi[index_array] = phi_solution;
-          solutions_qOverPt[index_array] = qOverPt_solution;
-          ++index_array;
-        }
-
-        phi_main += 2 * M_PI;
-        phi_secondary += 2 * M_PI;
-
-        phi_solution = (phi_main * r_secondary - phi_secondary * r_main) /
-                       (r_secondary - r_main);
-        qOverPt_solution = (phi_solution - phi_main) / (r_main)*INVERSE_A;
-
-        if (phi_solution > PHI_BEGIN && phi_solution < PHI_END &&
-            qOverPt_solution > Q_OVER_PT_BEGIN &&
-            qOverPt_solution < Q_OVER_PT_END) {
-
-          solutions_phi[index_array] = phi_solution;
-          solutions_qOverPt[index_array] = qOverPt_solution;
+          solutions_phi[index_array] = phi_intersection;
+          solutions_qOverPt[index_array] = qOverPt_intersection;
           ++index_array;
         }
       }
     }
   }
 
+
+  // make sure that size of arrays is not exceeded
+  ASSURE_THAT(index_array < SOLUTIONS_ARRAY_SIZE, "Exceeded number of lines intersections in isPeakWithinCell!");
+
+  // if no intersection points within desired area were found - reject that section
   max_n_solutions = index_array;
-  if (!max_n_solutions) {
+  if (max_n_solutions == 0) {
 
     return false;
   }
 
+  // As long as solutions are rejected continue calculating mean and stdev and
+  // eliminating values outside the +-n*sigma range
   double mean_phi{};
-  double stdev_phi{};
   double mean_qOverPt{};
+  double stdev_phi{};
   double stdev_qOverPt{};
   uint32_t count_rejected{};
 
+  // As long as solutions are rejected continue calculating mean and stdev and
+  // eliminating values outside the +-n*sigma range
+  
   // As long as solutions are rejected continue calculating mean and stdev and
   // eliminating values outside the +-n*sigma range
   do {
     max_n_solutions -= count_rejected;
     count_rejected = 0;
 
-    mean_phi = 0;
-    mean_qOverPt = 0;
-    stdev_phi = 0;
-    stdev_qOverPt = 0;
+    mean_phi     =  CrossingsSorter::calculateMean(solutions_phi, max_n_solutions);
+    mean_qOverPt =  CrossingsSorter::calculateMean(solutions_qOverPt, max_n_solutions);
 
-    for (uint32_t index = 0; index < max_n_solutions; ++index) {
-
-      mean_phi += solutions_phi[index];
-      mean_qOverPt += solutions_qOverPt[index];
-    }
-
-    mean_phi /= max_n_solutions;
-    mean_qOverPt /= max_n_solutions;
-
-    for (uint32_t index = 0; index < max_n_solutions; ++index) {
-
-      stdev_phi +=
-          (solutions_phi[index] - mean_phi) * (solutions_phi[index] - mean_phi);
-      stdev_qOverPt += (solutions_qOverPt[index] - mean_qOverPt) *
-                       (solutions_qOverPt[index] - mean_qOverPt);
-    }
-
-    stdev_phi = std::sqrt(stdev_phi / max_n_solutions);
-    stdev_qOverPt = std::sqrt(stdev_qOverPt / max_n_solutions);
+    stdev_phi     = CrossingsSorter::calculateStDev(solutions_phi, max_n_solutions);
+    stdev_qOverPt = CrossingsSorter::calculateStDev(solutions_qOverPt, max_n_solutions);
 
     CDEBUG(DISPLAY_MEAN_STDEV, mean_phi << "," << stdev_phi << ","
-                                        << mean_qOverPt << "," << stdev_qOverPt
-                                        << ":MeanStdev");
+                                         << mean_qOverPt << "," << stdev_qOverPt
+                                         << ":MeanStdev");
 
-    float phi_lower = mean_phi - N_SIGMA_GAUSS * stdev_phi;
-    float phi_upper = mean_phi + N_SIGMA_GAUSS * stdev_phi;
-    float qOverPt_lower = mean_qOverPt - N_SIGMA_GAUSS * stdev_qOverPt;
-    float qOverPt_upper = mean_qOverPt + N_SIGMA_GAUSS * stdev_qOverPt;
+    float phi_lower = mean_phi - opt.N_SIGMA_GAUSS * stdev_phi;
+    float phi_upper = mean_phi + opt.N_SIGMA_GAUSS * stdev_phi;
+    float qOverPt_lower = mean_qOverPt - opt.N_SIGMA_GAUSS * stdev_qOverPt;
+    float qOverPt_upper = mean_qOverPt + opt.N_SIGMA_GAUSS * stdev_qOverPt;
 
     uint32_t index_updates = 0;
     for (uint32_t index = 0; index < max_n_solutions; ++index) {
 
-      float phi_solution = solutions_phi[index];
-      float qOverPt_solution = solutions_qOverPt[index];
+      float phi_intersection = solutions_phi[index];
+      float qOverPt_intersection = solutions_qOverPt[index];
 
-      if ((phi_solution > phi_lower && phi_solution < phi_upper) &&
-          (qOverPt_solution > qOverPt_lower &&
-           qOverPt_solution < qOverPt_upper)) {
+      if ((phi_intersection > phi_lower && phi_intersection < phi_upper) &&
+          (qOverPt_intersection > qOverPt_lower &&
+           qOverPt_intersection < qOverPt_upper)) {
 
         // intersection point is within +- N sigma
-        solutions_phi_update[index_updates] = phi_solution;
-        solutions_qOverPt_update[index_updates] = qOverPt_solution;
+        solutions_phi_update[index_updates] = phi_intersection;
+        solutions_qOverPt_update[index_updates] = qOverPt_intersection;
         ++index_updates;
       } else {
 
@@ -587,61 +615,46 @@ bool AdaptiveHoughGpuKernel::isPeakWithinCell(
       }
     }
 
-    for (uint32_t index_2 = 0; index_2 < index_updates; ++index_2) {
+    std::copy(std::begin(solutions_phi_update), std::end(solutions_phi_update), std::begin(solutions_phi));
+    std::copy(std::begin(solutions_qOverPt_update), std::end(solutions_qOverPt_update), std::begin(solutions_qOverPt));
 
-      solutions_phi[index_2] = solutions_phi_update[index_2];
-      solutions_qOverPt[index_2] = solutions_qOverPt_update[index_2];
-
-      solutions_phi_update[index_2] = 0;
-      solutions_qOverPt_update[index_2] = 0;
-    }
+    CrossingsSorter::zeroArray(solutions_phi_update, max_n_solutions);
+    CrossingsSorter::zeroArray(solutions_qOverPt_update, max_n_solutions);
 
   } while (count_rejected);
 
-  // Return false if all intersection points were rejected.
-  if (!max_n_solutions) {
+  // Return false if not enough lines intersect
+  if (max_n_solutions <= opt.MIN_LINES_GAUSS) {
 
     return false;
   }
-
+  
   // Parameter STDEV_CORRECTION allows to include sections for which mean in
   // either coordinate is only slightly outside the cell limits. Setting value
   // equal 0.6 results in 100% efficiency.
-  float mean_phi_lower = section.xBegin - STDEV_CORRECTION * stdev_phi;
-  float mean_phi_upper = xEnd + STDEV_CORRECTION * stdev_phi;
-  float mean_qOverPt_lower = section.yBegin - STDEV_CORRECTION * stdev_qOverPt;
-  float mean_qOverPt_upper = yEnd + STDEV_CORRECTION * stdev_qOverPt;
+  float mean_phi_lower = section.xBegin - opt.STDEV_CORRECTION * stdev_phi;
+  float mean_phi_upper = xEnd + opt.STDEV_CORRECTION * stdev_phi;
+  float mean_qOverPt_lower = section.yBegin - opt.STDEV_CORRECTION * stdev_qOverPt;
+  float mean_qOverPt_upper = yEnd + opt.STDEV_CORRECTION * stdev_qOverPt;
+
+  if (detector_geometry_rotated){
+    if (section.xBegin > 0){
+
+      mean_phi += M_PI;
+    } else {
+
+      mean_phi -= M_PI;
+    }
+  }
 
   if ((mean_phi > mean_phi_lower && mean_phi < mean_phi_upper) &&
       (mean_qOverPt > mean_qOverPt_lower &&
        mean_qOverPt < mean_qOverPt_upper)) {
 
     return true;
-  } else {
+  } 
 
-    return false;
-  }
-}
-
-bool AdaptiveHoughGpuKernel::lineInsideCell(const AccumulatorSection section,
-                                            const float radius_inverse,
-                                            const float phi) const {
-
-  const double xEnd = section.xBegin + section.xSize;
-  const double yEnd = section.yBegin + section.ySize;
-
-  float yLineAtBegin = radius_inverse * INVERSE_A * (section.xBegin - phi);
-  float yLineAtEnd = radius_inverse * INVERSE_A * (xEnd - phi);
-
-  if (lineInsideAccumulator(radius_inverse, phi)) {
-    if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd) {
-      return true;
-    }
-  } else {
-    if (yLineAtBegin <= yEnd && section.yBegin <= yLineAtEnd) {
-      return true;
-    }
-  }
   return false;
+  
 }
 } // namespace HelixSolver
