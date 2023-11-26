@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.16)
 project(helix-solver)
 
 set(IntelSYCL_DIR "/opt/intel/oneapi/compiler/2023.2.1/linux/IntelSYCL")
@@ -15,6 +15,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fsycl -fsycl-targets=nvptx64-n
 find_package(GTest REQUIRED)
 
 find_package(IntelSYCL REQUIRED)
+
+find_package(ROOT REQUIRED)
 
 include(tools/cmake/helix_solver_add_library.cmake)
 

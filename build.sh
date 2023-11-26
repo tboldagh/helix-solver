@@ -21,6 +21,10 @@ if [ "${SETVARS_COMPLETED:-}" != "1" ]; then
     source ./source_setvars.sh
 fi
 
+if [[ -z "${ROOTSYS}" ]]; then
+    source lib/root/bin/thisroot.sh
+fi
+
 cd build
 cmake ..
 make
