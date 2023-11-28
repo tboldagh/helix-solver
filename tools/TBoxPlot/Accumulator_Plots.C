@@ -431,26 +431,28 @@ void Accumulator_Plots(
 						point -> SetMarkerColor(kGreen+3);
 						point -> SetMarkerSize(2);
 
-						// limits of the solution cell
-						TLine *lineSolution1 = new TLine(xLeftSolution, yLeftSolution, xRightSolution, yLeftSolution);
-						lineSolution1  ->  SetLineColor(kBlue);
-						lineSolution1  ->  SetLineWidth(2);
-						lineSolution1  ->  Draw("same");
+						if (DISPLAY_SOLUTION_CELL_BORDERS){
+							// limits of the solution cell
+							TLine *lineSolution1 = new TLine(xLeftSolution, yLeftSolution, xRightSolution, yLeftSolution);
+							lineSolution1  ->  SetLineColor(kBlue);
+							lineSolution1  ->  SetLineWidth(2);
+							lineSolution1  ->  Draw("same");
 
-						TLine *lineSolution2 = new TLine(xRightSolution, yLeftSolution, xRightSolution, yRightSolution);
-						lineSolution2  ->  SetLineColor(kBlue);
-						lineSolution2  ->  SetLineWidth(2);
-						lineSolution2  ->  Draw("same");
+							TLine *lineSolution2 = new TLine(xRightSolution, yLeftSolution, xRightSolution, yRightSolution);
+							lineSolution2  ->  SetLineColor(kBlue);
+							lineSolution2  ->  SetLineWidth(2);
+							lineSolution2  ->  Draw("same");
 
-						TLine *lineSolution3 = new TLine(xLeftSolution, yRightSolution, xRightSolution, yRightSolution);
-						lineSolution3  ->  SetLineColor(kBlue);
-						lineSolution3  ->  SetLineWidth(2);
-						lineSolution3  ->  Draw("same");
+							TLine *lineSolution3 = new TLine(xLeftSolution, yRightSolution, xRightSolution, yRightSolution);
+							lineSolution3  ->  SetLineColor(kBlue);
+							lineSolution3  ->  SetLineWidth(2);
+							lineSolution3  ->  Draw("same");
 
-						TLine *lineSolution4 = new TLine(xLeftSolution, yLeftSolution, xLeftSolution, yRightSolution);
-						lineSolution4  ->  SetLineColor(kBlue);
-						lineSolution4  ->  SetLineWidth(2);
-						lineSolution4 ->  Draw("same");
+							TLine *lineSolution4 = new TLine(xLeftSolution, yLeftSolution, xLeftSolution, yRightSolution);
+							lineSolution4  ->  SetLineColor(kBlue);
+							lineSolution4  ->  SetLineWidth(2);
+							lineSolution4 ->  Draw("same");
+						}
 					}
 				}
 				
@@ -523,11 +525,6 @@ void Accumulator_Plots(
 						point -> SetMarkerSize(2);
 					}
 				}
-			
-			
-			float qOverPt_truth = q_truth / pt_truth;
-
-			float qOverPt_truth = q_truth / pt_truth;
 				
 			} else {
 

@@ -68,16 +68,20 @@ void Filtering_Analysis_pileup(){
     const float max_hist_phi =  M_PI;
 
     const Int_t n_bins_scatterplot = 200;
-    const Int_t n_bins_efficiency = 80;
+    const Int_t n_bins_efficiency = 25;
 
     TH2D *scatt_eta = new TH2D("scatt_eta", "Scatterplot of truth #eta vs Hough #eta;truth #eta;Hough #eta", n_bins_scatterplot, min_hist_eta, max_hist_eta, n_bins_scatterplot, min_hist_eta, max_hist_eta);
     TH2D *scatt_pt  = new TH2D("scatt_pt", "Scatterplot of truth p_{T} vs Hough p_{T};truth p_{T};Hough p_{T}", n_bins_scatterplot, min_hist_pt, max_hist_pt, n_bins_scatterplot, min_hist_pt, max_hist_pt);
     TH2D *scatt_1_over_pt  = new TH2D("scatt_1_over_pt", "Scatterplot of truth 1/p_{T} vs Hough 1/p_{T};truth 1/p_{T};Hough 1/p_{T}", n_bins_scatterplot, min_hist_1_over_pt, max_hist_1_over_pt, n_bins_scatterplot, min_hist_1_over_pt, max_hist_1_over_pt);
 
-    TEfficiency *teff_pt  = new TEfficiency("teff_pt",  "Reconstruction efficiency of p_{T};p_{T} [GeV];efficiency", n_bins_efficiency, min_hist_pt, max_hist_pt);
+    const Int_t n_bins_efficiency_variable_pt = 15;
+    const double xbins_pt[n_bins_efficiency_variable_pt + 1] = {1, 1.1, 1.2, 1.4, 1.6, 1.8, 2.0, 2.25, 2.75, 3.5, 4.5, 6.0, 7., 8., 9., 10.};
+    TEfficiency *teff_pt  = new TEfficiency("teff_pt",  "Reconstruction efficiency of p_{T};p_{T} [GeV];efficiency", n_bins_efficiency_variable_pt, xbins_pt);
     TEfficiency *teff_phi = new TEfficiency("teff_phi", "Reconstruction efficiency of #varphi;#varphi truth [rad];efficiency", n_bins_efficiency, min_hist_phi, max_hist_phi);
     TEfficiency *teff_eta = new TEfficiency("teff_eta", "Reconstruction efficiency of #eta;#eta truth;efficiency", n_bins_efficiency, min_hist_eta, max_hist_eta);
-    TEfficiency *teff_d0  = new TEfficiency("teff_d0",  "Reconstruction efficiency of d_0;d_0 truth;efficiency", 30, min_hist_d0, max_hist_d0);
+    const Int_t n_bins_efficiency_variable_d0 = 17;
+    const double xbins_d0[n_bins_efficiency_variable_d0 + 1] = {1, 20, 40, 60, 80, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800, 1000, 1200};
+    TEfficiency *teff_d0  = new TEfficiency("teff_d0",  "Reconstruction efficiency of d_0;d_0 truth;efficiency", n_bins_efficiency_variable_d0, xbins_d0);
 
     gPad 	-> 	SetLeftMargin(0.15);
     gStyle  ->  SetOptStat(0);
