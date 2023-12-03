@@ -17,7 +17,8 @@ AdaptiveHoughGpuKernel::AdaptiveHoughGpuKernel(OptionsAccessor o,
                             << rs.size() << " measurements ");
 }
 
-void AdaptiveHoughGpuKernel::operator()(Index2D idx) const {
+void AdaptiveHoughGpuKernel::operator()(Index2D idx) const
+{
   HelixSolver::Options opt = opts[0];
   
   // 'pure" width of wedge which can be used to determine wedge center,

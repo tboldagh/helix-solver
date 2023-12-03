@@ -213,8 +213,9 @@ namespace HelixSolver
                 if ( not inExcludedRZRegions(x,y,z) ) {
                     points[eventId]->push_back(Point{x, y, z, layer});
                     CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
-                    //DEBUG("Accepted point, r: " << std::hypot(x,y) << ", z: " << z);
-                } //else DEBUG("Rejected point, r: " << std::hypot(x,y) << ", z: " << z);
+                    // DEBUG("Accepted point, r: " << std::hypot(x,y) << ", z: " << z);
+                } 
+                // else DEBUG("Rejected point, r: " << std::hypot(x,y) << ", z: " << z);
             }
         }
         // clean events from those having hits in undesired region

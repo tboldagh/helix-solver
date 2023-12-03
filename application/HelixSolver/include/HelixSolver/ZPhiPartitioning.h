@@ -42,8 +42,8 @@ struct Wedge {
       eta.width = 0.01 + eta.center;
     }
 
-    m_aleft = std::tan(2.0 * std::atan(std::exp(-(eta.center - eta.width))));
-    m_aright = std::tan(2.0 * std::atan(std::exp(-(eta.center + eta.width))));
+    m_aleft = std::tan(2.0 * std::atan(sycl::exp(-(eta.center - eta.width))));
+    m_aright = std::tan(2.0 * std::atan(sycl::exp(-(eta.center + eta.width))));
     m_bleft = -m_aleft / (z.center - z.width);
     m_bright = -m_aright / (z.center + z.width);
   }

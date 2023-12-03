@@ -63,3 +63,9 @@ logs/
 
 # build dir
 build
+
+# data dir
+data
+
+# output dir
+output

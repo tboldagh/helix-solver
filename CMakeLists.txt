@@ -12,6 +12,12 @@ set(CMAKE_CXX_COMPILER_ID "IntelLLVM")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fsycl -fsycl-targets=nvptx64-nvidia-cuda")
 
+# Debug options
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -Rno-debug-disables-optimization")
+
+# Disable SYCL
+set(DISABLE_SYCL)
+
 find_package(GTest REQUIRED)
 
 find_package(IntelSYCL REQUIRED)

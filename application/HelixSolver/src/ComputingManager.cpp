@@ -132,15 +132,15 @@ namespace HelixSolver
         switch (platform)
         {
             case ComputingWorker::Platform::CPU:
-                return std::make_unique<sycl::queue>(sycl::queue(sycl::host_selector{}, NULL, propertyList));
+                return std::make_unique<sycl::queue>(sycl::queue(sycl::cpu_selector_v, NULL, propertyList));
             case ComputingWorker::Platform::GPU:
-                return std::make_unique<sycl::queue>(sycl::queue(sycl::gpu_selector{}, NULL, propertyList));
+                return std::make_unique<sycl::queue>(sycl::queue(sycl::gpu_selector_v, NULL, propertyList));
             case ComputingWorker::Platform::FPGA:
-                return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_selector{}, NULL, propertyList));
+                return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_selector_v, NULL, propertyList));
             case ComputingWorker::Platform::FPGA_EMULATOR:
-                return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_emulator_selector{}, NULL, propertyList));
+                return std::make_unique<sycl::queue>(sycl::queue(sycl::ext::intel::fpga_emulator_selector_v, NULL, propertyList));
             default:
-                throw std::runtime_error("Bad platform" + std::to_string(static_cast<int>(platform)) + " in " + __FILE__);
+                throw std::runtime_error("Bad platform: " + std::to_string(static_cast<int>(platform))+ " in " + __FILE__ + ":" + std::to_string(__LINE__));
         }
 #else        
         switch (platform)
@@ -148,7 +148,7 @@ namespace HelixSolver
             case ComputingWorker::Platform::CPU_NO_SYCL:
                 return std::make_unique<Queue>();
             default:
-                throw std::runtime_error("Bad platform: " + std::to_string(static_cast<int>(platform))+ " in " + __FILE__);
+                throw std::runtime_error("Bad platform: " + std::to_string(static_cast<int>(platform))+ " in " + __FILE__ + ":" + std::to_string(__LINE__));
         }
 #endif
     }
