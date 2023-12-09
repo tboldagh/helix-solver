@@ -16,6 +16,8 @@ filter RPhi
 filter Events
 filter MeanStdev
 filter WedgeCounts
+filter RZ
+filter R2
 echo "Producing plots"
 root -l -q  scripts/Create_Root_File.C
 echo "... done"
@@ -27,3 +29,5 @@ rm data_Events.csv
 rm data_MeanStdev.csv
 rm data_WedgeCounts.csv
 rm data_RPhi.csv
+rm data_RZ.csv
+rm data_R2.csv

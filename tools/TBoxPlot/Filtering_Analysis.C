@@ -6,15 +6,30 @@ void Filtering_Analysis(){
 
     // Used are two detected-circles files so that output when filtering is enable, can be
     // compared to default setting. File hough_events.root contains event_id which passed selection based on r and z regions.
-    std::string file_name_ending = "muon_1k";
+    
+    // files for muons
+    // std::string truth_file_path =  "../../../data/ODD_Single_muon_10k/particles_initial.root";
+    // std::string hough_file_path =  "../../../build/detected-circles/detected-circles_muon.root";
+    // std::string events_file_path =  "hough_tree_files/hough_events_muon.root";
+    // std::string pdf_file_name = "output/filtering_analysis_muons.pdf";
+    // std::string output_path = "output/output_histograms_filtering_analysis_muons.root";
 
-    std::string truth_file_path =  "../../../DATA/ODD_Single_muon_10k/particles_initial.root";
-    std::string hough_file_path =  "../../../build/detected-circles/detected-circles.root";
-    std::string hough_filtered_file_path =  "../../../build/detected-circles/detected-circles.root";
-    std::string events_file_path =  "hough_events_10k.root";
+    // files for pions
+    std::string truth_file_path =  "../../../data/ODD_Single_pion_10k/particles_initial.root";
+    std::string hough_file_path =  "../../../build/detected-circles/detected-circles_pion.root";
+    std::string events_file_path =  "hough_tree_files/hough_events_pion.root";
+    std::string pdf_file_name = "output/filtering_analysis_pions.pdf";
+    std::string output_path = "output/output_histograms_filtering_analysis_pions.root";
+
+    // files for pileup
+    //std::string truth_file_path =  "../../../DATA/odd_output_ttbar_PU200_100/particles_initial.root";
+    //std::string hough_file_path =  "../../../build/detected-circles/detected-circles_pileup.root";
+    //std::string events_file_path =  "hough_tree_files/hough_events_pileup.root";
+    //std::string pdf_file_name = "output/filtering_analysis_pileup.pdf";
+    //std::string output_path = "output/output_histograms_filtering_analysis_pileup.root";
+
+    std::string hough_filtered_file_path =  hough_file_path;
     std::string wedge_counts_file_path =  "../../../build/hough_wedge_counts.root";
-    std::string output_path = "output/output_histograms_filtering_analysis_" + file_name_ending + ".root";
-    std::string pdf_file_name = "output/filtering_analysis_" + file_name_ending + ".pdf";
 
     std::string truth_tree_name = "particles";
     std::string hough_tree_name = "solutions";
@@ -44,12 +59,12 @@ void Filtering_Analysis(){
     // parameters of the analyzed division region
     const float wedge_eta_center = 0.4;
     const float wedge_phi_center = M_PI;
-    const Int_t eta_n_regions = 39;
+    const Int_t eta_n_regions = 15;
     const Int_t phi_n_regions = 8;
-    const float max_eta =  4.;
-    const float min_eta = -4.;
-    const float excess_wedge_eta_width = 0.;
-    const float excess_wedge_phi_width = 0.;
+    const float max_eta =  1.5;
+    const float min_eta = -1.5;
+    const float excess_wedge_eta_width = 0.12;
+    const float excess_wedge_phi_width = 0.12;
     const float wedge_eta_width = (max_eta - min_eta)/eta_n_regions + excess_wedge_eta_width;
     const float wedge_phi_width = (2 * M_PI)/phi_n_regions + excess_wedge_phi_width;
 
@@ -71,9 +86,9 @@ void Filtering_Analysis(){
     phi_min_wedge -= phi_width/2;
     phi_max_wedge -= phi_width/2;
 
-    const Int_t eta_n_wedge = 39;
-    float eta_min_wedge = -4.;
-    float eta_max_wedge =  4.;
+    const Int_t eta_n_wedge = 15;
+    float eta_min_wedge = -1.5;
+    float eta_max_wedge =  1.5;
     const float eta_width = (eta_max_wedge - eta_min_wedge)/eta_n_wedge;
     eta_min_wedge -= eta_width/2;
     eta_max_wedge -= eta_width/2;
@@ -344,7 +359,7 @@ void Filtering_Analysis(){
             bool_tefficiency = 1;
             hough_solutions_current_event = hough_filtered_events[event_id].first.size();
         } else {
-            //cout << "... No solution found for event " << event_id << " after filtration." << endl;
+            cout << "... No solution found for event " << event_id << " after filtration." << endl;
         }
 
         teff_pt_filtering_ok_events  -> Fill(bool_tefficiency, pt_truth);
@@ -416,8 +431,8 @@ void Filtering_Analysis(){
     cout << "... Average number of solutions found for single particle without filtering: " << float(all_hough_nentries) / count_found_distinct_solutions_no_filtering << endl;
     cout << "... Average number of solutions found for single particle with filtering on: " << float(all_hough_filtered_nentries) / count_found_distinct_solutions_filtering << "\n" << endl;
 
-    cout << "... Solutions for " << count_found_distinct_solutions_no_filtering << "/" << all_events_nentries << " were found witout using filtering." << endl;
-    cout << "... Solutions for " << count_found_distinct_solutions_filtering << "/" << all_events_nentries << " were found using filtering on.\n" << endl;
+    cout << "... Solutions for " << count_found_distinct_solutions_no_filtering << "/" << all_events_nentries << " (" << 100.*count_found_distinct_solutions_no_filtering/all_events_nentries << " %)" << " were found witout using filtering." << endl;
+    cout << "... Solutions for " << count_found_distinct_solutions_filtering    << "/" << all_events_nentries << " (" << 100.*count_found_distinct_solutions_filtering/all_events_nentries << " %)"" were found using filtering on.\n" << endl;
 
     cout << "... Number of truth particle tracks within wedge eta_center = " << wedge_eta_center << ", phi_center = " << wedge_phi_center << ": " << n_truth_tracks << endl;
     cout << "... Number of Hough particle tracks within wedge eta_center = " << wedge_eta_center << ", phi_center = " << wedge_phi_center << ": " << n_hough_tracks << "\n" << endl;

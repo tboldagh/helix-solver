@@ -14,12 +14,15 @@ public:
   double xSize;
   double ySize;
   double xBegin;
-  double yBegin;
+  double yBegin;  
   uint32_t divisionLevel = 0; // number of divisions needed from the original acc
-  short indices[MAX_COUNT_PER_SECTION];
+  int32_t indices[MAX_COUNT_PER_SECTION];
   uint16_t counts = 0;
   int8_t OUT_OF_RANGE_COUNTS = 111;
   inline bool canUseIndices() const { return counts != 0; }
+  inline uint16_t returnCounter() const {return counts == OUT_OF_RANGE_COUNTS
+                                                   ? MAX_COUNT_PER_SECTION - 1
+                                                   : counts;} 
 
   AccumulatorSection bottomLeft(float xFraction = 0.5,
                                 float yFraction = 0.5) const {

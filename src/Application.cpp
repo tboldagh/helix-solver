@@ -212,7 +212,7 @@ namespace HelixSolver
                 points.try_emplace(eventId, std::make_unique<std::vector<Point>>());
                 if ( not inExcludedRZRegions(x,y,z) ) {
                     points[eventId]->push_back(Point{x, y, z, layer});
-                    CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << ":RPhi");
+                    CDEBUG(DISPLAY_RPHI, std::hypot(x,y) << "," << std::atan2(y,x) << "," << z << ":RPhi");
                     //DEBUG("Accepted point, r: " << std::hypot(x,y) << ", z: " << z);
                 } //else DEBUG("Rejected point, r: " << std::hypot(x,y) << ", z: " << z);
             }
@@ -271,8 +271,8 @@ namespace HelixSolver
                     break;
 
                 phi = solution.phi;
-                pt = std::abs(solution.pt);
-                q =  solution.pt > 0  ? 1.0 : -1.0;
+                pt = solution.pt;
+                q =  solution.q;
                 eta = solution.eta;
                 z = solution.z;
                 d0 = solution.d0;

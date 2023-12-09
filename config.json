@@ -14,8 +14,12 @@
     "phi_precision": 0.001,
     "pt_precision": 0.01,
     "n_phi_regions": 8,
-    "n_eta_regions": 39,
+    "n_eta_regions": 15,
     
+    "threshold_pt_threshold": 2,
+    "low_pt_threshold": 6,
+    "high_pt_threshold": 6,
+
     "comment_regions": "specification is rmin, rmax, zmin, zmax. Example of two regions: [[0, 150, -550, 550],[0, 200, -900, -600]]",
     "excludeRZRegions": [[0, 150, -550, 550],[0, 200, -900, -600], [0, 200, 600, 900]],
     "excludeEventsWithHitsInRZ": [[0, 200, -1600, -600], [0, 200, 600, 1600], [200,1200, -3000, -1200], [200,1200, 1200, 3000]],
