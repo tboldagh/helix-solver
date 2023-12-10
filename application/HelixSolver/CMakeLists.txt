@@ -20,4 +20,5 @@ SRC
 
 PRIVATE
     CernRoot
+    Debug
 )

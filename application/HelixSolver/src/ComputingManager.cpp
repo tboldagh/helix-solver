@@ -1,11 +1,13 @@
-#include "HelixSolver/ComputingManager.h"
-#include "HelixSolver/Debug.h"
 #include <stdexcept>
 #include <string>
 
 #ifdef USE_SYCL
 #include <sycl/ext/intel/fpga_extensions.hpp>
 #endif
+
+#include "HelixSolver/ComputingManager.h"
+#include "Debug/Debug.h"
+
 namespace HelixSolver
 {
     ComputingManager::ComputingManager(ComputingWorker::Platform platform, uint32_t numBuffers, uint32_t numWorkers)

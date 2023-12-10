@@ -1,7 +1,7 @@
 function(helix_solver_add_library target)
     cmake_parse_arguments(
         ARG # prefix of output variables
-        "APPLICATION;DISABLE_SYCL;SYCL;UNIT_TEST"  # bolean arguments
+        "APPLICATION;SYCL;UNIT_TEST"  # bolean arguments
         "LOCATION;TYPE"  # single value arguments
         "INCLUDE;INTERFACE;PRIVATE;PUBLIC;SRC"  # list as a value arguments
         ${ARGN} # arguments to parse
@@ -35,7 +35,7 @@ function(helix_solver_add_library target)
         add_sycl_to_target(TARGET ${TARGET} SOURCES ${SRC_FILES})
     endif()
 
-    if(NOT DISABLE_SYCL)
+    if(NOT DEFINED DISABLE_SYCL)
         target_compile_definitions(${TARGET} PRIVATE USE_SYCL)
     endif()
 

@@ -2,23 +2,23 @@
 #include <iostream>
 #include <TFile.h>
 #include <TTree.h>
-#include "HelixSolver/Debug.h"
+
+#include "Debug/Debug.h"
 #include "HelixSolver/Event.h"
 
 namespace HelixSolver
 {
     Event::Event(EventId id, std::unique_ptr<std::vector<Point>> Points)
-    : id(id)
-    , Points(std::move(Points))
+        : id(id), Points(std::move(Points))
     {
         buildPointsFunctions();
     }
 
-    Event::Event(const Event& other)
-    : id(other.id)
+    Event::Event(const Event &other)
+        : id(other.id)
     {
         Points = std::make_unique<std::vector<Point>>();
-        for(const Point& Point : *other.Points)
+        for (const Point &Point : *other.Points)
         {
             Points->push_back(Point);
         }
@@ -28,19 +28,20 @@ namespace HelixSolver
     void Event::print() const
     {
         std::cout.precision(64);
-        for (const Point& Point : *Points) {
+        for (const Point &Point : *Points)
+        {
             std::cout << Point.x << " " << Point.y << " " << Point.z << std::endl;
         }
     }
 
-    const std::vector<std::function<float(float)>>&  Event::getPointsFuncs() const
+    const std::vector<std::function<float(float)>> &Event::getPointsFuncs() const
     {
         return PointsFunctions;
     }
 
     void Event::buildPointsFunctions()
     {
-        for (const Point& Point : *Points)
+        for (const Point &Point : *Points)
         {
             const float r = sqrt(Point.x * Point.x + Point.y * Point.y);
             const float phi = atan2(Point.y, Point.x);
@@ -56,21 +57,21 @@ namespace HelixSolver
         return id;
     }
 
-    std::vector<float>& Event::getR()
+    std::vector<float> &Event::getR()
     {
         return rs;
     }
 
-    std::vector<float>& Event::getPhi()
+    std::vector<float> &Event::getPhi()
     {
         return phis;
     }
-    std::vector<float>& Event::getZ()   
+    std::vector<float> &Event::getZ()
     {
         return zs;
     }
 
-    std::vector<uint8_t>& Event::getLayers()
+    std::vector<uint8_t> &Event::getLayers()
     {
         return layers;
     }
