@@ -24,6 +24,7 @@ set(UNIT_TESTS_EXECUTABLES "" CACHE INTERNAL "TESTS_SOURCE_FILES" FORCE)
 add_subdirectory(application)
 add_subdirectory(framework)
 
+
 # Save list of unit tests into TestSuitesList.txt file
 set(UNIT_TEST_SUITES_LIST_FILE "${CMAKE_BINARY_DIR}/TestSuitesList.txt")
 file(WRITE ${UNIT_TEST_SUITES_LIST_FILE} "")
