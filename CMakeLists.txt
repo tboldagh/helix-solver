@@ -21,6 +21,7 @@ include(tools/cmake/helix_solver_add_library.cmake)
 # Clear chached value
 set(UNIT_TESTS_EXECUTABLES "" CACHE INTERNAL "TESTS_SOURCE_FILES" FORCE)
 
+
 add_subdirectory(application)
 add_subdirectory(framework)
 
