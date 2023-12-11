@@ -35,9 +35,7 @@
 .vscode
 
 # external
-libs/build-gtest/
-libs/gtest-obj/
-libs/root
+lib/root
 
 # testing dir
 TESTING/
@@ -65,3 +63,9 @@ logs/
 
 # build dir
 build
+
+# data dir
+data
+
+# output dir
+output
