@@ -1,78 +1,32 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.22)
 project(helix-solver)
 
+set(IntelSYCL_DIR "/opt/intel/oneapi/compiler/2023.2.1/linux/IntelSYCL")
+set(ICX_PATH "/opt/intel/oneapi/compiler/2023.2.1/linux/bin/icx")
+set(ICPX_PATH "/opt/intel/oneapi/compiler/2023.2.1/linux/bin/icpx")
+
+set(CMAKE_C_COMPILER ${ICX_PATH})
+set(CMAKE_CXX_COMPILER ${ICPX_PATH})
+set(CMAKE_CXX_COMPILER_ID "IntelLLVM")
+
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fsycl -fsycl-targets=nvptx64-nvidia-cuda")
 
-include(FetchContent)
-FetchContent_Declare(
-  nlohmann
-  GIT_REPOSITORY https://github.com/nlohmann/json.git
-  GIT_TAG        v3.11.2
-)
+find_package(GTest REQUIRED)
 
-FetchContent_MakeAvailable(nlohmann)
+find_package(IntelSYCL REQUIRED)
 
-# You need to tell CMake where to find the ROOT installation. This can be done in a number of ways:
-#   - ROOT built with classic configure/make use the provided $ROOTSYS/etc/cmake/FindROOT.cmake
-#   - ROOT built with CMake. Add in CMAKE_PREFIX_PATH the installation prefix for ROOT
-list(APPEND CMAKE_PREFIX_PATH $ENV{ROOTSYS})
+include(tools/cmake/helix_solver_add_library.cmake)
 
-find_package(ROOT REQUIRED COMPONENTS Core Hist Tree)
+# Clear chached value
+set(UNIT_TESTS_EXECUTABLES "" CACHE INTERNAL "TESTS_SOURCE_FILES" FORCE)
 
-include_directories(include ${ROOT_INCLUDE_DIRS})
+add_subdirectory(application)
+# add_subdirectory(framework)
 
-SET(libs nlohmann_json::nlohmann_json ${ROOT_LIBRARIES})
-
-
-FILE(GLOB Sources src/*.cpp)
-
-
-
-find_package( IntelSYCL )
-if( NOT IntelSYCL_FOUND )
-   message( STATUS "SYCL compilation is not available, not building SYCL targets" )
-
-   add_executable( ht_no_sycl ${Sources})
-
-   target_link_libraries(ht_no_sycl
-       PRIVATE
-       ${libs}
-   )
-
-   target_compile_definitions(ht_no_sycl
-       PRIVATE
-       PRINT_DEBUG # control here debug messages
-       PRINT_CDEBUG # control here cdebug messages
-       PRINT_VERBOSE # control here verbose messages
-   )
-   install(TARGETS ht_no_sycl
-       DESTINATION bin
-   )
-
-else()
-    add_executable( ht_sycl ${Sources})
-    target_link_libraries(ht_sycl
-        PRIVATE
-        ${libs}
-    )
-    target_compile_definitions(ht_sycl PRIVATE
-        USE_SYCL=1
-        R__HAS_STD_STRING_VIEW
-    )
-    add_sycl_to_target(TARGET ht_sycl SOURCES ${Sources})
-    install(TARGETS ht_sycl DESTINATION bin
-)
-
-endif()
-
-
-
-
-FILE(GLOB TBoxScripts tools/TBoxPlot/*.C)
-message(STATUS " utility scipts " ${TBoxScripts})
-install(FILES ${TBoxScripts} tools/TBoxPlot/make_tbox_plots.sh
-    DESTINATION scripts
-)
-
-
-add_subdirectory(test)
+# Save list of unit tests into TestSuitesList.txt file
+set(UNIT_TEST_SUITES_LIST_FILE "${CMAKE_BINARY_DIR}/TestSuitesList.txt")
+file(WRITE ${UNIT_TEST_SUITES_LIST_FILE} "")
+foreach(executable ${UNIT_TESTS_EXECUTABLES})
+    file(APPEND ${UNIT_TEST_SUITES_LIST_FILE} "${executable}\n")
+endforeach()
