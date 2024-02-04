@@ -1,1 +1,2 @@
+add_subdirectory(GpuDataTransferTest)
 add_subdirectory(Splitter)

@@ -19,4 +19,4 @@ WORKDIR /helix/repo
 
 ENV PATH="${PATH}:/cuda/bin"
 
-# docker run --gpus all --rm -it -v /usr/local/cuda-12.1:/cuda -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro helix-solver-docker
+# docker run --gpus all --rm -it -v /usr/local/cuda-12.1:/cuda -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro -v $(pwd):/helix/ helix-solver-docker
