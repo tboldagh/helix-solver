@@ -13,7 +13,7 @@ RUN mkdir lib
 RUN tar -xzvf root_v6.25.01.Linux-ubuntu20-x86_64-gcc9.3.tar.gz --directory=lib
 RUN rm root_v6.25.01.Linux-ubuntu20-x86_64-gcc9.3.tar.gz
 
-COPY ./ ./  
+COPY ../codeplay ./codeplay  
 
 ENV PATH="${PATH}:/cuda/bin"
 RUN sh codeplay/oneapi-for-nvidia-gpus-2023.2.1-cuda-12.0-linux.sh

@@ -2,20 +2,31 @@
     "platform": "gpu",
     "inputFileType": "root_spacepoints",
     "comment_inputFile": "data/spacepoints.root",
-    "inputFile": "data/ODD_Single_muon_10k/spacepoints.root",
-    "outputFile": "output/detected_circles/detected_circles",
+    "inputFile": "spacepoints.root",
+    "outputFile": "detected_circles",
     "gpuEventBuffers": 48,
     "gpuComputingWorkers": 24,
     "cpuEventBuffers": 48,
     "cpuComputingWorkers": 12,
     "multiplyEvents": 1,
-    "event_skip": 1,
+    "event": 1,
     "comment_event": "event property can be used to select particular, single event to process, if removed (e.g. name changed to skip_event all events in file will be processed)",
     
     "phi_precision": 0.001,
     "pt_precision": 0.01,
     "n_phi_regions": 8,
     "n_eta_regions": 39,
+
+
+    "n_sigma_gauss": 2,
+    "stdev_correction": 0.1,
+    "min_lines_gauss": 10,
+
+    "threshold_x_precision": 0.01,
+    "threshold_pt_precision": 0.01,
+    "threshold_counter": 10,
+
+
 
     "threshold_pt_threshold": 2,
     "low_pt_threshold": 6,

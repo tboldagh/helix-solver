@@ -22,10 +22,10 @@ namespace HelixSolver
 
     void AdaptiveHoughGpuKernel::operator()(Index2D idx) const
     {
-        HelixSolver::Options opt = opts[0];
 
+        HelixSolver::Options opt = opts[0];
         // 'pure" width of wedge which can be used to determine wedge center,
-        // obtaine dy division of the full range of variable by number of regions,
+        // obtained by division of the full range of variable by number of regions,
         // after addition of excess_wedge_*_width it informs about true wedge width
         const float wedge_phi_width = (PHI_END - PHI_BEGIN) / opt.N_PHI_WEDGE;
         const float wedge_eta_width =
@@ -37,72 +37,72 @@ namespace HelixSolver
             for (uint16_t wedge_index_eta = 0; wedge_index_eta < opt.N_ETA_WEDGE;
                  ++wedge_index_eta)
             {
-                float rs_wedge[MAX_SPACEPOINTS];
-                float phis_wedge[MAX_SPACEPOINTS];
-                float zs_wedge[MAX_SPACEPOINTS];
-                uint32_t wedge_spacepoints_count{};
+                // float rs_wedge[MAX_SPACEPOINTS];
+                // float phis_wedge[MAX_SPACEPOINTS];
+                // float zs_wedge[MAX_SPACEPOINTS];
+                // uint32_t wedge_spacepoints_count{};
 
-                const float wedge_phi_center = PHI_BEGIN +
-                                               wedge_phi_width * wedge_index_phi +
-                                               wedge_phi_width / 2.0;
-                const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width / 2.0 +
-                                               wedge_eta_width * wedge_index_eta;
+                // const float wedge_phi_center = PHI_BEGIN +
+                //                                wedge_phi_width * wedge_index_phi +
+                //                                wedge_phi_width / 2.0;
+                // const float wedge_eta_center = ETA_WEDGE_MIN + wedge_eta_width / 2.0 +
+                //                                wedge_eta_width * wedge_index_eta;
 
-                Reg phi_reg = Reg(wedge_phi_center,
-                                  wedge_phi_width / 2.0 + excess_wedge_phi_width);
-                Reg z_reg = Reg(wedge_z_center, wedge_z_width);
-                Reg eta_reg = Reg(wedge_eta_center,
-                                  wedge_eta_width / 2.0 + excess_wedge_eta_width);
+                // Reg phi_reg = Reg(wedge_phi_center,
+                //                   wedge_phi_width / 2.0 + excess_wedge_phi_width);
+                // Reg z_reg = Reg(wedge_z_center, wedge_z_width);
+                // Reg eta_reg = Reg(wedge_eta_center,
+                //                   wedge_eta_width / 2.0 + excess_wedge_eta_width);
 
-                Wedge wedge = Wedge(phi_reg, z_reg, eta_reg);
+                // Wedge wedge = Wedge(phi_reg, z_reg, eta_reg);
 
-                const uint32_t maxIndex = rs.size();
-                for (uint32_t index = 0; index < maxIndex; ++index)
-                {
-                    if (wedge.in_wedge_r_phi_z(rs[index], phis[index], zs[index]))
-                    {
-                        rs_wedge[wedge_spacepoints_count] = rs[index];
-                        phis_wedge[wedge_spacepoints_count] = phis[index];
-                        zs_wedge[wedge_spacepoints_count] = zs[index];
+                // const uint32_t maxIndex = rs.size();
+                // for (uint32_t index = 0; index < maxIndex; ++index)
+                // {
+                //     if (wedge.in_wedge_r_phi_z(rs[index], phis[index], zs[index]))
+                //     {
+                //         rs_wedge[wedge_spacepoints_count] = rs[index];
+                //         phis_wedge[wedge_spacepoints_count] = phis[index];
+                //         zs_wedge[wedge_spacepoints_count] = zs[index];
 
-                        // take care about phi wrapping around +-PI
-                        // this is done bye moving the points by 2 PI
-                        if (wedge.phi_min() < -M_PI &&
-                            phis_wedge[wedge_spacepoints_count] > wedge.phi_max())
-                        {
-                            phis_wedge[wedge_spacepoints_count] -= 2.0 * M_PI;
-                        }
+                //         // take care about phi wrapping around +-PI
+                //         // this is done bye moving the points by 2 PI
+                //         if (wedge.phi_min() < -M_PI &&
+                //             phis_wedge[wedge_spacepoints_count] > wedge.phi_max())
+                //         {
+                //             phis_wedge[wedge_spacepoints_count] -= 2.0 * M_PI;
+                //         }
 
-                        if (wedge.phi_max() > M_PI &&
-                            phis_wedge[wedge_spacepoints_count] < wedge.phi_min())
-                        {
-                            phis_wedge[wedge_spacepoints_count] += 2.0 * M_PI;
-                        }
+                //         if (wedge.phi_max() > M_PI &&
+                //             phis_wedge[wedge_spacepoints_count] < wedge.phi_min())
+                //         {
+                //             phis_wedge[wedge_spacepoints_count] += 2.0 * M_PI;
+                //         }
 
-                        ++wedge_spacepoints_count;
-                    }
-                }
+                //         ++wedge_spacepoints_count;
+                //     }
+                // }
 
-                CDEBUG(DISPLAY_N_WEDGE, wedge_index_phi << "," << wedge_index_eta << ","
-                                                        << wedge_spacepoints_count
-                                                        << ":WedgeCounts");
-                // do not conduct alogorithm calculations for empty region
-                if (wedge_spacepoints_count == 0)
-                    continue;
+                // CDEBUG(DISPLAY_N_WEDGE, wedge_index_phi << "," << wedge_index_eta << ","
+                //                                         << wedge_spacepoints_count
+                //                                         << ":WedgeCounts");
+                // // do not conduct alogorithm calculations for empty region
+                // if (wedge_spacepoints_count == 0)
+                //     continue;
 
-                CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel initiated for subregion "
-                                          << idx[0] << " " << idx[1]);
+                // CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel initiated for subregion "
+                //                           << idx[0] << " " << idx[1]);
 
-                const float INITIAL_X_SIZE = (2 * phi_reg.width) / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
-                const float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+                // const float INITIAL_X_SIZE = (2 * phi_reg.width) / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
+                // const float INITIAL_Y_SIZE = ACC_Y_SIZE / ADAPTIVE_KERNEL_INITIAL_DIVISIONS;
 
-                const double xBegin = (phi_reg.center - phi_reg.width) + INITIAL_X_SIZE * idx[0];
-                const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
+                // const double xBegin = (phi_reg.center - phi_reg.width) + INITIAL_X_SIZE * idx[0];
+                // const double yBegin = Q_OVER_PT_BEGIN + INITIAL_Y_SIZE * idx[1];
 
-                CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: "
-                                          << xBegin << " xsz: " << INITIAL_X_SIZE
-                                          << " y: " << yBegin
-                                          << " ysz: " << INITIAL_Y_SIZE);
+                // CDEBUG(DISPLAY_BASIC, " .. AdaptiveHoughKernel region, x: "
+                //                           << xBegin << " xsz: " << INITIAL_X_SIZE
+                //                           << " y: " << yBegin
+                //                           << " ysz: " << INITIAL_Y_SIZE);
 
                 // we need here a limited set of Points
 
@@ -111,23 +111,23 @@ namespace HelixSolver
                 // algorithms that is less predictable for now it is an arbitrary
                 // constant + checks that we stay within this limit
 
-                AccumulatorSection
-                    sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image
-                                                        // will be recorded
+                // AccumulatorSection
+                //     sections[MAX_SECTIONS_BUFFER_SIZE]; // in here sections of image
+                //                                         // will be recorded
 
-                uint32_t sectionsBufferSize = 1;
-                const uint32_t initialDivisionLevel = 0;
-                sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin,
-                                                 yBegin, initialDivisionLevel);
+                // uint32_t sectionsBufferSize = 1;
+                // const uint32_t initialDivisionLevel = 0;
+                // sections[0] = AccumulatorSection(INITIAL_X_SIZE, INITIAL_Y_SIZE, xBegin,
+                //                                  yBegin, initialDivisionLevel);
 
                 // scan this region until there is no section to process (i.e. size,
                 // initially 1, becomes 0)
-                while (sectionsBufferSize)
-                {
-                    fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge,
-                                           phis_wedge, zs_wedge, wedge_phi_center, wedge_eta_center,
-                                           wedge_spacepoints_count);
-                }
+                // while (sectionsBufferSize)
+                // {
+                //     fillAccumulatorSection(sections, sectionsBufferSize, rs_wedge,
+                //                            phis_wedge, zs_wedge, wedge_phi_center, wedge_eta_center,
+                //                            wedge_spacepoints_count);
+                // }
             }
         }
     }

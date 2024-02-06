@@ -259,6 +259,7 @@ namespace HelixSolver
                 // DEBUG("Skipped event because it has hits in exclusion region");
             }
         }
+        INFO("... Input data loaded");
         return events;
     }
 
