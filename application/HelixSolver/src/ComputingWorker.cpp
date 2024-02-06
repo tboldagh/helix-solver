@@ -4,7 +4,7 @@
 #include "HelixSolver/Options.h"
 #include "HelixSolver/Constants.h"
 extern nlohmann::json config;
-
+#define USE_SYCL
 namespace HelixSolver
 {
     ComputingWorker::ComputingWorker(std::unique_ptr<Queue> &&queue)
@@ -97,9 +97,8 @@ namespace HelixSolver
         solutionsBuffer = std::make_unique<sycl::buffer<SolutionCircle, 1>>(sycl::buffer<SolutionCircle, 1>(solutions->begin(), solutions->end()));
 
         OptionsBuffer optbuff(opt.data(), 1);
-
-        computingEvent = queue->submit([&](sycl::handler &handler)
-                                       {
+        INFO("Submitting");
+        computingEvent = queue->submit([&](sycl::handler &handler){
             sycl::accessor<HelixSolver::Options, 1, sycl::access::mode::read, sycl::access::target::device> opts(optbuff, handler, sycl::read_only);
 
             sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> rs(*eventBuffer->getRBuffer(), handler, sycl::read_only);
@@ -110,7 +109,14 @@ namespace HelixSolver
 
             sycl::accessor<SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device> solutions(*solutionsBuffer, handler, sycl::write_only);
             AdaptiveHoughGpuKernel kernel(opts, rs, phis, zs, solutions);
-            handler.parallel_for(sycl::range<2>(ADAPTIVE_KERNEL_INITIAL_DIVISIONS, ADAPTIVE_KERNEL_INITIAL_DIVISIONS), kernel); });
+
+            // handler.parallel_for<class test_op>(sycl::range<2>(ADAPTIVE_KERNEL_INITIAL_DIVISIONS, ADAPTIVE_KERNEL_INITIAL_DIVISIONS),
+            // [=](sycl::item<2> regionID) {
+            //     auto d1 = regionID.get_id(0);
+            // });
+            handler.parallel_for(sycl::range<2>(ADAPTIVE_KERNEL_INITIAL_DIVISIONS, ADAPTIVE_KERNEL_INITIAL_DIVISIONS), kernel); 
+        });
+        INFO("Submitted");
 
         state = ComputingWorkerState::PROCESSING;
         eventBuffer->setState(EventBuffer::EventBufferState::PROCESSED);
