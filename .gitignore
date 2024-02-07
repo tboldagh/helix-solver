@@ -69,3 +69,6 @@ data
 
 # output dir
 output
+
+# symbolic link to lib
+lib

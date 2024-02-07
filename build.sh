@@ -18,11 +18,13 @@ if [ "$clean" = true ]; then
 fi
 
 if [ "${SETVARS_COMPLETED:-}" != "1" ]; then
-    source ./source_setvars.sh
+    echo "Environment not prepared correctly. \$SETVARS_COMPLETED not set. Ensure you have run prepare_environment.sh"
+    exit 1
 fi
 
 if [[ -z "${ROOTSYS}" ]]; then
-    source lib/root/bin/thisroot.sh
+    echo "Environment not prepared correctly. \$ROOTSYS not set. Ensure you have run prepare_environment.sh"
+    exit 1
 fi
 
 cd build

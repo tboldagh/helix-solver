@@ -8,14 +8,15 @@ RUN echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https:/
 RUN apt-get update
 RUN apt-get -y install cmake libgtest-dev nano build-essential nlohmann-json3-dev dpkg-dev g++ gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev python libssl-dev
 
+RUN mkdir /helix/lib
+WORKDIR /helix/lib
+
 RUN wget https://root.cern/download/root_v6.25.01.Linux-ubuntu20-x86_64-gcc9.3.tar.gz
-RUN mkdir lib
-RUN tar -xzvf root_v6.25.01.Linux-ubuntu20-x86_64-gcc9.3.tar.gz --directory=lib
+RUN tar -xzvf root_v6.25.01.Linux-ubuntu20-x86_64-gcc9.3.tar.gz
 RUN rm root_v6.25.01.Linux-ubuntu20-x86_64-gcc9.3.tar.gz
 
-COPY ../codeplay ./codeplay  
+WORKDIR /helix/repo
 
 ENV PATH="${PATH}:/cuda/bin"
-RUN sh codeplay/oneapi-for-nvidia-gpus-2023.2.1-cuda-12.0-linux.sh
 
 # docker run --gpus all --rm -it -v /usr/local/cuda-12.1:/cuda -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro helix-solver-docker
