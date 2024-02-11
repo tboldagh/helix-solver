@@ -1,179 +1,21 @@
-#include <iostream>
-#include <numeric>
-#include <random>
 #include <CL/sycl.hpp>
-#include <cmath>
-#include <stdexcept>
+#include <chrono>
+#include <iostream>
+#include <vector>
 
 #define USE_SYCL // Must be defined before Debug/Debug.h include
-#include "Debug/Debug.h"
+
+#include "GpuDataTransferTest/ComputationHeavyKernel.h"
+#include "GpuDataTransferTest/TransferHeavyKernel.h"
+
 
 void devInfo(const sycl::queue &q);
 
-class ComputationHeavyKernel
-{
-    using FloatBufferReadAccessor = sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device>;
-    using FloatBufferWriteAccessor = sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device>;
+template <u_int64_t InputSize, u_int64_t ComputationHeavyIterations, u_int64_t LargeInputSize>
+void runSequential(sycl::queue& queue, unsigned iterations, std::vector<float>& computationHeavyExecutionTimes, std::vector<float>& transferHeavyExecutionTimes);
 
-    constexpr static u_int64_t Iterations = 1e5;
-
-public:
-    ComputationHeavyKernel(FloatBufferReadAccessor input, FloatBufferWriteAccessor output)
-        : input(input), output(output) {}
-
-    void operator()(sycl::id<1> idx) const
-    {
-        int index = idx[0];
-        float result = 0;
-        for (u_int64_t i = 0; i < Iterations; ++i)
-        {
-            result += input[index] * std::sin(static_cast<float>(index * i));
-        }
-        output[index] = result;
-    }
-
-private:
-    FloatBufferReadAccessor input;
-    FloatBufferWriteAccessor output;
-};
-
-class TransferHeavyKernel
-{
-    using FloatBufferReadAccessor = sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device>;
-    using FloatBufferWriteAccessor = sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device>;
-
-    public:
-    TransferHeavyKernel(FloatBufferReadAccessor input, FloatBufferWriteAccessor output)
-        : input(input), output(output) {}
-
-    void operator()(sycl::id<1> idx) const
-    {
-        output[idx] = input[idx];
-    }
-
-private:
-    FloatBufferReadAccessor input;
-    FloatBufferWriteAccessor output;
-};
-
-void runSequential(sycl::queue& queue, unsigned iterations, std::vector<float>& computationHeavyExecutionTimes, std::vector<float>& transferHeavyExecutionTimes)
-{
-    for (unsigned i = 0; i < iterations; ++i)
-    {
-        constexpr unsigned inputSize = 1000;
-        std::vector<float> input(inputSize);
-        std::vector<float> output(inputSize);
-        for (int i = 0; i < inputSize; ++i)
-        {
-            input[i] = i;
-        }
-        sycl::buffer<float, 1> inputBuffer(input.data(), sycl::range<1>(input.size()));
-        sycl::buffer<float, 1> outputBuffer(output.data(), sycl::range<1>(output.size()));
-
-        constexpr unsigned largeInputSize = 1e8;
-        std::vector<float> largeInput(largeInputSize);
-        std::vector<float> largeOutput(largeInputSize);
-        for (int i = 0; i < largeInputSize; ++i)
-        {
-            largeInput[i] = i;
-        }
-        sycl::buffer<float, 1> largeInputBuffer(largeInput.data(), sycl::range<1>(largeInput.size()));
-        sycl::buffer<float, 1> largeOutputBuffer(largeOutput.data(), sycl::range<1>(largeOutput.size()));
-
-        std::chrono::steady_clock::time_point computationHeavyTaskStart;
-        std::chrono::steady_clock::time_point computationHeavyTaskEnd;
-        std::chrono::steady_clock::time_point transferHeavyTaskStart;
-        std::chrono::steady_clock::time_point transferHeavyTaskEnd;
-
-        computationHeavyTaskStart = std::chrono::steady_clock::now();
-        queue.submit([&](sycl::handler& handler) {
-            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> inputAccessor(inputBuffer, handler, sycl::read_only);
-            sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device> outputAccessor(outputBuffer, handler, sycl::write_only);
-
-            handler.parallel_for(sycl::range<1>(inputSize), ComputationHeavyKernel(inputAccessor, outputAccessor));
-        });
-        {
-            auto hostOutputAccessor = outputBuffer.get_host_access();
-            output = std::vector<float>(hostOutputAccessor.begin(), hostOutputAccessor.end());
-        }
-        queue.wait();
-        computationHeavyTaskEnd = std::chrono::steady_clock::now();
-
-        transferHeavyTaskStart = std::chrono::steady_clock::now();
-        queue.submit([&](sycl::handler& handler) {
-            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> inputAccessor(largeInputBuffer, handler, sycl::read_only);
-            sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device> outputAccessor(largeOutputBuffer, handler, sycl::write_only);
-
-            handler.parallel_for(sycl::range<1>(largeInputSize), TransferHeavyKernel(inputAccessor, outputAccessor));
-        });
-        {
-            auto hostOutputAccessor = largeOutputBuffer.get_host_access();
-            largeOutput = std::vector<float>(hostOutputAccessor.begin(), hostOutputAccessor.end());
-        }
-        queue.wait();
-        transferHeavyTaskEnd = std::chrono::steady_clock::now();
-
-        computationHeavyExecutionTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(computationHeavyTaskEnd - computationHeavyTaskStart).count());
-        transferHeavyExecutionTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(transferHeavyTaskEnd - transferHeavyTaskStart).count());
-    }
-}
-
-void runParallel(sycl::queue& queue, unsigned iterations, std::vector<float>& executionTimes)
-{
-    for (unsigned i = 0; i < iterations; ++i)
-    {
-        constexpr unsigned inputSize = 1000;
-        std::vector<float> input(inputSize);
-        std::vector<float> output(inputSize);
-        for (int i = 0; i < inputSize; ++i)
-        {
-            input[i] = i;
-        }
-        sycl::buffer<float, 1> inputBuffer(input.data(), sycl::range<1>(input.size()));
-        sycl::buffer<float, 1> outputBuffer(output.data(), sycl::range<1>(output.size()));
-
-        constexpr unsigned largeInputSize = 1e8;
-        std::vector<float> largeInput(largeInputSize);
-        std::vector<float> largeOutput(largeInputSize);
-        for (int i = 0; i < largeInputSize; ++i)
-        {
-            largeInput[i] = i;
-        }
-        sycl::buffer<float, 1> largeInputBuffer(largeInput.data(), sycl::range<1>(largeInput.size()));
-        sycl::buffer<float, 1> largeOutputBuffer(largeOutput.data(), sycl::range<1>(largeOutput.size()));
-
-        std::chrono::steady_clock::time_point taskStart;
-        std::chrono::steady_clock::time_point taskEnd;
-
-        taskStart = std::chrono::steady_clock::now();
-        queue.submit([&](sycl::handler& handler) {
-            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> inputAccessor(inputBuffer, handler, sycl::read_only);
-            sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device> outputAccessor(outputBuffer, handler, sycl::write_only);
-
-            handler.parallel_for(sycl::range<1>(inputSize), ComputationHeavyKernel(inputAccessor, outputAccessor));
-        });
-        queue.submit([&](sycl::handler& handler) {
-            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> inputAccessor(largeInputBuffer, handler, sycl::read_only);
-            sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device> outputAccessor(largeOutputBuffer, handler, sycl::write_only);
-
-            handler.parallel_for(sycl::range<1>(largeInputSize), TransferHeavyKernel(inputAccessor, outputAccessor));
-        });
-
-        {
-            auto hostOutputAccessor = outputBuffer.get_host_access();
-            output = std::vector<float>(hostOutputAccessor.begin(), hostOutputAccessor.end());
-        }
-        {
-            auto hostOutputAccessor = largeOutputBuffer.get_host_access();
-            largeOutput = std::vector<float>(hostOutputAccessor.begin(), hostOutputAccessor.end());
-        }
-
-        queue.wait();
-        taskEnd = std::chrono::steady_clock::now();
-
-        executionTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(taskEnd - taskStart).count());
-    }
-}
+template <u_int64_t InputSize, u_int64_t ComputationHeavyIterations, u_int64_t LargeInputSize>
+void runParallel(sycl::queue& queue, unsigned iterations, std::vector<float>& executionTimes);
 
 int main()
 {
@@ -182,9 +24,14 @@ int main()
     devInfo(queue);
     std::cout << std::endl;
 
+    constexpr u_int64_t inputSize = 1e3;
+    constexpr u_int64_t computationHeavyIterations = 1e5;
+    constexpr u_int64_t largeInputSize = 1e8;
+    unsigned iterations = 10;
+
     std::vector<float> computationHeavyExecutionTimes;
     std::vector<float> transferHeavyExecutionTimes;
-    runSequential(queue, 10, computationHeavyExecutionTimes, transferHeavyExecutionTimes);
+    runSequential<inputSize, computationHeavyIterations, largeInputSize>(queue, iterations, computationHeavyExecutionTimes, transferHeavyExecutionTimes);
 
     std::cout << "Sequential execution times:" << std::endl;
     std::cout << "iteration\texecution time\tcomputation\ttransfer" << std::endl;
@@ -196,7 +43,7 @@ int main()
     std::cout << std::endl;
 
     std::vector<float> parallelExecutionTimes;
-    runParallel(queue, 10, parallelExecutionTimes);
+    runParallel<inputSize, computationHeavyIterations, largeInputSize>(queue, iterations, parallelExecutionTimes);
 
     std::cout << "Parallel execution times:" << std::endl;
     std::cout << "iteration\texecution time" << std::endl;
@@ -241,4 +88,123 @@ void devInfo(const sycl::queue &q)
               << (dev.get_info<sycl::info::device::local_mem_type>() == sycl::info::local_mem_type::local ? "local" : "")
               << (dev.get_info<sycl::info::device::local_mem_type>() == sycl::info::local_mem_type::global ? "global" : "")
               << std::endl;
+}
+
+template <u_int64_t InputSize, u_int64_t ComputationHeavyIterations, u_int64_t LargeInputSize>
+void runSequential(sycl::queue& queue, unsigned iterations, std::vector<float>& computationHeavyExecutionTimes, std::vector<float>& transferHeavyExecutionTimes)
+{
+    for (unsigned i = 0; i < iterations; ++i)
+    {
+        std::vector<float> input(InputSize);
+        std::vector<float> output(InputSize);
+        for (int i = 0; i < InputSize; ++i)
+        {
+            input[i] = i;
+        }
+        sycl::buffer<float, 1> inputBuffer(input.data(), sycl::range<1>(input.size()));
+        sycl::buffer<float, 1> outputBuffer(output.data(), sycl::range<1>(output.size()));
+
+        std::vector<float> largeInput(LargeInputSize);
+        std::vector<float> largeOutput(LargeInputSize);
+        for (int i = 0; i < LargeInputSize; ++i)
+        {
+            largeInput[i] = i;
+        }
+        sycl::buffer<float, 1> largeInputBuffer(largeInput.data(), sycl::range<1>(largeInput.size()));
+        sycl::buffer<float, 1> largeOutputBuffer(largeOutput.data(), sycl::range<1>(largeOutput.size()));
+
+        std::chrono::steady_clock::time_point computationHeavyTaskStart;
+        std::chrono::steady_clock::time_point computationHeavyTaskEnd;
+        std::chrono::steady_clock::time_point transferHeavyTaskStart;
+        std::chrono::steady_clock::time_point transferHeavyTaskEnd;
+
+        computationHeavyTaskStart = std::chrono::steady_clock::now();
+        queue.submit([&](sycl::handler& handler) {
+            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> inputAccessor(inputBuffer, handler, sycl::read_only);
+            sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device> outputAccessor(outputBuffer, handler, sycl::write_only);
+
+            using Kernel = ComputationHeavyKernel<ComputationHeavyIterations>;
+            handler.parallel_for(sycl::range<1>(InputSize), Kernel(inputAccessor, outputAccessor));
+        });
+        {
+            auto hostOutputAccessor = outputBuffer.get_host_access();
+            output = std::vector<float>(hostOutputAccessor.begin(), hostOutputAccessor.end());
+        }
+        queue.wait();
+        computationHeavyTaskEnd = std::chrono::steady_clock::now();
+
+        transferHeavyTaskStart = std::chrono::steady_clock::now();
+        queue.submit([&](sycl::handler& handler) {
+            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> inputAccessor(largeInputBuffer, handler, sycl::read_only);
+            sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device> outputAccessor(largeOutputBuffer, handler, sycl::write_only);
+
+            handler.parallel_for(sycl::range<1>(LargeInputSize), TransferHeavyKernel(inputAccessor, outputAccessor));
+        });
+        {
+            auto hostOutputAccessor = largeOutputBuffer.get_host_access();
+            largeOutput = std::vector<float>(hostOutputAccessor.begin(), hostOutputAccessor.end());
+        }
+        queue.wait();
+        transferHeavyTaskEnd = std::chrono::steady_clock::now();
+
+        computationHeavyExecutionTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(computationHeavyTaskEnd - computationHeavyTaskStart).count());
+        transferHeavyExecutionTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(transferHeavyTaskEnd - transferHeavyTaskStart).count());
+    }
+}
+
+template <u_int64_t InputSize, u_int64_t ComputationHeavyIterations, u_int64_t LargeInputSize>
+void runParallel(sycl::queue& queue, unsigned iterations, std::vector<float>& executionTimes)
+{
+    for (unsigned i = 0; i < iterations; ++i)
+    {
+        std::vector<float> input(InputSize);
+        std::vector<float> output(InputSize);
+        for (int i = 0; i < InputSize; ++i)
+        {
+            input[i] = i;
+        }
+        sycl::buffer<float, 1> inputBuffer(input.data(), sycl::range<1>(input.size()));
+        sycl::buffer<float, 1> outputBuffer(output.data(), sycl::range<1>(output.size()));
+
+        std::vector<float> largeInput(LargeInputSize);
+        std::vector<float> largeOutput(LargeInputSize);
+        for (int i = 0; i < LargeInputSize; ++i)
+        {
+            largeInput[i] = i;
+        }
+        sycl::buffer<float, 1> largeInputBuffer(largeInput.data(), sycl::range<1>(largeInput.size()));
+        sycl::buffer<float, 1> largeOutputBuffer(largeOutput.data(), sycl::range<1>(largeOutput.size()));
+
+        std::chrono::steady_clock::time_point taskStart;
+        std::chrono::steady_clock::time_point taskEnd;
+
+        taskStart = std::chrono::steady_clock::now();
+        queue.submit([&](sycl::handler& handler) {
+            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> inputAccessor(inputBuffer, handler, sycl::read_only);
+            sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device> outputAccessor(outputBuffer, handler, sycl::write_only);
+
+            using Kernel = ComputationHeavyKernel<static_cast<u_int64_t>(ComputationHeavyIterations)>;
+            handler.parallel_for(sycl::range<1>(InputSize), Kernel(inputAccessor, outputAccessor));
+        });
+        queue.submit([&](sycl::handler& handler) {
+            sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device> inputAccessor(largeInputBuffer, handler, sycl::read_only);
+            sycl::accessor<float, 1, sycl::access::mode::write, sycl::access::target::device> outputAccessor(largeOutputBuffer, handler, sycl::write_only);
+
+            handler.parallel_for(sycl::range<1>(LargeInputSize), TransferHeavyKernel(inputAccessor, outputAccessor));
+        });
+
+        {
+            auto hostOutputAccessor = outputBuffer.get_host_access();
+            output = std::vector<float>(hostOutputAccessor.begin(), hostOutputAccessor.end());
+        }
+        {
+            auto hostOutputAccessor = largeOutputBuffer.get_host_access();
+            largeOutput = std::vector<float>(hostOutputAccessor.begin(), hostOutputAccessor.end());
+        }
+
+        queue.wait();
+        taskEnd = std::chrono::steady_clock::now();
+
+        executionTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(taskEnd - taskStart).count());
+    }
 }

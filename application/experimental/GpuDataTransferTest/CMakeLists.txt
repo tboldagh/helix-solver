@@ -5,8 +5,12 @@ SYCL
 TYPE
     OBJECT
 
+INCLUDE
+    include
+
 SRC
     src/GpuDataTransferTest.cpp
+    src/TransferHeavyKernel.cpp
 
 PRIVATE
     Debug
