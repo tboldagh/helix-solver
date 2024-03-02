@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gtest/gtest_prod.h>
 #include <CL/sycl.hpp>
 
 class EventUsm
@@ -14,6 +15,7 @@ public:
     ~EventUsm();
 
     bool allocateOnDevice(sycl::queue& queue);
+    bool deallocateOnDevice(sycl::queue& queue);
     bool transferToDevice(sycl::queue& queue);
     bool transferToHost(sycl::queue& queue);
 
@@ -32,7 +34,6 @@ public:
     LayerNumber* deviceLayers_ = nullptr;
 
 private:
-    bool deallocateOnDevice(sycl::queue& queue);
-
     bool allocated_ = false;
+    sycl::queue* allocationQueue_ = nullptr;    // The queue used for last allocation
 };

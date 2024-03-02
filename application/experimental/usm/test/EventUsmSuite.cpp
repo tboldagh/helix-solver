@@ -1,6 +1,6 @@
 #include "EventUsm/EventUsm.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 #include <CL/sycl.hpp>
 
 class EventUsmAllocation : public ::testing::Test
@@ -8,7 +8,7 @@ class EventUsmAllocation : public ::testing::Test
 protected:
     EventUsmAllocation()
     {
-        queue_ = sycl::queue(sycl::gpu_selector());
+        queue_ = sycl::queue(sycl::gpu_selector_v);
     }
 
     sycl::queue queue_;
@@ -65,9 +65,9 @@ class EventUsmTransfer : public EventUsmAllocation
 {
 protected:
     EventUsmTransfer()
-    : EventUsmAllocation()
+        : EventUsmAllocation()
+        , event_(42)
     {
-        event_ = EventUsm(42);
         event_.allocateOnDevice(queue_);
     }
 
@@ -79,11 +79,10 @@ protected:
     EventUsm event_;
 };
 
-TEST_F(EventUsmTransfer, TransferToDevice)
+TEST_F(EventUsmTransfer, Transfer)
 {
-    u_int32_t numPoints = 2137;
-    event_.hostNumPoints_ = numPoints;
-    for (u_int32_t i = 0; i < numPoints; ++i)
+    event_.hostNumPoints_ = 2137;
+    for (u_int32_t i = 0; i < event_.hostNumPoints_; ++i)
     {
         event_.hostXs_[i] = i;
         event_.hostYs_[i] = i;
@@ -94,15 +93,41 @@ TEST_F(EventUsmTransfer, TransferToDevice)
     ASSERT_TRUE(event_.transferToDevice(queue_));
 
     // Double all 
-    queue_.submit([&](sycl::handler& cgh)
+    queue_.submit([&, this](sycl::handler& cgh)
     {
-        cgh.parallel_for(sycl::range<1>(numPoints), [=](sycl::id<1> idx)
+        u_int32_t* numPoints = event_.deviceNumPoints_;
+        float* xs = event_.deviceXs_;
+        float* ys = event_.deviceYs_;
+        float* zs = event_.deviceZs_;
+        EventUsm::LayerNumber* layers = event_.deviceLayers_;
+
+        cgh.parallel_for(sycl::range<1>(*numPoints), [=](sycl::id<1> idx)
         {
-            event_.deviceXs_[idx] *= 2;
-            event_.deviceYs_[idx] *= 2;
-            event_.deviceZs_[idx] *= 2;
-            event_.deviceLayers_[idx] *= 2;
+            numPoints[idx] = 420;
+            xs[idx] *= 2;
+            ys[idx] *= 2;
+            zs[idx] *= 2;
+            layers[idx] *= 2;
         });
     });
     queue_.wait();
+
+    ASSERT_TRUE(event_.transferToHost(queue_));
+    ASSERT_EQ(event_.hostNumPoints_, 420);
+    for (u_int32_t i = 0; i < 420; ++i)
+    {
+        ASSERT_EQ(event_.hostXs_[i], i * 2);
+        ASSERT_EQ(event_.hostYs_[i], i * 2);
+        ASSERT_EQ(event_.hostZs_[i], i * 2);
+        ASSERT_EQ(event_.hostLayers_[i], i * 2);
+    }
+
+    // Assert no unnecessary transfers
+    for (u_int32_t i = 420; i < 2137; ++i)
+    {
+        ASSERT_EQ(event_.hostXs_[i], i);
+        ASSERT_EQ(event_.hostYs_[i], i);
+        ASSERT_EQ(event_.hostZs_[i], i);
+        ASSERT_EQ(event_.hostLayers_[i], i);
+    }
 }

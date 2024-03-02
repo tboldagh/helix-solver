@@ -35,54 +35,7 @@ bool EventUsm::allocateOnDevice(sycl::queue& queue)
     }
 
     allocated_ = true;
-    return true;
-}
-
-bool EventUsm::transferToDevice(sycl::queue& queue)
-{
-    if (!allocated_)
-    {
-        // TODO: log error
-        return false;
-    }
-
-    try
-    {
-        queue.memcpy(deviceNumPoints_, &hostNumPoints_, sizeof(u_int32_t));
-        queue.memcpy(deviceXs_, hostXs_, hostNumPoints_ * sizeof(float));
-        queue.memcpy(deviceYs_, hostYs_, hostNumPoints_ * sizeof(float));
-        queue.memcpy(deviceZs_, hostZs_, hostNumPoints_ * sizeof(float));
-        queue.memcpy(deviceLayers_, hostLayers_, hostNumPoints_ * sizeof(LayerNumber));
-    }
-    catch (sycl::exception& exception)
-    {
-        // TODO: log error
-        return false;
-    }
-}
-
-bool EventUsm::transferToHost(sycl::queue& queue)
-{
-    if (!allocated_)
-    {
-        // TODO: log error
-        return false;
-    }
-
-    try
-    {
-        queue.memcpy(&hostNumPoints_, deviceNumPoints_, sizeof(u_int32_t));
-        queue.memcpy(hostXs_, deviceXs_, hostNumPoints_ * sizeof(float));
-        queue.memcpy(hostYs_, deviceYs_, hostNumPoints_ * sizeof(float));
-        queue.memcpy(hostZs_, deviceZs_, hostNumPoints_ * sizeof(float));
-        queue.memcpy(hostLayers_, deviceLayers_, hostNumPoints_ * sizeof(LayerNumber));
-    }
-    catch (sycl::exception& exception)
-    {
-        // TODO: log error
-        return false;
-    }
-
+    allocationQueue_ = &queue;
     return true;
 }
 
@@ -110,6 +63,68 @@ bool EventUsm::deallocateOnDevice(sycl::queue& queue)
     }
 
     allocated_ = false;
+    allocationQueue_ = nullptr;
     return true;
 }
 
+bool EventUsm::transferToDevice(sycl::queue& queue)
+{
+    if (!allocated_)
+    {
+        // TODO: log error
+        return false;
+    }
+
+    if (allocationQueue_ != &queue)
+    {
+        // TODO: log error
+        return false;
+    }
+
+    try
+    {
+        queue.memcpy(deviceNumPoints_, &hostNumPoints_, sizeof(u_int32_t));
+        queue.memcpy(deviceXs_, hostXs_, hostNumPoints_ * sizeof(float));
+        queue.memcpy(deviceYs_, hostYs_, hostNumPoints_ * sizeof(float));
+        queue.memcpy(deviceZs_, hostZs_, hostNumPoints_ * sizeof(float));
+        queue.memcpy(deviceLayers_, hostLayers_, hostNumPoints_ * sizeof(LayerNumber));
+    }
+    catch (sycl::exception& exception)
+    {
+        // TODO: log error
+        return false;
+    }
+
+    return true;
+}
+
+bool EventUsm::transferToHost(sycl::queue& queue)
+{
+    if (!allocated_)
+    {
+        // TODO: log error
+        return false;
+    }
+
+    if (allocationQueue_ != &queue)
+    {
+        // TODO: log error
+        return false;
+    }
+
+    try
+    {
+        queue.memcpy(&hostNumPoints_, deviceNumPoints_, sizeof(u_int32_t));
+        queue.memcpy(hostXs_, deviceXs_, hostNumPoints_ * sizeof(float));
+        queue.memcpy(hostYs_, deviceYs_, hostNumPoints_ * sizeof(float));
+        queue.memcpy(hostZs_, deviceZs_, hostNumPoints_ * sizeof(float));
+        queue.memcpy(hostLayers_, deviceLayers_, hostNumPoints_ * sizeof(LayerNumber));
+    }
+    catch (sycl::exception& exception)
+    {
+        // TODO: log error
+        return false;
+    }
+
+    return true;
+}
