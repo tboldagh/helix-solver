@@ -1,13 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
-project(helix-solver)
 
 set(IntelSYCL_DIR "/opt/intel/oneapi/compiler/2023.2.1/linux/IntelSYCL")
 set(ICX_PATH "/opt/intel/oneapi/compiler/2023.2.1/linux/bin/icx")
 set(ICPX_PATH "/opt/intel/oneapi/compiler/2023.2.1/linux/bin/icpx")
 
+# Must be set before project() call
 set(CMAKE_C_COMPILER ${ICX_PATH})
 set(CMAKE_CXX_COMPILER ${ICPX_PATH})
 set(CMAKE_CXX_COMPILER_ID "IntelLLVM")
+
+project(helix-solver)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fsycl -fsycl-targets=nvptx64-nvidia-cuda")

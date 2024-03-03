@@ -93,7 +93,7 @@ TEST_F(EventUsmTransfer, Transfer)
     ASSERT_TRUE(event_.transferToDevice(queue_));
 
     // Double all 
-    queue_.submit([&, this](sycl::handler& cgh)
+    queue_.submit([&](sycl::handler& cgh)
     {
         u_int32_t* numPoints = event_.deviceNumPoints_;
         float* xs = event_.deviceXs_;
@@ -101,13 +101,13 @@ TEST_F(EventUsmTransfer, Transfer)
         float* zs = event_.deviceZs_;
         EventUsm::LayerNumber* layers = event_.deviceLayers_;
 
-        cgh.parallel_for(sycl::range<1>(*numPoints), [=](sycl::id<1> idx)
+        cgh.parallel_for(sycl::range<1>(event_.hostNumPoints_), [=](sycl::id<1> idx)
         {
-            numPoints[idx] = 420;
+            *numPoints = 420;
             xs[idx] *= 2;
             ys[idx] *= 2;
             zs[idx] *= 2;
-            layers[idx] *= 2;
+            layers[idx] = layers[idx] * 2 % 256;
         });
     });
     queue_.wait();
@@ -119,7 +119,7 @@ TEST_F(EventUsmTransfer, Transfer)
         ASSERT_EQ(event_.hostXs_[i], i * 2);
         ASSERT_EQ(event_.hostYs_[i], i * 2);
         ASSERT_EQ(event_.hostZs_[i], i * 2);
-        ASSERT_EQ(event_.hostLayers_[i], i * 2);
+        ASSERT_EQ(event_.hostLayers_[i], i * 2 % 256);
     }
 
     // Assert no unnecessary transfers
@@ -128,6 +128,34 @@ TEST_F(EventUsmTransfer, Transfer)
         ASSERT_EQ(event_.hostXs_[i], i);
         ASSERT_EQ(event_.hostYs_[i], i);
         ASSERT_EQ(event_.hostZs_[i], i);
-        ASSERT_EQ(event_.hostLayers_[i], i);
+        ASSERT_EQ(event_.hostLayers_[i], i % 256);
     }
+}
+
+TEST_F(EventUsmTransfer, NoAllocationBeforeTransferLogged)
+{
+    EventUsm* event = new EventUsm(42);
+
+    // TODO: stub logger and check if error is logged
+
+    ASSERT_FALSE(event->transferToDevice(queue_));
+}
+
+TEST_F(EventUsmTransfer, TransferToDeviceWrongQueueLogged)
+{
+    sycl::queue otherQueue(sycl::gpu_selector_v);
+
+    // TODO: stub logger and check if error is logged
+
+    ASSERT_FALSE(event_.transferToDevice(otherQueue));
+}
+
+TEST_F(EventUsmTransfer, TransferToHostWrongQueueLogged)
+{
+    ASSERT_TRUE(event_.transferToDevice(queue_));
+
+    // TODO: stub logger and check if error is logged
+
+    sycl::queue otherQueue(sycl::gpu_selector_v);
+    ASSERT_FALSE(event_.transferToHost(otherQueue));
 }

@@ -6,7 +6,7 @@ RUN wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRO
 RUN echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneAPI.list
 
 RUN apt-get update
-RUN apt-get -y install cmake libgtest-dev nano build-essential nlohmann-json3-dev dpkg-dev g++ gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev python libssl-dev
+RUN apt-get -y install cmake libgtest-dev nano build-essential nlohmann-json3-dev dpkg-dev g++ gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev python libssl-dev valgrind
 
 RUN mkdir /helix/lib
 WORKDIR /helix/lib
