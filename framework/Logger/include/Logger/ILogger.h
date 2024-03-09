@@ -9,10 +9,8 @@ class ILogger
 public:
     ILogger() = default;
     ILogger(const ILogger&) = delete;
-    ILogger(ILogger&&) = delete;
     virtual ~ILogger() = default;
     ILogger& operator=(const ILogger&) = delete;
-    ILogger& operator=(ILogger&&) = delete;
 
     virtual void log(LogMessage&& message) = 0;
     

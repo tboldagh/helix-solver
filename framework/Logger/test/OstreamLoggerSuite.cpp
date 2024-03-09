@@ -7,8 +7,6 @@
 #include <sstream>
 #include <string>
 
-namespace Logger
-{
 class OstreamLoggerSuite : public ::testing::Test
 {
 protected:
@@ -17,7 +15,7 @@ protected:
         , logger_(ostream_) {}
 
     std::ostringstream ostream_;
-    OstreamLogger logger_;
+    Logger::OstreamLogger logger_;
 
     const Logger::LogMessage::Severity severity_ = Logger::LogMessage::Severity::Debug;
     const std::string message_ = "Test message";
@@ -36,4 +34,3 @@ TEST_F(OstreamLoggerSuite, LogMove)
 
     ASSERT_EQ(expectedLog_, ostream_.str());
 }
-} // namespace Logger

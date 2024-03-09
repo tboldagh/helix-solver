@@ -11,9 +11,22 @@ SRC
     src/OstreamLogger.cpp
 )
 
+helix_solver_add_library(ILoggerMock
+TYPE
+    OBJECT
+
+INCLUDE
+    test-include
+
+SRC
+    test-src/ILoggerMock.cpp
+
+PRIVATE
+    Logger
+)
+
 helix_solver_add_library(LogMessageSuite
 UNIT_TEST
-SYCL
 
 LOCATION
     framework/Logger
@@ -27,7 +40,6 @@ PRIVATE
 
 helix_solver_add_library(OstreamLoggerSuite
 UNIT_TEST
-SYCL
 
 LOCATION
     framework/Logger
@@ -37,4 +49,18 @@ SRC
 
 PRIVATE
     Logger
+)
+
+helix_solver_add_library(LoggerSuite
+UNIT_TEST
+
+LOCATION
+    framework/Logger
+
+SRC
+    test/LoggerSuite.cpp
+
+PRIVATE
+    Logger
+    ILoggerMock
 )
