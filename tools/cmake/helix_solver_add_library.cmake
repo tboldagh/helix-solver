@@ -17,7 +17,7 @@ function(helix_solver_add_library target)
         endif()
 
         add_executable(${TARGET} ${SRC_FILES})
-        target_link_libraries(${TARGET} PUBLIC gtest_main gtest)
+        target_link_libraries(${TARGET} PUBLIC gtest_main gtest gmock gmock_main)
         add_test(NAME ${TARGET} COMMAND ${TARGET})
 
         set(UNIT_TESTS_EXECUTABLES ${UNIT_TESTS_EXECUTABLES} "${ARG_LOCATION}/${TARGET}" CACHE INTERNAL "TESTS_SOURCE_FILES" FORCE)
