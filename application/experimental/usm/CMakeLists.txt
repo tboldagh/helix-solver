@@ -12,6 +12,7 @@ SRC
 
 PRIVATE
     Debug
+    Logger
 )
 
 helix_solver_add_library(EventUsmSuite
@@ -26,4 +27,6 @@ SRC
 
 PRIVATE
     EventUsm
+    ILoggerMock
+    Logger
 )

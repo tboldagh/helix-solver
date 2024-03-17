@@ -1,4 +1,5 @@
 #include "EventUsm/EventUsm.h"
+#include "Logger/Logger.h"
 
 
 EventUsm::EventUsm(EventId eventId)
@@ -8,7 +9,7 @@ EventUsm::~EventUsm()
 {
     if (allocated_)
     {
-        // TODO: log error (memory leak)
+        LOG_ERROR("Memory leak in EventUsm with eventId " + std::to_string(eventId_) + ". Memory was not deallocated on device before destruction.");
     }
 }
 
@@ -16,7 +17,7 @@ bool EventUsm::allocateOnDevice(sycl::queue& queue)
 {
     if (allocated_)
     {
-        // TODO: log error
+        LOG_ERROR("Memory already allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
         return false;
     }
 
@@ -30,7 +31,7 @@ bool EventUsm::allocateOnDevice(sycl::queue& queue)
     }
     catch (sycl::exception& exception)
     {
-        // TODO: log error
+        LOG_ERROR("Failed to allocate memory on device for EventUsm with eventId " + std::to_string(eventId_) + ". Exception: " + exception.what() + ".");
         return false;
     }
 
@@ -43,7 +44,7 @@ bool EventUsm::deallocateOnDevice(sycl::queue& queue)
 {
     if (!allocated_)
     {
-        // TODO: log error
+        LOG_ERROR("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
         return false;
     }
 
@@ -58,7 +59,7 @@ bool EventUsm::deallocateOnDevice(sycl::queue& queue)
     }
     catch (sycl::exception& exception)
     {
-        // TODO: log error
+        LOG_ERROR("Failed to deallocate memory on device for EventUsm with eventId " + std::to_string(eventId_) + ". Exception: " + exception.what() + ".");
         return false;
     }
 
@@ -71,13 +72,13 @@ bool EventUsm::transferToDevice(sycl::queue& queue)
 {
     if (!allocated_)
     {
-        // TODO: log error
+        LOG_ERROR("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
         return false;
     }
 
     if (allocationQueue_ != &queue)
     {
-        // TODO: log error
+        LOG_ERROR("Memory allocated on different queue for EventUsm with eventId " + std::to_string(eventId_) + ".");
         return false;
     }
 
@@ -91,7 +92,7 @@ bool EventUsm::transferToDevice(sycl::queue& queue)
     }
     catch (sycl::exception& exception)
     {
-        // TODO: log error
+        LOG_ERROR("Failed to transfer memory to device for EventUsm with eventId " + std::to_string(eventId_) + ". Exception: " + exception.what() + ".");
         return false;
     }
 
@@ -102,13 +103,13 @@ bool EventUsm::transferToHost(sycl::queue& queue)
 {
     if (!allocated_)
     {
-        // TODO: log error
+        LOG_ERROR("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
         return false;
     }
 
     if (allocationQueue_ != &queue)
     {
-        // TODO: log error
+        LOG_ERROR("Memory allocated on different queue for EventUsm with eventId " + std::to_string(eventId_) + ".");
         return false;
     }
 
@@ -122,7 +123,7 @@ bool EventUsm::transferToHost(sycl::queue& queue)
     }
     catch (sycl::exception& exception)
     {
-        // TODO: log error
+        LOG_ERROR("Failed to transfer memory to host for EventUsm with eventId " + std::to_string(eventId_) + ". Exception: " + exception.what() + ".");
         return false;
     }
 

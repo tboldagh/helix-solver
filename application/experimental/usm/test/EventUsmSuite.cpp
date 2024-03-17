@@ -1,4 +1,6 @@
 #include "EventUsm/EventUsm.h"
+#include "Logger/Logger.h"
+#include "ILoggerMock/ILoggerMock.h"
 
 #include <gtest/gtest.h>
 #include <CL/sycl.hpp>
@@ -8,10 +10,18 @@ class EventUsmAllocation : public ::testing::Test
 protected:
     EventUsmAllocation()
     {
+        Logger::ILogger::setGlobalInstance(&logger_);
+
         queue_ = sycl::queue(sycl::gpu_selector_v);
     }
 
+    ~EventUsmAllocation()
+    {
+        Logger::ILogger::setGlobalInstance(nullptr);
+    }
+
     sycl::queue queue_;
+    Logger::ILoggerMock logger_;
 };
 
 TEST_F(EventUsmAllocation, Allocation)
@@ -51,8 +61,12 @@ TEST_F(EventUsmAllocation, MissingDeallocationLogged)
     float* deviceZs = event->deviceZs_;
     EventUsm::LayerNumber* deviceLayers = event->deviceLayers_;
 
+    EXPECT_CALL(logger_, log(testing::AllOf(
+        testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
+        testing::Property(&Logger::LogMessage::getMessage, "Memory leak in EventUsm with eventId " + std::to_string(event->eventId_) + ". Memory was not deallocated on device before destruction.")
+    )));
+
     delete event;
-    // TODO: stub logger and check if error is logged
 
     sycl::free(deviceNumPoints, queue_);
     sycl::free(deviceXs, queue_);
@@ -136,7 +150,10 @@ TEST_F(EventUsmTransfer, NoAllocationBeforeTransferLogged)
 {
     EventUsm* event = new EventUsm(42);
 
-    // TODO: stub logger and check if error is logged
+    EXPECT_CALL(logger_, log(testing::AllOf(
+        testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
+        testing::Property(&Logger::LogMessage::getMessage, "Memory not allocated on device for EventUsm with eventId " + std::to_string(event->eventId_) + ".")
+    )));
 
     ASSERT_FALSE(event->transferToDevice(queue_));
 }
@@ -145,7 +162,10 @@ TEST_F(EventUsmTransfer, TransferToDeviceWrongQueueLogged)
 {
     sycl::queue otherQueue(sycl::gpu_selector_v);
 
-    // TODO: stub logger and check if error is logged
+    EXPECT_CALL(logger_, log(testing::AllOf(
+        testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
+        testing::Property(&Logger::LogMessage::getMessage, "Memory allocated on different queue for EventUsm with eventId " + std::to_string(event_.eventId_) + ".")
+    )));
 
     ASSERT_FALSE(event_.transferToDevice(otherQueue));
 }
@@ -154,7 +174,10 @@ TEST_F(EventUsmTransfer, TransferToHostWrongQueueLogged)
 {
     ASSERT_TRUE(event_.transferToDevice(queue_));
 
-    // TODO: stub logger and check if error is logged
+    EXPECT_CALL(logger_, log(testing::AllOf(
+        testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
+        testing::Property(&Logger::LogMessage::getMessage, "Memory allocated on different queue for EventUsm with eventId " + std::to_string(event_.eventId_) + ".")
+    )));
 
     sycl::queue otherQueue(sycl::gpu_selector_v);
     ASSERT_FALSE(event_.transferToHost(otherQueue));
