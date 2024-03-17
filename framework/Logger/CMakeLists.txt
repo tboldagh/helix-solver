@@ -9,6 +9,7 @@ SRC
     src/ILogger.cpp
     src/LogMessage.cpp
     src/OstreamLogger.cpp
+    src/JsonLogger.cpp
 )
 
 helix_solver_add_library(ILoggerMock
@@ -46,6 +47,19 @@ LOCATION
 
 SRC
     test/OstreamLoggerSuite.cpp
+
+PRIVATE
+    Logger
+)
+
+helix_solver_add_library(JsonLoggerSuite
+UNIT_TEST
+
+LOCATION
+    framework/Logger
+
+SRC
+    test/JsonLoggerSuite.cpp
 
 PRIVATE
     Logger
