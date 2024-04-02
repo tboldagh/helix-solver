@@ -5,17 +5,17 @@
 #include <gtest/gtest.h>
 #include <CL/sycl.hpp>
 
-class EventUsmAllocation : public ::testing::Test
+class EventUsmAllocationTest : public ::testing::Test
 {
 protected:
-    EventUsmAllocation()
+    EventUsmAllocationTest()
     {
         Logger::ILogger::setGlobalInstance(&logger_);
 
         queue_ = sycl::queue(sycl::gpu_selector_v);
     }
 
-    ~EventUsmAllocation()
+    ~EventUsmAllocationTest()
     {
         Logger::ILogger::setGlobalInstance(nullptr);
     }
@@ -24,7 +24,7 @@ protected:
     Logger::ILoggerMock logger_;
 };
 
-TEST_F(EventUsmAllocation, Allocation)
+TEST_F(EventUsmAllocationTest, Allocation)
 {
     EventUsm event(42);
     ASSERT_TRUE(event.allocateOnDevice(queue_));
@@ -32,7 +32,7 @@ TEST_F(EventUsmAllocation, Allocation)
     ASSERT_TRUE(event.deallocateOnDevice(queue_));
 }
 
-TEST_F(EventUsmAllocation, NoDoubleAllocation)
+TEST_F(EventUsmAllocationTest, NoDoubleAllocation)
 {
     EventUsm event(42);
     ASSERT_TRUE(event.allocateOnDevice(queue_));
@@ -41,7 +41,7 @@ TEST_F(EventUsmAllocation, NoDoubleAllocation)
     ASSERT_TRUE(event.deallocateOnDevice(queue_));
 }
 
-TEST_F(EventUsmAllocation, NoDoubleDeallocation)
+TEST_F(EventUsmAllocationTest, NoDoubleDeallocation)
 {
     EventUsm event(42);
     ASSERT_TRUE(event.allocateOnDevice(queue_));
@@ -50,7 +50,7 @@ TEST_F(EventUsmAllocation, NoDoubleDeallocation)
     ASSERT_FALSE(event.deallocateOnDevice(queue_));
 }
 
-TEST_F(EventUsmAllocation, MissingDeallocationLogged)
+TEST_F(EventUsmAllocationTest, MissingDeallocationLogged)
 {
     EventUsm* event = new EventUsm(42);
     ASSERT_TRUE(event->allocateOnDevice(queue_));
@@ -75,17 +75,17 @@ TEST_F(EventUsmAllocation, MissingDeallocationLogged)
     sycl::free(deviceLayers, queue_);
 }
 
-class EventUsmTransfer : public EventUsmAllocation
+class EventUsmTransferTest : public EventUsmAllocationTest
 {
 protected:
-    EventUsmTransfer()
-        : EventUsmAllocation()
+    EventUsmTransferTest()
+        : EventUsmAllocationTest()
         , event_(42)
     {
         event_.allocateOnDevice(queue_);
     }
 
-    ~EventUsmTransfer()
+    ~EventUsmTransferTest()
     {
         event_.deallocateOnDevice(queue_);
     }
@@ -93,7 +93,7 @@ protected:
     EventUsm event_;
 };
 
-TEST_F(EventUsmTransfer, Transfer)
+TEST_F(EventUsmTransferTest, Transfer)
 {
     event_.hostNumPoints_ = 2137;
     for (u_int32_t i = 0; i < event_.hostNumPoints_; ++i)
@@ -146,7 +146,7 @@ TEST_F(EventUsmTransfer, Transfer)
     }
 }
 
-TEST_F(EventUsmTransfer, NoAllocationBeforeTransferLogged)
+TEST_F(EventUsmTransferTest, NoAllocationBeforeTransferLogged)
 {
     EventUsm* event = new EventUsm(42);
 
@@ -158,7 +158,7 @@ TEST_F(EventUsmTransfer, NoAllocationBeforeTransferLogged)
     ASSERT_FALSE(event->transferToDevice(queue_));
 }
 
-TEST_F(EventUsmTransfer, TransferToDeviceWrongQueueLogged)
+TEST_F(EventUsmTransferTest, TransferToDeviceWrongQueueLogged)
 {
     sycl::queue otherQueue(sycl::gpu_selector_v);
 
@@ -170,7 +170,7 @@ TEST_F(EventUsmTransfer, TransferToDeviceWrongQueueLogged)
     ASSERT_FALSE(event_.transferToDevice(otherQueue));
 }
 
-TEST_F(EventUsmTransfer, TransferToHostWrongQueueLogged)
+TEST_F(EventUsmTransferTest, TransferToHostWrongQueueLogged)
 {
     ASSERT_TRUE(event_.transferToDevice(queue_));
 
