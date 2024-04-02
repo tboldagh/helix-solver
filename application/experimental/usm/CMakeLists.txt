@@ -9,6 +9,8 @@ INCLUDE
 
 SRC
     src/EventUsm.cpp
+    src/ITask.cpp
+    src/WorkerUsm.cpp
 
 PRIVATE
     Debug
@@ -29,4 +31,76 @@ PRIVATE
     EventUsm
     ILoggerMock
     Logger
+)
+
+helix_solver_add_library(IQueueMock
+TYPE
+    OBJECT
+
+INCLUDE
+    test-include
+
+SRC
+    test-src/IQueueMock.cpp
+
+PRIVATE
+    EventUsm
+)
+
+helix_solver_add_library(ITaskMock
+TYPE
+    OBJECT
+
+INCLUDE
+    test-include
+
+SRC
+    test-src/ITaskMock.cpp
+)
+
+helix_solver_add_library(IWorkerMock
+TYPE
+    OBJECT
+
+INCLUDE
+    test-include
+
+SRC
+    test-src/IWorkerMock.cpp
+
+PRIVATE
+    EventUsm
+)
+
+helix_solver_add_library(IWorkerControllerMock
+TYPE
+    OBJECT
+
+INCLUDE
+    test-include
+
+SRC
+    test-src/IWorkerControllerMock.cpp
+
+PRIVATE
+    EventUsm
+)
+
+helix_solver_add_library(WorkerUsmSuite
+UNIT_TEST
+
+LOCATION
+    application/experimental/usm
+
+SRC
+    test/WorkerUsmSuite.cpp
+
+PRIVATE
+    EventUsm
+    ILoggerMock
+    IQueueMock
+    ITaskMock
+    IWorkerControllerMock
+    Logger
+    EventUsm
 )
