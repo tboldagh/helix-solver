@@ -173,11 +173,12 @@ TEST_F(WorkerUsmTakProcessTasksTest, processTasksStateChanging)
 TEST_F(WorkerUsmTakProcessTasksTest, processReadyToQueue)
 {
     worker_.onTaskStateChange(*taskPtr_);
+
     expectProcessingTask(taskPtr_, ITask::State::ReadyToQueue);
+    expectTaskIdLog(taskId_);
     EXPECT_CALL(queueMock_, getWorkCapacity()).WillRepeatedly(testing::Return(1));
     EXPECT_CALL(queueMock_, getWorkLoad()).WillRepeatedly(testing::Return(0));
     EXPECT_CALL(*taskPtr_, assignQueue(testing::Ref(queueMock_)));
-    expectTaskIdLog(taskId_);
     expectLog(Logger::LogMessage::Severity::Debug, "Task assigned to queue, task id: " + std::to_string(taskId_));
     worker_.processTasks();
 }
@@ -185,18 +186,132 @@ TEST_F(WorkerUsmTakProcessTasksTest, processReadyToQueue)
 TEST_F(WorkerUsmTakProcessTasksTest, processReadyToQueueQueueFull)
 {
     worker_.onTaskStateChange(*taskPtr_);
+
     expectProcessingTask(taskPtr_, ITask::State::ReadyToQueue);
+    expectTaskIdLog(taskId_);
     EXPECT_CALL(queueMock_, getWorkCapacity()).WillRepeatedly(testing::Return(1));
     EXPECT_CALL(queueMock_, getWorkLoad()).WillRepeatedly(testing::Return(1));
-    expectTaskIdLog(taskId_);
     expectLog(Logger::LogMessage::Severity::Debug, "Queue is full");
     worker_.processTasks();
 
     expectProcessingTask(taskPtr_, ITask::State::ReadyToQueue);
+    expectTaskIdLog(taskId_);
     EXPECT_CALL(queueMock_, getWorkCapacity()).WillRepeatedly(testing::Return(1));
     EXPECT_CALL(queueMock_, getWorkLoad()).WillRepeatedly(testing::Return(0));
     EXPECT_CALL(*taskPtr_, assignQueue(testing::Ref(queueMock_)));
-    expectTaskIdLog(taskId_);
     expectLog(Logger::LogMessage::Severity::Debug, "Task assigned to queue, task id: " + std::to_string(taskId_));
     worker_.processTasks();
+}
+
+TEST_F(WorkerUsmTakProcessTasksTest, processWaitingForResourcesMissingEventResources)
+{
+    worker_.onTaskStateChange(*taskPtr_);
+    EXPECT_CALL(*taskPtr_, isEventResourcesAssigned()).WillRepeatedly(testing::Return(false));
+    EXPECT_CALL(*taskPtr_, isResultResourcesAssigned()).WillRepeatedly(testing::Return(true));
+
+    expectProcessingTask(taskPtr_, ITask::State::WaitingForResources);
+    expectTaskIdLog(taskId_);
+    expectLog(Logger::LogMessage::Severity::Debug, "Waiting for event resources");
+    EXPECT_CALL(queueMock_, getEventResourcesCapacity()).WillRepeatedly(testing::Return(1));
+    EXPECT_CALL(queueMock_, getEventResourcesLoad()).WillRepeatedly(testing::Return(1));
+    expectLog(Logger::LogMessage::Severity::Debug, "Queue has no free event resources");
+    worker_.processTasks();
+
+    expectProcessingTask(taskPtr_, ITask::State::WaitingForResources);
+    expectTaskIdLog(taskId_);
+    expectLog(Logger::LogMessage::Severity::Debug, "Waiting for event resources");
+    EXPECT_CALL(queueMock_, getEventResourcesCapacity()).WillRepeatedly(testing::Return(1));
+    EXPECT_CALL(queueMock_, getEventResourcesLoad()).WillRepeatedly(testing::Return(0));
+    EXPECT_CALL(*taskPtr_, takeEventResources(testing::_));
+    EXPECT_CALL(queueMock_, releaseEventResources()).WillOnce(testing::Return(testing::ByMove(std::make_unique<IQueue::Resources>())));
+    expectLog(Logger::LogMessage::Severity::Debug, "Event resources assigned, task id: " + std::to_string(taskId_));
+    worker_.processTasks();
+}
+
+TEST_F(WorkerUsmTakProcessTasksTest, processWaitingForResourcesMissingResultResources)
+{
+    worker_.onTaskStateChange(*taskPtr_);
+    EXPECT_CALL(*taskPtr_, isEventResourcesAssigned()).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(*taskPtr_, isResultResourcesAssigned()).WillRepeatedly(testing::Return(false));
+
+    expectProcessingTask(taskPtr_, ITask::State::WaitingForResources);
+    expectTaskIdLog(taskId_);
+    expectLog(Logger::LogMessage::Severity::Debug, "Waiting for result resources");
+    EXPECT_CALL(queueMock_, getResultResourcesCapacity()).WillRepeatedly(testing::Return(1));
+    EXPECT_CALL(queueMock_, getResultResourcesLoad()).WillRepeatedly(testing::Return(1));
+    expectLog(Logger::LogMessage::Severity::Debug, "Queue has no free result resources");
+    worker_.processTasks();
+
+    expectProcessingTask(taskPtr_, ITask::State::WaitingForResources);
+    expectTaskIdLog(taskId_);
+    expectLog(Logger::LogMessage::Severity::Debug, "Waiting for result resources");
+    EXPECT_CALL(queueMock_, getResultResourcesCapacity()).WillRepeatedly(testing::Return(1));
+    EXPECT_CALL(queueMock_, getResultResourcesLoad()).WillRepeatedly(testing::Return(0));
+    EXPECT_CALL(*taskPtr_, takeResultResources(testing::_));
+    EXPECT_CALL(queueMock_, releaseResultResources()).WillOnce(testing::Return(testing::ByMove(std::make_unique<IQueue::Resources>())));
+    expectLog(Logger::LogMessage::Severity::Debug, "Result resources assigned, task id: " + std::to_string(taskId_));
+    worker_.processTasks();
+}
+
+TEST_F(WorkerUsmTakProcessTasksTest, processWaitingEventTransfer)
+{
+    worker_.onTaskStateChange(*taskPtr_);
+
+    expectProcessingTask(taskPtr_, ITask::State::WaitingForEventTransfer);
+    expectTaskIdLog(taskId_);
+    EXPECT_CALL(*taskPtr_, transferEvent());
+    expectLog(Logger::LogMessage::Severity::Debug, "Event transfer started, task id: " + std::to_string(taskId_));
+    worker_.processTasks();
+}
+
+TEST_F(WorkerUsmTakProcessTasksTest, processWaitingForExecution)
+{
+    worker_.onTaskStateChange(*taskPtr_);
+
+    expectProcessingTask(taskPtr_, ITask::State::WaitingForExecution);
+    expectTaskIdLog(taskId_);
+    EXPECT_CALL(*taskPtr_, execute());
+    expectLog(Logger::LogMessage::Severity::Debug, "Task execution started, task id: " + std::to_string(taskId_));
+    worker_.processTasks();
+}
+
+TEST_F(WorkerUsmTakProcessTasksTest, processExecuted)
+{
+    worker_.onTaskStateChange(*taskPtr_);
+
+    expectProcessingTask(taskPtr_, ITask::State::Executed);
+    expectTaskIdLog(taskId_);
+    EXPECT_CALL(queueMock_, takeEventResources(testing::_));
+    EXPECT_CALL(*taskPtr_, releaseEventResources()).WillOnce(testing::Return(testing::ByMove(std::make_unique<IQueue::Resources>())));
+    expectLog(Logger::LogMessage::Severity::Debug, "Event resources returned to queue, task id: " + std::to_string(taskId_));    
+    worker_.processTasks();
+}
+
+TEST_F(WorkerUsmTakProcessTasksTest, processWaitingForResultTransfer)
+{
+    worker_.onTaskStateChange(*taskPtr_);
+
+    expectProcessingTask(taskPtr_, ITask::State::WaitingForResultTransfer);
+    expectTaskIdLog(taskId_);
+    EXPECT_CALL(*taskPtr_, transferResult());
+    expectLog(Logger::LogMessage::Severity::Debug, "Result transfer started, task id: " + std::to_string(taskId_));
+    worker_.processTasks();
+}
+
+TEST_F(WorkerUsmTakProcessTasksTest, processCompleted)
+{
+    worker_.onTaskStateChange(*taskPtr_);
+
+    expectProcessingTask(taskPtr_, ITask::State::Completed);
+    expectTaskIdLog(taskId_);
+    EXPECT_CALL(queueMock_, takeResultResources(testing::_));
+    EXPECT_CALL(*taskPtr_, releaseResultResources()).WillOnce(testing::Return(testing::ByMove(std::make_unique<IQueue::Resources>())));
+    expectLog(Logger::LogMessage::Severity::Debug, "Result resources returned to queue, task id: " + std::to_string(taskId_));
+    EXPECT_CALL(workerControllerMock_, onTaskCompleted(testing::_)).WillOnce(testing::Invoke([](std::unique_ptr<ITask> task) {
+        EXPECT_EQ(taskId_, task->getId());
+    }));
+    expectLog(Logger::LogMessage::Severity::Debug, "Task completed and will be handed in to controller, task id: " + std::to_string(taskId_));
+    worker_.processTasks();
+
+    EXPECT_EQ(0, worker_.getNumberOfTasks());
 }

@@ -10,5 +10,5 @@ public:
     IWorkerControllerMock() = default;
     ~IWorkerControllerMock() override = default;
 
-    MOCK_METHOD(void, onTaskCompleted, (std::unique_ptr<ITask> task), (override));
+    MOCK_METHOD(void, onTaskCompleted, (std::unique_ptr<ITask>&& task), (override));
 };

@@ -13,5 +13,5 @@ public:
     MOCK_METHOD(bool, submitTask, (std::unique_ptr<ITask> task), (override));
     MOCK_METHOD(u_int16_t, getNumberOfTasks, (), (const, override));
     MOCK_METHOD(void, processTasks, (), (override));
-    MOCK_METHOD(void, onTaskUpdated, (ITask* task), (override));
+    MOCK_METHOD(void, onTaskStateChange, (ITask& task), (override));
 };

@@ -1,4 +1,5 @@
 #include "EventUsm/WorkerUsm.h"
+#include "EventUsm/IWorkerController.h"
 #include "Logger/Logger.h"
 
 #include <string>
@@ -88,16 +89,22 @@ void WorkerUsm::processTasks()
                 processed = handleTaskReadyToQueue(task);
                 break;
             case ITask::State::WaitingForResources:
+                processed = handleTaskWaitingForResources(task);
                 break;
             case ITask::State::WaitingForEventTransfer:
+                processed = handleTaskWaitingForEventTransfer(task);
                 break;
             case ITask::State::WaitingForExecution:
+                processed = handleTaskWaitingForExecution(task);
                 break;
             case ITask::State::Executed:
+                processed = handleTaskExecuted(task);
                 break;
             case ITask::State::WaitingForResultTransfer:
+                processed = handleTaskWaitingForResultTransfer(task);
                 break;
             case ITask::State::Completed:
+                processed = handleTaskCompleted(task);
                 break;
         }
         if (!processed)
@@ -133,36 +140,94 @@ bool WorkerUsm::handleTaskReadyToQueue(ITask& task)
 
 bool WorkerUsm::handleTaskWaitingForResources(ITask& task)
 {
-    // TODO
-    return false;
+    LOG_DEBUG("Task id: " + std::to_string(task.getId()));
+    
+    bool processed = true;
+
+    if (!task.isEventResourcesAssigned())
+    {
+        LOG_DEBUG("Waiting for event resources");
+
+        if (queue_.getEventResourcesLoad() == queue_.getEventResourcesCapacity())
+        {
+            LOG_DEBUG("Queue has no free event resources");
+            processed = false;
+        }
+        else
+        {
+            task.takeEventResources(queue_.releaseEventResources());
+            LOG_DEBUG("Event resources assigned, task id: " + std::to_string(task.getId()));
+        }
+    }
+
+    if (!task.isResultResourcesAssigned())
+    {
+        LOG_DEBUG("Waiting for result resources");
+
+        if (queue_.getResultResourcesLoad() == queue_.getResultResourcesCapacity())
+        {
+            LOG_DEBUG("Queue has no free result resources");
+            processed = false;
+        }
+        else
+        {
+            task.takeResultResources(queue_.releaseResultResources());
+            LOG_DEBUG("Result resources assigned, task id: " + std::to_string(task.getId()));
+        }
+    }
+
+    return processed;
 }
 
 bool WorkerUsm::handleTaskWaitingForEventTransfer(ITask& task)
 {
-    // TODO
+    LOG_DEBUG("Task id: " + std::to_string(task.getId()));
+
+    task.transferEvent();
+    LOG_DEBUG("Event transfer started, task id: " + std::to_string(task.getId()));
+
     return false;
 }
 
 bool WorkerUsm::handleTaskWaitingForExecution(ITask& task)
 {
-    // TODO
+    LOG_DEBUG("Task id: " + std::to_string(task.getId()));
+
+    task.execute();
+    LOG_DEBUG("Task execution started, task id: " + std::to_string(task.getId()));
+
     return false;
 }
 
 bool WorkerUsm::handleTaskExecuted(ITask& task)
 {
-    // TODO
+    LOG_DEBUG("Task id: " + std::to_string(task.getId()));
+
+    queue_.takeEventResources(task.releaseEventResources());
+    LOG_DEBUG("Event resources returned to queue, task id: " + std::to_string(task.getId()));
+
     return false;
 }
 
 bool WorkerUsm::handleTaskWaitingForResultTransfer(ITask& task)
 {
-    // TODO
+    LOG_DEBUG("Task id: " + std::to_string(task.getId()));
+
+    task.transferResult();
+    LOG_DEBUG("Result transfer started, task id: " + std::to_string(task.getId()));
+
     return false;
 }
 
 bool WorkerUsm::handleTaskCompleted(ITask& task)
 {
-    // TODO
-    return false;
+    LOG_DEBUG("Task id: " + std::to_string(task.getId()));
+
+    queue_.takeResultResources(task.releaseResultResources());
+    LOG_DEBUG("Result resources returned to queue, task id: " + std::to_string(task.getId()));
+
+    LOG_DEBUG("Task completed and will be handed in to controller, task id: " + std::to_string(task.getId()));
+    workerController_.onTaskCompleted(std::unique_ptr<ITask>(tasks_.extract(task.getId()).mapped().release()));
+
+    return true;
 }

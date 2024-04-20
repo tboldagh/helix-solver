@@ -9,5 +9,5 @@ class IWorkerController
 public:
     virtual ~IWorkerController() = default;
 
-    virtual void onTaskCompleted(std::unique_ptr<ITask> task) = 0;
+    virtual void onTaskCompleted(std::unique_ptr<ITask>&& task) = 0;
 };
