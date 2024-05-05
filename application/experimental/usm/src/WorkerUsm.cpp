@@ -38,7 +38,7 @@ bool WorkerUsm::submitTask(std::unique_ptr<ITask> task)
     }
 
     tasks_.emplace(id, std::move(task));
-    tasks_[id]->onAssignedToWorker();
+    tasks_[id]->onAssignedToWorker(*this);
 
     LOG_DEBUG("Task submitted, id: " + std::to_string(tasks_[id]->getId()));
 
@@ -155,7 +155,7 @@ bool WorkerUsm::handleTaskWaitingForResources(ITask& task)
         }
         else
         {
-            task.takeEventResources(queue_.releaseEventResources());
+            task.takeEventResources(queue_.getEventResourceGroup());
             LOG_DEBUG("Event resources assigned, task id: " + std::to_string(task.getId()));
         }
     }
@@ -171,7 +171,7 @@ bool WorkerUsm::handleTaskWaitingForResources(ITask& task)
         }
         else
         {
-            task.takeResultResources(queue_.releaseResultResources());
+            task.takeResultResources(queue_.getResultResourceGroup());
             LOG_DEBUG("Result resources assigned, task id: " + std::to_string(task.getId()));
         }
     }
@@ -203,7 +203,7 @@ bool WorkerUsm::handleTaskExecuted(ITask& task)
 {
     LOG_DEBUG("Task id: " + std::to_string(task.getId()));
 
-    queue_.takeEventResources(task.releaseEventResources());
+    queue_.returnEventResourceGroup(task.releaseEventResourceGroup());
     LOG_DEBUG("Event resources returned to queue, task id: " + std::to_string(task.getId()));
 
     return false;
@@ -223,7 +223,7 @@ bool WorkerUsm::handleTaskCompleted(ITask& task)
 {
     LOG_DEBUG("Task id: " + std::to_string(task.getId()));
 
-    queue_.takeResultResources(task.releaseResultResources());
+    queue_.returnResultResourceGroup(task.releaseResultResourceGroup());
     LOG_DEBUG("Result resources returned to queue, task id: " + std::to_string(task.getId()));
 
     LOG_DEBUG("Task completed and will be handed in to controller, task id: " + std::to_string(task.getId()));

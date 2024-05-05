@@ -18,16 +18,19 @@ public:
     MOCK_METHOD(bool, isResultResourcesAssigned, (), (const, override));
 
     MOCK_METHOD(void, takeEvent, (std::unique_ptr<EventUsm>&& event), (override));
-    MOCK_METHOD(void, releaseEvent, (), (override));
-    MOCK_METHOD(void, releaseResult, (), (override));
+    // MOCK_METHOD(void, releaseEvent, (), (override));
+    // MOCK_METHOD(void, releaseResult, (), (override));
 
-    MOCK_METHOD(void, onAssignedToWorker, (), (override));
+    MOCK_METHOD(void, onAssignedToWorker, (ITaskStateObserver& stateObserver), (override));
     MOCK_METHOD(void, assignQueue, (IQueue& queue), (override));
-    MOCK_METHOD(void, takeEventResources, (std::unique_ptr<IQueue::Resources>&& resources), (override));
-    MOCK_METHOD(void, takeResultResources, (std::unique_ptr<IQueue::Resources>&& resources), (override));
+    MOCK_METHOD(void, takeEventResources, ((std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&>) eventResources), (override));
+    MOCK_METHOD(void, takeResultResources, ((std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&>) resultResources), (override));
     MOCK_METHOD(void, transferEvent, (), (override));
     MOCK_METHOD(void, execute, (), (override));
     MOCK_METHOD(void, transferResult, (), (override));
-    MOCK_METHOD(std::unique_ptr<IQueue::Resources>, releaseEventResources, (), (override));
-    MOCK_METHOD(std::unique_ptr<IQueue::Resources>, releaseResultResources, (), (override));
+    MOCK_METHOD(IQueue::DeviceResourceGroupId, releaseEventResourceGroup, (), (override));
+    MOCK_METHOD(IQueue::DeviceResourceGroupId, releaseResultResourceGroup, (), (override));
+
+protected:
+    MOCK_METHOD(ExecutionEvents, executeOnDevice, (sycl::queue& queue), (override));
 };

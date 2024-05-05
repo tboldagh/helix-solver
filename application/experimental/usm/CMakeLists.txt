@@ -9,7 +9,9 @@ INCLUDE
 
 SRC
     src/EventUsm.cpp
+    src/ResultUsm.cpp
     src/ITask.cpp
+    src/QueueUsm.cpp
     src/WorkerUsm.cpp
 
 PRIVATE
@@ -81,6 +83,20 @@ INCLUDE
 
 SRC
     test-src/IWorkerControllerMock.cpp
+
+PRIVATE
+    EventUsm
+)
+
+helix_solver_add_library(ITaskStateObserverMock
+TYPE
+    OBJECT
+
+INCLUDE
+    test-include
+
+SRC
+    test-src/ITaskStateObserverMock.cpp
 
 PRIVATE
     EventUsm

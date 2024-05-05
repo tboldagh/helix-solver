@@ -22,6 +22,8 @@ public:
     bool submitTask(std::unique_ptr<ITask> task) override;
     u_int16_t getNumberOfTasks() const override;
     void processTasks() override;
+
+    // From ITaskStateObserver
     void onTaskStateChange(ITask& task) override;
 
 private:

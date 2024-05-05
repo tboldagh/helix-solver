@@ -1,16 +1,22 @@
 #pragma once
 
-#include "IQueue.h"
-#include "EventUsm.h"
+#include "EventUsm/IQueue.h"
+#include "EventUsm/EventUsm.h"
+#include "EventUsm/ResultUsm.h"
 
 #include <map>
 #include <memory>
 #include <string>
 
+
+class ITaskStateObserver;
+
+
 class ITask
 {
 public:
     using TaskId = u_int32_t;
+    using ExecutionEvents = std::unordered_set<std::unique_ptr<sycl::event>>;
     
     enum class State
     {
@@ -30,21 +36,28 @@ public:
 
     virtual TaskId getId() const = 0;
     virtual State getState() const = 0;
+    // Indicates whether state changing operation is in progress. If true, task should not be manipulated.
     virtual bool isStateChanging() const = 0;
     virtual bool isEventResourcesAssigned() const = 0;
     virtual bool isResultResourcesAssigned() const = 0;
 
     virtual void takeEvent(std::unique_ptr<EventUsm>&& event) = 0;
-    virtual void releaseEvent() = 0;
-    virtual void releaseResult() = 0;
+    // TODO
+    // virtual void releaseEvent(/* TODO */) = 0;
+    // virtual void releaseResult(/* TODO */) = 0;
 
-    virtual void onAssignedToWorker() = 0;
+    virtual void onAssignedToWorker(ITaskStateObserver& stateObserver) = 0;
     virtual void assignQueue(IQueue& queue) = 0;
-    virtual void takeEventResources(std::unique_ptr<IQueue::Resources>&& resources) = 0;
-    virtual void takeResultResources(std::unique_ptr<IQueue::Resources>&& resources) = 0;
+    virtual void takeEventResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> eventResources) = 0;
+    virtual void takeResultResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> resultResources) = 0;
     virtual void transferEvent() = 0;
     virtual void execute() = 0;
     virtual void transferResult() = 0;
-    virtual std::unique_ptr<IQueue::Resources> releaseEventResources() = 0;
-    virtual std::unique_ptr<IQueue::Resources> releaseResultResources() = 0;
+    virtual IQueue::DeviceResourceGroupId releaseEventResourceGroup() = 0;
+    virtual IQueue::DeviceResourceGroupId releaseResultResourceGroup() = 0;
+
+protected:
+    // The actual job to be executed on the device. Will be called from separate thread.
+    // Returns sycl::event set. Each events needs to be waited on before the task is considered finished.
+    virtual ExecutionEvents executeOnDevice(sycl::queue& syclQueue) = 0;
 };

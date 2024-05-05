@@ -104,7 +104,7 @@ TEST_F(EventUsmTransferTest, Transfer)
         event_.hostLayers_[i] = i;
     }
 
-    ASSERT_TRUE(event_.transferToDevice(queue_));
+    ASSERT_FALSE(event_.transferToDevice(queue_).empty());
 
     // Double all 
     queue_.submit([&](sycl::handler& cgh)
@@ -126,7 +126,7 @@ TEST_F(EventUsmTransferTest, Transfer)
     });
     queue_.wait();
 
-    ASSERT_TRUE(event_.transferToHost(queue_));
+    ASSERT_FALSE(event_.transferToHost(queue_).empty());
     ASSERT_EQ(event_.hostNumPoints_, 420);
     for (u_int32_t i = 0; i < 420; ++i)
     {
@@ -155,7 +155,7 @@ TEST_F(EventUsmTransferTest, NoAllocationBeforeTransferLogged)
         testing::Property(&Logger::LogMessage::getMessage, "Memory not allocated on device for EventUsm with eventId " + std::to_string(event->eventId_) + ".")
     )));
 
-    ASSERT_FALSE(event->transferToDevice(queue_));
+    ASSERT_TRUE(event->transferToDevice(queue_).empty());
 }
 
 TEST_F(EventUsmTransferTest, TransferToDeviceWrongQueueLogged)
@@ -167,12 +167,12 @@ TEST_F(EventUsmTransferTest, TransferToDeviceWrongQueueLogged)
         testing::Property(&Logger::LogMessage::getMessage, "Memory allocated on different queue for EventUsm with eventId " + std::to_string(event_.eventId_) + ".")
     )));
 
-    ASSERT_FALSE(event_.transferToDevice(otherQueue));
+    ASSERT_TRUE(event_.transferToDevice(queue_).empty());
 }
 
 TEST_F(EventUsmTransferTest, TransferToHostWrongQueueLogged)
 {
-    ASSERT_TRUE(event_.transferToDevice(queue_));
+    ASSERT_FALSE(event_.transferToDevice(queue_).empty());
 
     EXPECT_CALL(logger_, log(testing::AllOf(
         testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
@@ -180,5 +180,5 @@ TEST_F(EventUsmTransferTest, TransferToHostWrongQueueLogged)
     )));
 
     sycl::queue otherQueue(sycl::gpu_selector_v);
-    ASSERT_FALSE(event_.transferToHost(otherQueue));
+    ASSERT_TRUE(event_.transferToHost(otherQueue).empty());
 }

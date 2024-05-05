@@ -3,6 +3,7 @@
 #include "IQueueMock/IQueueMock.h"
 #include "ITaskMock/ITaskMock.h"
 #include "IWorkerControllerMock/IWorkerControllerMock.h"
+#include "EventUsm/DeviceResource.h"
 #include "EventUsm/WorkerUsm.h"
 
 #include <gtest/gtest.h>
@@ -49,7 +50,7 @@ TEST_F(WorkerUsmTest, SubmitTask)
 
     constexpr ITask::TaskId taskId = 42;
     EXPECT_CALL(*taskPtr, getState()).WillRepeatedly(testing::Return(ITask::State::EventAssigned));
-    EXPECT_CALL(*taskPtr, onAssignedToWorker());
+    EXPECT_CALL(*taskPtr, onAssignedToWorker(testing::Ref(worker_)));
     EXPECT_CALL(*taskPtr, getId()).WillRepeatedly(testing::Return(taskId));
     expectTaskSubmittedLog(taskId);
     EXPECT_TRUE(worker_.submitTask(std::move(task)));
@@ -99,7 +100,7 @@ TEST_F(WorkerUsmTest, SubmitMultipleTasksWithSameId)
 
     constexpr ITask::TaskId taskId = 42;
     EXPECT_CALL(*taskPtr, getState()).WillRepeatedly(testing::Return(ITask::State::EventAssigned));
-    EXPECT_CALL(*taskPtr, onAssignedToWorker());
+    EXPECT_CALL(*taskPtr, onAssignedToWorker(testing::Ref(worker_)));
     EXPECT_CALL(*taskPtr, getId()).WillRepeatedly(testing::Return(taskId));
     expectTaskSubmittedLog(taskId);
     EXPECT_TRUE(worker_.submitTask(std::move(task)));
@@ -124,7 +125,7 @@ protected:
         taskPtr_ = task.get();
 
         EXPECT_CALL(*taskPtr_, getState()).WillRepeatedly(testing::Return(ITask::State::EventAssigned));
-        EXPECT_CALL(*taskPtr_, onAssignedToWorker());
+        EXPECT_CALL(*taskPtr_, onAssignedToWorker(testing::Ref(worker_)));
         EXPECT_CALL(*taskPtr_, getId()).WillRepeatedly(testing::Return(taskId_));
         expectTaskSubmittedLog(taskId_);
         
@@ -222,8 +223,11 @@ TEST_F(WorkerUsmTakProcessTasksTest, processWaitingForResourcesMissingEventResou
     expectLog(Logger::LogMessage::Severity::Debug, "Waiting for event resources");
     EXPECT_CALL(queueMock_, getEventResourcesCapacity()).WillRepeatedly(testing::Return(1));
     EXPECT_CALL(queueMock_, getEventResourcesLoad()).WillRepeatedly(testing::Return(0));
+    constexpr IQueue::DeviceResourceGroupId eventResourcesId = 43;
+    const DeviceResourceGroup eventResourcesGroup;
+    const std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> eventResources{eventResourcesId, eventResourcesGroup};
+    EXPECT_CALL(queueMock_, getEventResourceGroup()).WillOnce(testing::Return(eventResources));
     EXPECT_CALL(*taskPtr_, takeEventResources(testing::_));
-    EXPECT_CALL(queueMock_, releaseEventResources()).WillOnce(testing::Return(testing::ByMove(std::make_unique<IQueue::Resources>())));
     expectLog(Logger::LogMessage::Severity::Debug, "Event resources assigned, task id: " + std::to_string(taskId_));
     worker_.processTasks();
 }
@@ -247,8 +251,11 @@ TEST_F(WorkerUsmTakProcessTasksTest, processWaitingForResourcesMissingResultReso
     expectLog(Logger::LogMessage::Severity::Debug, "Waiting for result resources");
     EXPECT_CALL(queueMock_, getResultResourcesCapacity()).WillRepeatedly(testing::Return(1));
     EXPECT_CALL(queueMock_, getResultResourcesLoad()).WillRepeatedly(testing::Return(0));
+    constexpr IQueue::DeviceResourceGroupId resultResourcesId = 43;
+    const DeviceResourceGroup resultResourcesGroup;
+    const std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> resultResources{resultResourcesId, resultResourcesGroup};
+    EXPECT_CALL(queueMock_, getResultResourceGroup()).WillOnce(testing::Return(resultResources));
     EXPECT_CALL(*taskPtr_, takeResultResources(testing::_));
-    EXPECT_CALL(queueMock_, releaseResultResources()).WillOnce(testing::Return(testing::ByMove(std::make_unique<IQueue::Resources>())));
     expectLog(Logger::LogMessage::Severity::Debug, "Result resources assigned, task id: " + std::to_string(taskId_));
     worker_.processTasks();
 }
@@ -281,8 +288,9 @@ TEST_F(WorkerUsmTakProcessTasksTest, processExecuted)
 
     expectProcessingTask(taskPtr_, ITask::State::Executed);
     expectTaskIdLog(taskId_);
-    EXPECT_CALL(queueMock_, takeEventResources(testing::_));
-    EXPECT_CALL(*taskPtr_, releaseEventResources()).WillOnce(testing::Return(testing::ByMove(std::make_unique<IQueue::Resources>())));
+    constexpr IQueue::DeviceResourceGroupId eventResourcesId = 43;
+    EXPECT_CALL(*taskPtr_, releaseEventResourceGroup()).WillOnce(testing::Return(eventResourcesId));
+    EXPECT_CALL(queueMock_, returnEventResourceGroup(eventResourcesId));
     expectLog(Logger::LogMessage::Severity::Debug, "Event resources returned to queue, task id: " + std::to_string(taskId_));    
     worker_.processTasks();
 }
@@ -304,8 +312,9 @@ TEST_F(WorkerUsmTakProcessTasksTest, processCompleted)
 
     expectProcessingTask(taskPtr_, ITask::State::Completed);
     expectTaskIdLog(taskId_);
-    EXPECT_CALL(queueMock_, takeResultResources(testing::_));
-    EXPECT_CALL(*taskPtr_, releaseResultResources()).WillOnce(testing::Return(testing::ByMove(std::make_unique<IQueue::Resources>())));
+    constexpr IQueue::DeviceResourceGroupId resultResourcesId = 43;
+    EXPECT_CALL(*taskPtr_, releaseResultResourceGroup()).WillOnce(testing::Return(resultResourcesId));
+    EXPECT_CALL(queueMock_, returnResultResourceGroup(resultResourcesId));
     expectLog(Logger::LogMessage::Severity::Debug, "Result resources returned to queue, task id: " + std::to_string(taskId_));
     EXPECT_CALL(workerControllerMock_, onTaskCompleted(testing::_)).WillOnce(testing::Invoke([](std::unique_ptr<ITask> task) {
         EXPECT_EQ(taskId_, task->getId());

@@ -2,20 +2,20 @@
 
 #include "EventUsm/DataUsm.h"
 
+
 #include <CL/sycl.hpp>
 #include <memory>
 
 
-class EventUsm : public DataUsm
+class ResultUsm : public DataUsm
 {
 public:
-    using EventId = u_int32_t;
-    using LayerNumber = u_int8_t;
+    using ResultId = u_int32_t;
 
-    static constexpr u_int32_t MaxPoints = 1e5;
+    static constexpr u_int32_t MaxSolutions = 1e5;
 
-    EventUsm(EventId eventId);
-    ~EventUsm();
+    ResultUsm(ResultId resultId);
+    ~ResultUsm();
 
     bool allocateOnDevice(sycl::queue& queue) override;
     bool deallocateOnDevice(sycl::queue& queue) override;
@@ -32,17 +32,11 @@ public:
 
     // Direct access to frequently accessed data for performance reasons.
     // Manipulate data under the pointers but don't manage memory directly.
-    EventId eventId_;
+    ResultId resultId_;
 
-    u_int32_t hostNumPoints_ = 0;
-    float hostXs_[MaxPoints];
-    float hostYs_[MaxPoints];
-    float hostZs_[MaxPoints];
-    LayerNumber hostLayers_[MaxPoints];
+    u_int32_t hostNumSolutions_ = 0;
+    float hostSomeSolutionParameters_[MaxSolutions];
 
-    u_int32_t* deviceNumPoints_ = nullptr;
-    float* deviceXs_ = nullptr;
-    float* deviceYs_ = nullptr;
-    float* deviceZs_ = nullptr;
-    LayerNumber* deviceLayers_ = nullptr;
+    u_int32_t* deviceNumSolutions_ = nullptr;
+    float* deviceSomeSolutionParameters_ = nullptr;
 };
