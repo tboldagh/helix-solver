@@ -39,7 +39,7 @@ bool ResultUsm::allocateOnDevice(sycl::queue& queue)
 
 bool ResultUsm::deallocateOnDevice(sycl::queue& queue)
 {
-    if (!allocated_)
+    if (!allocated_ && !resourcesBorrowed_)
     {
         LOG_ERROR("Memory not allocated on device for ResultUsm with resultId " + std::to_string(resultId_) + ".");
         return false;
@@ -63,7 +63,7 @@ bool ResultUsm::deallocateOnDevice(sycl::queue& queue)
 
 DataUsm::TransferEvents ResultUsm::transferToDevice(sycl::queue& queue)
 {
-    if (!allocated_)
+    if (!allocated_ && !resourcesBorrowed_)
     {
         LOG_ERROR("Memory not allocated on device for ResultUsm with resultId " + std::to_string(resultId_) + ".");
         return TransferEvents{};
@@ -86,7 +86,7 @@ DataUsm::TransferEvents ResultUsm::transferToDevice(sycl::queue& queue)
 
 DataUsm::TransferEvents ResultUsm::transferToHost(sycl::queue& queue)
 {
-    if (!allocated_)
+    if (!allocated_ && !resourcesBorrowed_)
     {
         LOG_ERROR("Memory not allocated on device for ResultUsm with resultId " + std::to_string(resultId_) + ".");
         return TransferEvents{};

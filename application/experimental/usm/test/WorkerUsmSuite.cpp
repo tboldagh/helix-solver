@@ -49,7 +49,7 @@ TEST_F(WorkerUsmTest, SubmitTask)
     ITaskMock* taskPtr = task.get();
 
     constexpr ITask::TaskId taskId = 42;
-    EXPECT_CALL(*taskPtr, getState()).WillRepeatedly(testing::Return(ITask::State::EventAssigned));
+    EXPECT_CALL(*taskPtr, getState()).WillRepeatedly(testing::Return(ITask::State::EventAndResultAssigned));
     EXPECT_CALL(*taskPtr, onAssignedToWorker(testing::Ref(worker_)));
     EXPECT_CALL(*taskPtr, getId()).WillRepeatedly(testing::Return(taskId));
     expectTaskSubmittedLog(taskId);
@@ -99,7 +99,7 @@ TEST_F(WorkerUsmTest, SubmitMultipleTasksWithSameId)
     ITaskMock* taskPtr = task.get();
 
     constexpr ITask::TaskId taskId = 42;
-    EXPECT_CALL(*taskPtr, getState()).WillRepeatedly(testing::Return(ITask::State::EventAssigned));
+    EXPECT_CALL(*taskPtr, getState()).WillRepeatedly(testing::Return(ITask::State::EventAndResultAssigned));
     EXPECT_CALL(*taskPtr, onAssignedToWorker(testing::Ref(worker_)));
     EXPECT_CALL(*taskPtr, getId()).WillRepeatedly(testing::Return(taskId));
     expectTaskSubmittedLog(taskId);
@@ -108,7 +108,7 @@ TEST_F(WorkerUsmTest, SubmitMultipleTasksWithSameId)
     std::unique_ptr<ITaskMock> task2 = std::make_unique<ITaskMock>();
     ITaskMock* taskPtr2 = task2.get();
 
-    EXPECT_CALL(*taskPtr2, getState()).WillRepeatedly(testing::Return(ITask::State::EventAssigned));
+    EXPECT_CALL(*taskPtr2, getState()).WillRepeatedly(testing::Return(ITask::State::EventAndResultAssigned));
     EXPECT_CALL(*taskPtr2, getId()).WillRepeatedly(testing::Return(taskId));
     expectLog(Logger::LogMessage::Severity::Error, "Attempt to submit task with id that already exists, id: " + std::to_string(taskId));
     EXPECT_FALSE(worker_.submitTask(std::move(task2)));
@@ -124,7 +124,7 @@ protected:
         std::unique_ptr<ITaskMock> task = std::make_unique<ITaskMock>();
         taskPtr_ = task.get();
 
-        EXPECT_CALL(*taskPtr_, getState()).WillRepeatedly(testing::Return(ITask::State::EventAssigned));
+        EXPECT_CALL(*taskPtr_, getState()).WillRepeatedly(testing::Return(ITask::State::EventAndResultAssigned));
         EXPECT_CALL(*taskPtr_, onAssignedToWorker(testing::Ref(worker_)));
         EXPECT_CALL(*taskPtr_, getId()).WillRepeatedly(testing::Return(taskId_));
         expectTaskSubmittedLog(taskId_);
@@ -155,8 +155,8 @@ TEST_F(WorkerUsmTakProcessTasksTest, HandleTaskStateChange)
 {
     worker_.onTaskStateChange(*taskPtr_);
 
-    expectProcessingTask(taskPtr_, ITask::State::EventAssigned);
-    expectLog(Logger::LogMessage::Severity::Error, "Task has invalid state, id: " + std::to_string(taskId_) + " state: " + ITask::stateToString(ITask::State::EventAssigned));
+    expectProcessingTask(taskPtr_, ITask::State::EventAndResultAssigned);
+    expectLog(Logger::LogMessage::Severity::Error, "Task has invalid state, id: " + std::to_string(taskId_) + " state: " + ITask::stateToString(ITask::State::EventAndResultAssigned));
     worker_.processTasks();
 }
 
@@ -164,10 +164,10 @@ TEST_F(WorkerUsmTakProcessTasksTest, processTasksStateChanging)
 {
     worker_.onTaskStateChange(*taskPtr_);
 
-    EXPECT_CALL(*taskPtr_, getState()).WillRepeatedly(testing::Return(ITask::State::EventAssigned));
+    EXPECT_CALL(*taskPtr_, getState()).WillRepeatedly(testing::Return(ITask::State::EventAndResultAssigned));
     EXPECT_CALL(*taskPtr_, isStateChanging()).WillRepeatedly(testing::Return(true));
-    expectLog(Logger::LogMessage::Severity::Debug, "Processing task after state change, id: " + std::to_string(taskId_) + " new state: " + ITask::stateToString(ITask::State::EventAssigned));
-    expectLog(Logger::LogMessage::Severity::Error, "Task state is changing, id: " + std::to_string(taskId_) + " state: " + ITask::stateToString(ITask::State::EventAssigned));
+    expectLog(Logger::LogMessage::Severity::Debug, "Processing task after state change, id: " + std::to_string(taskId_) + " new state: " + ITask::stateToString(ITask::State::EventAndResultAssigned));
+    expectLog(Logger::LogMessage::Severity::Error, "Task state is changing, id: " + std::to_string(taskId_) + " state: " + ITask::stateToString(ITask::State::EventAndResultAssigned));
     worker_.processTasks();
 }
 

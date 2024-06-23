@@ -17,7 +17,7 @@ public:
     MOCK_METHOD(bool, isEventResourcesAssigned, (), (const, override));
     MOCK_METHOD(bool, isResultResourcesAssigned, (), (const, override));
 
-    MOCK_METHOD(void, takeEvent, (std::unique_ptr<EventUsm>&& event), (override));
+    MOCK_METHOD(void, takeEventAndResult, ((std::unique_ptr<EventUsm>&& event), (std::unique_ptr<ResultUsm>&& result)), (override));
     // MOCK_METHOD(void, releaseEvent, (), (override));
     // MOCK_METHOD(void, releaseResult, (), (override));
 

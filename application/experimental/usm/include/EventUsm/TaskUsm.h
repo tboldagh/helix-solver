@@ -2,6 +2,12 @@
 
 #include "EventUsm/ITask.h"
 
+#include <gtest/gtest.h>
+
+
+class ITaskStateObserver;
+
+
 class TaskUsm : public ITask
 {
 public:
@@ -14,8 +20,8 @@ public:
     inline bool isEventResourcesAssigned() const override;
     inline bool isResultResourcesAssigned() const override;
 
-    void takeEvent(std::unique_ptr<EventUsm>&& event) override;
-    void onAssignedToWorker(IStateObserver& stateObserver) override;
+    void takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_ptr<ResultUsm>&& result) override;
+    void onAssignedToWorker(ITaskStateObserver& stateObserver) override;
     void assignQueue(IQueue& queue) override;
     void takeEventResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> eventResources) override;
     void takeResultResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> resultResources) override;
@@ -26,6 +32,10 @@ public:
     IQueue::DeviceResourceGroupId releaseResultResourceGroup() override;
 
 private:
+    FRIEND_TEST(TaskUsmExecutionTest, TransferEventThread);
+    FRIEND_TEST(TaskUsmExecutionTest, ExecuteThread);
+    FRIEND_TEST(TaskUsmExecutionTest, TransferResultThread);
+
     void setState(State state);
     void checkResourcesAssigned();
     void transferEventToDeviceThread();

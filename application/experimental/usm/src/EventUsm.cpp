@@ -69,7 +69,7 @@ bool EventUsm::deallocateOnDevice(sycl::queue& queue)
 
 DataUsm::TransferEvents EventUsm::transferToDevice(sycl::queue& queue)
 {
-    if (!allocated_)
+    if (!allocated_ && !resourcesBorrowed_)
     {
         LOG_ERROR("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
         return TransferEvents{};
@@ -101,7 +101,7 @@ DataUsm::TransferEvents EventUsm::transferToDevice(sycl::queue& queue)
 
 DataUsm::TransferEvents EventUsm::transferToHost(sycl::queue& queue)
 {
-    if (!allocated_)
+    if (!allocated_ && !resourcesBorrowed_)
     {
         LOG_ERROR("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
         return TransferEvents{};
@@ -184,7 +184,7 @@ std::unique_ptr<DeviceResourceGroup> EventUsm::allocateDeviceResources(sycl::que
     return resourceGroup;
 }
 
-void EventUsm::deallocateDeviceResources(DeviceResourceGroup& resourceGroup, sycl::queue& queue)
+void EventUsm::deallocateDeviceResources(const DeviceResourceGroup& resourceGroup, sycl::queue& queue)
 {
     sycl::free(resourceGroup.at(DeviceResourceType::NumPoints), queue);
     sycl::free(resourceGroup.at(DeviceResourceType::Xs), queue);

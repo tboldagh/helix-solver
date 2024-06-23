@@ -1,4 +1,6 @@
 #include "EventUsm/TaskUsm.h"
+#include "EventUsm/ITaskStateObserver.h"
+#include "Logger/Logger.h"
 
 #include <thread>
 
@@ -11,14 +13,26 @@ TaskUsm::~TaskUsm()
     // TODO
 }
 
-void TaskUsm::takeEvent(std::unique_ptr<EventUsm>&& event)
+void TaskUsm::takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_ptr<ResultUsm>&& result)
 {
+    if (event_ != nullptr)
+    {
+        LOG_WARNING("Task already has an event assiged but it's taking a new one, task id: " + std::to_string(id_) + ", event id: " + std::to_string(event_->eventId_) + ", new event id: " + std::to_string(event->eventId_));
+    }
+
     event_ = std::move(event);
 
-    setState(State::EventAssigned);
+    if (result_ != nullptr)
+    {
+        LOG_WARNING("Task already has a result assiged but it's taking a new one, task id: " + std::to_string(id_) + ", result id: " + std::to_string(result_->resultId_) + ", new result id: " + std::to_string(result->resultId_));
+    }
+
+    result_ = std::move(result);
+
+    setState(State::EventAndResultAssigned);
 }
 
-void TaskUsm::onAssignedToWorker(IStateObserver& stateObserver)
+void TaskUsm::onAssignedToWorker(ITaskStateObserver& stateObserver)
 {
     stateObserver_ = &stateObserver;
 
@@ -85,6 +99,12 @@ IQueue::DeviceResourceGroupId TaskUsm::releaseResultResourceGroup()
 void TaskUsm::setState(State state)
 {
     state_ = state;
+
+    if (stateObserver_ == nullptr)
+    {
+        return;
+    }
+    
     stateObserver_->onTaskStateChange(*this);
 }
 
@@ -129,7 +149,7 @@ void TaskUsm::executeThread()
 void TaskUsm::transferResultFromDeviceThread()
 {
     sycl::queue& syclQueue = queue_->checkoutQueue();
-    DataUsm::TransferResults transferResults = result_->transferToHost(syclQueue);
+    DataUsm::TransferEvents transferResults = result_->transferToHost(syclQueue);
     queue_->checkinQueue();
 
     for (auto& transferResult : transferResults)

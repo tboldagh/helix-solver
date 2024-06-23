@@ -28,7 +28,7 @@ public:
     // Allocates resources on device without host data.
     static std::unique_ptr<DeviceResourceGroup> allocateDeviceResources(sycl::queue& queue);
     // Deallocates resources on device without host data.
-    static void deallocateDeviceResources(DeviceResourceGroup& resourceGroup, sycl::queue& queue);
+    static void deallocateDeviceResources(const DeviceResourceGroup& resourceGroup, sycl::queue& queue);
 
     // Direct access to frequently accessed data for performance reasons.
     // Manipulate data under the pointers but don't manage memory directly.

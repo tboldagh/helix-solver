@@ -25,7 +25,7 @@ bool WorkerUsm::submitTask(std::unique_ptr<ITask> task)
     const ITask::State state = task->getState();
     const ITask::TaskId id = task->getId();
 
-    if(state != ITask::State::EventAssigned)
+    if(state != ITask::State::EventAndResultAssigned)
     {
         LOG_ERROR("Attempt to submit task with invalid state, id: " + std::to_string(id) + " state: " + ITask::stateToString(state));
         return false;
@@ -81,7 +81,7 @@ void WorkerUsm::processTasks()
         switch(task.getState())
         {
             case ITask::State::Created: // Fall trhough
-            case ITask::State::EventAssigned:
+            case ITask::State::EventAndResultAssigned:
                 LOG_ERROR("Task has invalid state, id: " + std::to_string(id) + " state: " + ITask::stateToString(task.getState()));
                 processed = true;
                 break;

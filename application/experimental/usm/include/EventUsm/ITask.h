@@ -11,7 +11,6 @@
 
 class ITaskStateObserver;
 
-
 class ITask
 {
 public:
@@ -21,7 +20,7 @@ public:
     enum class State
     {
         Created,    // Created, no event assigned
-        EventAssigned, // Created, event assigned, not submitted to worker
+        EventAndResultAssigned, // Created, event and result assigned, not submitted to worker
         ReadyToQueue, // Submitted to worker, worker took ownership, not queued
         WaitingForResources, // Queued, some resources are missing
         WaitingForEventTransfer, // Queued, resources assigned
@@ -41,7 +40,7 @@ public:
     virtual bool isEventResourcesAssigned() const = 0;
     virtual bool isResultResourcesAssigned() const = 0;
 
-    virtual void takeEvent(std::unique_ptr<EventUsm>&& event) = 0;
+    virtual void takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_ptr<ResultUsm>&& result) = 0;
     // TODO
     // virtual void releaseEvent(/* TODO */) = 0;
     // virtual void releaseResult(/* TODO */) = 0;

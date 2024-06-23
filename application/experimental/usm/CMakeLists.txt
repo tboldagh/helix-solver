@@ -12,6 +12,7 @@ SRC
     src/ResultUsm.cpp
     src/ITask.cpp
     src/QueueUsm.cpp
+    src/TaskUsm.cpp
     src/WorkerUsm.cpp
 
 PRIVATE
@@ -102,6 +103,24 @@ PRIVATE
     EventUsm
 )
 
+helix_solver_add_library(TaskUsmSuite
+UNIT_TEST
+
+LOCATION
+    application/experimental/usm
+
+SRC
+    test/TaskUsmSuite.cpp
+
+PRIVATE
+    EventUsm
+    ILoggerMock
+    IQueueMock
+    ITaskStateObserverMock
+    IWorkerControllerMock
+    Logger
+)
+
 helix_solver_add_library(WorkerUsmSuite
 UNIT_TEST
 
@@ -118,5 +137,4 @@ PRIVATE
     ITaskMock
     IWorkerControllerMock
     Logger
-    EventUsm
 )

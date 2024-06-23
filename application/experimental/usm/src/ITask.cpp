@@ -7,8 +7,8 @@ std::string ITask::stateToString(State state)
     {
     case State::Created:
         return "Created";
-    case State::EventAssigned:
-        return "EventAssigned";
+    case State::EventAndResultAssigned:
+        return "EventAndResultAssigned";
     case State::ReadyToQueue:
         return "ReadyToQueue";
     case State::WaitingForResources:
