@@ -33,6 +33,12 @@ public:
     void checkinQueue() override;
     inline const sycl::queue& getQueue() const override;
 
+    static const DeviceResourceGroup NullResourceGroup; // Used when no resources are available.
+    static constexpr DeviceResourceGroupId NullEventResourceGroupId{0};
+
+    static const DeviceResourceGroup NullResultResourceGroup; // Used when no resources are available.
+    static constexpr DeviceResourceGroupId NullResultResourceGroupId{0};
+
 private:
     sycl::queue& syclQueue_;
     std::mutex syclQueueMutex_;
@@ -41,15 +47,11 @@ private:
     Capacity eventResourcesLoad_ = 0;
     std::unordered_map<DeviceResourceGroupId, std::unique_ptr<DeviceResourceGroup>> eventResources_;
     std::queue<DeviceResourceGroupId> freeEventResources_;
-    static const DeviceResourceGroup NullResourceGroup; // Used when no resources are available.
-    static constexpr DeviceResourceGroupId NullEventResourceGroupId{0};
 
     const Capacity resultResourcesCapacity_;
     Capacity resultResourcesLoad_ = 0;
     std::unordered_map<DeviceResourceGroupId, std::unique_ptr<DeviceResourceGroup>> resultResources_;
     std::queue<DeviceResourceGroupId> freeResultResources_;
-    static const DeviceResourceGroup NullResultResourceGroup; // Used when no resources are available.
-    static constexpr DeviceResourceGroupId NullResultResourceGroupId{0};
 
     const Capacity workLoadCapacity_;
     Capacity workLoad_ = 0;

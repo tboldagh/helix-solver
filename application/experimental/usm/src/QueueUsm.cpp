@@ -50,12 +50,14 @@ std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> QueueUsm::g
 
     DeviceResourceGroupId id = freeEventResources_.front();
     freeEventResources_.pop();
+    eventResourcesLoad_++;
     return {id, *eventResources_[id]};
 }
 
 void QueueUsm::returnEventResourceGroup(DeviceResourceGroupId resourceGroupId)
 {
     freeEventResources_.push(resourceGroupId);
+    eventResourcesLoad_--;
 }
 
 std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> QueueUsm::getResultResourceGroup()
@@ -68,12 +70,14 @@ std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> QueueUsm::g
 
     DeviceResourceGroupId id = freeResultResources_.front();
     freeResultResources_.pop();
+    resultResourcesLoad_++;
     return {id, *resultResources_[id]};
 }
 
 void QueueUsm::returnResultResourceGroup(DeviceResourceGroupId resourceGroupId)
 {
     freeResultResources_.push(resourceGroupId);
+    resultResourcesLoad_--;
 }
 
 sycl::queue& QueueUsm::checkoutQueue()

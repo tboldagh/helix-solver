@@ -138,3 +138,19 @@ PRIVATE
     IWorkerControllerMock
     Logger
 )
+
+helix_solver_add_library(QueueUsmSuite
+UNIT_TEST
+
+LOCATION
+    application/experimental/usm
+
+SRC
+    test/QueueUsmSuite.cpp
+
+PRIVATE
+    EventUsm
+    ILoggerMock
+    ITaskMock
+    Logger
+)

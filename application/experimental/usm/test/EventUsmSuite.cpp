@@ -15,7 +15,7 @@ protected:
         queue_ = sycl::queue(sycl::gpu_selector_v);
     }
 
-    ~EventUsmAllocationTest()
+    ~EventUsmAllocationTest() override
     {
         Logger::ILogger::setGlobalInstance(nullptr);
     }
@@ -85,7 +85,7 @@ protected:
         event_.allocateOnDevice(queue_);
     }
 
-    ~EventUsmTransferTest()
+    ~EventUsmTransferTest() override
     {
         event_.deallocateOnDevice(queue_);
     }

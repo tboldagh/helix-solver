@@ -38,7 +38,7 @@ protected:
         Logger::ILogger::setGlobalInstance(&loggerMock_);
     }
 
-    ~TaskUsmTest()
+    ~TaskUsmTest() override
     {
         Logger::ILogger::setGlobalInstance(nullptr);
     }
