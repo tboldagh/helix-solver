@@ -132,6 +132,7 @@ bool WorkerUsm::handleTaskReadyToQueue(ITask& task)
         return false;
     }
 
+    queue_.incrementWorkLoad();
     task.assignQueue(queue_);
     LOG_DEBUG("Task assigned to queue, task id: " + std::to_string(task.getId()));
 
@@ -224,6 +225,7 @@ bool WorkerUsm::handleTaskCompleted(ITask& task)
     LOG_DEBUG("Task id: " + std::to_string(task.getId()));
 
     queue_.returnResultResourceGroup(task.releaseResultResourceGroup());
+    queue_.decrementWorkLoad();
     LOG_DEBUG("Result resources returned to queue, task id: " + std::to_string(task.getId()));
 
     LOG_DEBUG("Task completed and will be handed in to controller, task id: " + std::to_string(task.getId()));

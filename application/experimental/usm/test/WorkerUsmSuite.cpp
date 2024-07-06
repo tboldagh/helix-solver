@@ -180,6 +180,7 @@ TEST_F(WorkerUsmTakProcessTasksTest, processReadyToQueue)
     EXPECT_CALL(queueMock_, getWorkCapacity()).WillRepeatedly(testing::Return(1));
     EXPECT_CALL(queueMock_, getWorkLoad()).WillRepeatedly(testing::Return(0));
     EXPECT_CALL(*taskPtr_, assignQueue(testing::Ref(queueMock_)));
+    EXPECT_CALL(queueMock_, incrementWorkLoad());
     expectLog(Logger::LogMessage::Severity::Debug, "Task assigned to queue, task id: " + std::to_string(taskId_));
     worker_.processTasks();
 }
@@ -319,6 +320,7 @@ TEST_F(WorkerUsmTakProcessTasksTest, processCompleted)
     EXPECT_CALL(workerControllerMock_, onTaskCompleted(testing::_)).WillOnce(testing::Invoke([](std::unique_ptr<ITask> task) {
         EXPECT_EQ(taskId_, task->getId());
     }));
+    EXPECT_CALL(queueMock_, decrementWorkLoad());
     expectLog(Logger::LogMessage::Severity::Debug, "Task completed and will be handed in to controller, task id: " + std::to_string(taskId_));
     worker_.processTasks();
 
