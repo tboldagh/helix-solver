@@ -2,7 +2,7 @@ helix_solver_add_library(EventUsm
 SYCL
 
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     include
@@ -15,8 +15,7 @@ SRC
     src/TaskUsm.cpp
     src/WorkerUsm.cpp
 
-PRIVATE
-    Debug
+PUBLIC
     Logger
 )
 
@@ -25,7 +24,7 @@ UNIT_TEST
 SYCL
 
 LOCATION
-    application/experimental/EventUsm/test
+    application/experimental/EventUsm
 
 SRC
     test/EventUsmSuite.cpp
@@ -33,12 +32,11 @@ SRC
 PRIVATE
     EventUsm
     ILoggerMock
-    Logger
 )
 
 helix_solver_add_library(IQueueMock
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     test-include
@@ -52,18 +50,21 @@ PRIVATE
 
 helix_solver_add_library(ITaskMock
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     test-include
 
 SRC
     test-src/ITaskMock.cpp
+
+PRIVATE
+    EventUsm
 )
 
 helix_solver_add_library(IWorkerMock
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     test-include
@@ -77,7 +78,7 @@ PRIVATE
 
 helix_solver_add_library(IWorkerControllerMock
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     test-include
@@ -91,7 +92,7 @@ PRIVATE
 
 helix_solver_add_library(ITaskStateObserverMock
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     test-include
@@ -118,7 +119,6 @@ PRIVATE
     IQueueMock
     ITaskStateObserverMock
     IWorkerControllerMock
-    Logger
 )
 
 helix_solver_add_library(WorkerUsmSuite
@@ -136,7 +136,6 @@ PRIVATE
     IQueueMock
     ITaskMock
     IWorkerControllerMock
-    Logger
 )
 
 helix_solver_add_library(QueueUsmSuite
@@ -152,5 +151,4 @@ PRIVATE
     EventUsm
     ILoggerMock
     ITaskMock
-    Logger
 )

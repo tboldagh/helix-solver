@@ -2,7 +2,7 @@ helix_solver_add_library(UtSyclHelpers
 SYCL
 
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     include

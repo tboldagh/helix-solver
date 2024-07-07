@@ -1,6 +1,6 @@
 helix_solver_add_library(CernRoot
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     ${ROOT_INCLUDE_DIRS}

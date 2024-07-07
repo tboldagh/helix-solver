@@ -1,6 +1,6 @@
 helix_solver_add_library(Logger
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     include
@@ -14,7 +14,7 @@ SRC
 
 helix_solver_add_library(ILoggerMock
 TYPE
-    OBJECT
+    STATIC
 
 INCLUDE
     test-include
