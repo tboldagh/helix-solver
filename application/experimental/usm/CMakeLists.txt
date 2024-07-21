@@ -24,7 +24,7 @@ UNIT_TEST
 SYCL
 
 LOCATION
-    application/experimental/EventUsm
+    application/experimental/usm
 
 SRC
     test/EventUsmSuite.cpp

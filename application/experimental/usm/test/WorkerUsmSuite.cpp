@@ -307,20 +307,29 @@ TEST_F(WorkerUsmTakProcessTasksTest, processWaitingForResultTransfer)
     worker_.processTasks();
 }
 
+TEST_F(WorkerUsmTakProcessTasksTest, processResultTransferred)
+{
+    worker_.onTaskStateChange(*taskPtr_);
+
+    expectProcessingTask(taskPtr_, ITask::State::ResultTransferred);
+    expectTaskIdLog(taskId_);
+    constexpr IQueue::DeviceResourceGroupId resultResourcesId = 43;
+    EXPECT_CALL(*taskPtr_, releaseResultResourceGroup()).WillOnce(testing::Return(resultResourcesId));
+    EXPECT_CALL(queueMock_, returnResultResourceGroup(resultResourcesId));
+    expectLog(Logger::LogMessage::Severity::Debug, "Result resources returned to queue, task id: " + std::to_string(taskId_));
+    worker_.processTasks();
+}
+
 TEST_F(WorkerUsmTakProcessTasksTest, processCompleted)
 {
     worker_.onTaskStateChange(*taskPtr_);
 
     expectProcessingTask(taskPtr_, ITask::State::Completed);
     expectTaskIdLog(taskId_);
-    constexpr IQueue::DeviceResourceGroupId resultResourcesId = 43;
-    EXPECT_CALL(*taskPtr_, releaseResultResourceGroup()).WillOnce(testing::Return(resultResourcesId));
-    EXPECT_CALL(queueMock_, returnResultResourceGroup(resultResourcesId));
-    expectLog(Logger::LogMessage::Severity::Debug, "Result resources returned to queue, task id: " + std::to_string(taskId_));
+    EXPECT_CALL(queueMock_, decrementWorkLoad());
     EXPECT_CALL(workerControllerMock_, onTaskCompleted(testing::_)).WillOnce(testing::Invoke([](std::unique_ptr<ITask> task) {
         EXPECT_EQ(taskId_, task->getId());
     }));
-    EXPECT_CALL(queueMock_, decrementWorkLoad());
     expectLog(Logger::LogMessage::Severity::Debug, "Task completed and will be handed in to controller, task id: " + std::to_string(taskId_));
     worker_.processTasks();
 

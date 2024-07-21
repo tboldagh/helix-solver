@@ -96,7 +96,7 @@ DataUsm::TransferEvents EventUsm::transferToDevice(sycl::queue& queue)
         return TransferEvents{};
     }
 
-    return transferEvents;
+    return std::move(transferEvents);
 }
 
 DataUsm::TransferEvents EventUsm::transferToHost(sycl::queue& queue)
@@ -128,7 +128,7 @@ DataUsm::TransferEvents EventUsm::transferToHost(sycl::queue& queue)
         return TransferEvents{};
     }
 
-    return transferEvents;
+    return std::move(transferEvents);
 }
 
 bool EventUsm::takeResourceGroup(const DeviceResourceGroup& resourceGroup, const sycl::queue& queue)

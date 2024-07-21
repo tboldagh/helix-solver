@@ -68,24 +68,28 @@ void TaskUsm::transferEvent()
 {
     isStateChanging_ = true;
     std::thread transferThread(&TaskUsm::transferEventToDeviceThread, this);
+    transferThread.detach();
 }
 
 void TaskUsm::execute()
 {
     isStateChanging_ = true;
     std::thread executionThread(&TaskUsm::executeThread, this);
+    executionThread.detach();
 }
 
 void TaskUsm::transferResult()
 {
     isStateChanging_ = true;
     std::thread transferThread(&TaskUsm::transferResultFromDeviceThread, this);
+    transferThread.detach();
 }
 
 IQueue::DeviceResourceGroupId TaskUsm::releaseEventResourceGroup()
 {
     event_->releaseResourceGroup();
     eventResourcesAssigned_ = false;
+    setState(State::WaitingForResultTransfer);
     return eventResourceGroupId_;
 }
 
@@ -93,6 +97,7 @@ IQueue::DeviceResourceGroupId TaskUsm::releaseResultResourceGroup()
 {
     result_->releaseResourceGroup();
     resultResourcesAssigned_ = false;
+    setState(State::Completed);
     return resultResourceGroupId_;
 }
 
@@ -158,5 +163,5 @@ void TaskUsm::transferResultFromDeviceThread()
     }
 
     isStateChanging_ = false;
-    setState(State::Completed);
+    setState(State::ResultTransferred);
 }

@@ -31,6 +31,11 @@ public:
     IQueue::DeviceResourceGroupId releaseEventResourceGroup() override;
     IQueue::DeviceResourceGroupId releaseResultResourceGroup() override;
 
+protected:
+    std::unique_ptr<EventUsm> event_;
+    std::unique_ptr<ResultUsm> result_;
+    IQueue* queue_;
+
 private:
     FRIEND_TEST(TaskUsmExecutionTest, TransferEventThread);
     FRIEND_TEST(TaskUsmExecutionTest, ExecuteThread);
@@ -44,13 +49,10 @@ private:
 
     const ITask::TaskId id_;
 
-    State state_ = State::Created;
+    State state_ = State::Created;  // Only one state change allowed between calls to onTaskStateChange on tx_
     bool isStateChanging_ = false;
-    ITaskStateObserver* stateObserver_ = nullptr;
 
-    std::unique_ptr<EventUsm> event_;
-    std::unique_ptr<ResultUsm> result_;
-    IQueue* queue_;
+    ITaskStateObserver* stateObserver_ = nullptr;
     bool eventResourcesAssigned_ = false;
     bool resultResourcesAssigned_ = false;
     IQueue::DeviceResourceGroupId eventResourceGroupId_;

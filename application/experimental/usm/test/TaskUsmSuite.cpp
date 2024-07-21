@@ -262,6 +262,15 @@ TEST_F(TaskUsmExecutionTest, ExecuteThread)
     ASSERT_TRUE(task_.isExecuted());
 }
 
+TEST_F(TaskUsmExecutionTest, ReleaseEventResourceGroup)
+{
+    EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+    IQueue::DeviceResourceGroupId deviceResourceGroupId = task_.releaseEventResourceGroup();
+    ASSERT_FALSE(task_.isEventResourcesAssigned());
+    ASSERT_EQ(deviceResourceGroupId, eventResourceGroupId_);
+    ASSERT_EQ(task_.getState(), ITask::State::WaitingForResultTransfer);
+}
+
 TEST_F(TaskUsmExecutionTest, TransferResultThread)
 {
     // We test only the thread function instead of transferResult() method because it spawns a thread
@@ -274,5 +283,14 @@ TEST_F(TaskUsmExecutionTest, TransferResultThread)
     task_.transferResultFromDeviceThread();
 
     ASSERT_FALSE(task_.isStateChanging());
+    ASSERT_EQ(task_.getState(), ITask::State::ResultTransferred);
+}
+
+TEST_F(TaskUsmExecutionTest, ReleaseResultResourceGroup)
+{
+    EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+    IQueue::DeviceResourceGroupId deviceResourceGroupId = task_.releaseResultResourceGroup();
+    ASSERT_FALSE(task_.isResultResourcesAssigned());
+    ASSERT_EQ(deviceResourceGroupId, resultResourceGroupId_);
     ASSERT_EQ(task_.getState(), ITask::State::Completed);
 }

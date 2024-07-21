@@ -21,3 +21,6 @@ ENV PATH="${PATH}:/cuda/bin"
 
 # docker run --gpus all --rm -it -v /usr/local/cuda-12.1:/cuda -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro -v $(pwd):/helix/ helix-solver-docker
 # docker run --gpus all --rm -it -v .:/helix/repo -v /usr/local/cuda-12.1:/cuda helix-solver-docker
+
+# To permit disabling address space randomization (for GDB debugging)
+# docker run --gpus all --rm -it -v .:/helix/repo -v /usr/local/cuda-12.1:/cuda --security-opt seccomp=unconfined helix-solver-docker

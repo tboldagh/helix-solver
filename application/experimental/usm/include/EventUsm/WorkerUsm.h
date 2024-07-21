@@ -33,6 +33,7 @@ private:
     bool handleTaskWaitingForExecution(ITask& task);
     bool handleTaskExecuted(ITask& task);
     bool handleTaskWaitingForResultTransfer(ITask& task);
+    bool handleResultTransferred(ITask& task);
     bool handleTaskCompleted(ITask& task);
 
     IQueue& queue_;

@@ -27,6 +27,7 @@ public:
         WaitingForExecution, // Resources transferred to device
         Executed, // Execution finished, event resources can be released
         WaitingForResultTransfer, // Execution finished, event resources released
+        ResultTransferred, // Result transferred to host, result resources can be released
         Completed // Execution finished, event resources released, solutions transferred to host, worker can release ownership
     };
     static std::string stateToString(State state);

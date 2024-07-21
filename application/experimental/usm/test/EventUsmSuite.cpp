@@ -167,7 +167,7 @@ TEST_F(EventUsmTransferTest, TransferToDeviceWrongQueueLogged)
         testing::Property(&Logger::LogMessage::getMessage, "Memory allocated on different queue for EventUsm with eventId " + std::to_string(event_.eventId_) + ".")
     )));
 
-    ASSERT_TRUE(event_.transferToDevice(queue_).empty());
+    ASSERT_TRUE(event_.transferToDevice(otherQueue).empty());
 }
 
 TEST_F(EventUsmTransferTest, TransferToHostWrongQueueLogged)
