@@ -15,7 +15,10 @@ public:
     static constexpr u_int32_t MaxPoints = 1e5;
 
     EventUsm(EventId eventId);
-    ~EventUsm();
+    EventUsm(const EventUsm&) = delete;
+    ~EventUsm() override;
+
+    void operator=(const EventUsm&) = delete;
 
     bool allocateOnDevice(sycl::queue& queue) override;
     bool deallocateOnDevice(sycl::queue& queue) override;

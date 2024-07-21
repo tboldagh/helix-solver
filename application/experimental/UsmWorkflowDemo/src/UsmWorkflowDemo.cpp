@@ -17,7 +17,7 @@ public:
     explicit DemoTask(ITask::TaskId id)
     : TaskUsm(id) {}
 
-    ~DemoTask() = default;
+    ~DemoTask() override = default;
 
     // From ITask
     ExecutionEvents executeOnDevice(sycl::queue& syclQueue) override
@@ -35,12 +35,12 @@ public:
             
             handler.parallel_for(sycl::range<1>(event_->hostNumPoints_), [=](sycl::id<1> idx)
             {
-                someSolutionParameters[idx] = xs[idx] + ys[idx] + zs[idx] + layers[idx];
+                someSolutionParameters[idx] = xs[idx] + ys[idx] + zs[idx] + layers[idx] + *numPoints;
             });
         }));
         executionEvents.insert(std::move(executionEvent));
 
-        return std::move(executionEvents);
+        return executionEvents;
     }
 };
 

@@ -15,7 +15,10 @@ public:
     static constexpr u_int32_t MaxSolutions = 1e5;
 
     ResultUsm(ResultId resultId);
-    ~ResultUsm();
+    ResultUsm(const ResultUsm&) = delete;
+    ~ResultUsm() override;
+
+    void operator=(const ResultUsm&) = delete;
 
     bool allocateOnDevice(sycl::queue& queue) override;
     bool deallocateOnDevice(sycl::queue& queue) override;

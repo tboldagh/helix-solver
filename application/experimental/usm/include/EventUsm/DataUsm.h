@@ -10,6 +10,8 @@
 class DataUsm
 {
 public:
+    virtual ~DataUsm() = default;
+
     using TransferEvents = std::unordered_set<std::unique_ptr<sycl::event>>;
 
     virtual bool allocateOnDevice(sycl::queue& queue) = 0;
