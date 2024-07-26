@@ -23,7 +23,7 @@ if [ "${SETVARS_COMPLETED:-}" != "1" ]; then
 fi
 
 if [[ -z "${ROOTSYS}" ]]; then
-    echo "Environment not prepared correctly. \$ROOTSYS not set. Ensure you have run prepare_environment.sh"
+    echo "Environment not prepared correctly. \$ROOTSYS not set. Ensure you have sourced prepare_environment.sh"
     exit 1
 fi
 

@@ -2,9 +2,6 @@ helix_solver_add_library(HelixSolver
 APPLICATION
 SYCL
 
-TYPE
-    OBJECT
-
 INCLUDE
     include
 
