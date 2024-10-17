@@ -2,7 +2,7 @@
 
 import math
 import json
-import random
+import argparse
 
 
 class DetectorProperties:
@@ -135,6 +135,24 @@ class SplitterSettings:
     pole_regions = []
 
 
+class CommandLineArguments:
+    splitter_settings_path = None
+    points_path = None
+    points_output_path = None
+
+def parse_command_line_arguments():
+
+    parser = argparse.ArgumentParser(description='Splitter settings and spacepoints generator')
+    parser.add_argument('--splitter_settings', type=str, help='Path to the splitter settings JSON file')
+    parser.add_argument('--points', type=str, help='Path to the spacepoints CSV file')
+    parser.add_argument('--points_output', type=str, help='Path to the output spacepoints with region IDs CSV file')
+
+    args = parser.parse_args()
+    CommandLineArguments.splitter_settings_path = args.splitter_settings
+    CommandLineArguments.points_path = args.points
+    CommandLineArguments.points_output_path = args.points_output
+
+
 def load_splitter_settings(path):
     with open(path, 'r') as file:
         settings = json.load(file)
@@ -227,19 +245,19 @@ def write_points_with_region_ids(points, path):
             region_ids = point['region_ids']
             file.write(f"{point['x']}, {point['y']}, {point['z']}, {', '.join(map(str, region_ids))}\n")
 
-def main():
-    splitter_settings_path = 'SplitterSettings.json'
-    points_path = 'event000000000-spacepoint.csv'
 
-    load_splitter_settings(splitter_settings_path)
+def main():
+    parse_command_line_arguments()
+
+    load_splitter_settings(CommandLineArguments.splitter_settings_path)
     print_splitter_settings()
 
-    points = read_spacepoints(points_path)
+    points = read_spacepoints(CommandLineArguments.points_path)
     points = points_with_region_ids(points)
     print_points_by_region_id(points)
 
-    points_output_path = points_path[:points_path.rfind('.')] + '-with-region-ids.csv'
-    write_points_with_region_ids(points, points_output_path)
+    write_points_with_region_ids(points, CommandLineArguments.points_output_path)
+
 
 if __name__ == '__main__':
     main()
