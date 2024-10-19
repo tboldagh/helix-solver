@@ -1,0 +1,36 @@
+{
+    "detector_properties": {
+        "max_abs_xy": 1100,
+        "max_abs_z": 3100
+    },
+    "wedges": [
+        {
+            "id": 1,
+            "z_angle_min": 1,
+            "z_angle_max": 2,
+            "x_angle_min": 1,
+            "x_angle_max": 2,
+            "interaction_region_width": 420
+        },
+        {
+            "id": 2,
+            "z_angle_min": 2,
+            "z_angle_max": 3,
+            "x_angle_min": 2,
+            "x_angle_max": 3,
+            "interaction_region_width": 420
+        }
+    ],
+    "pole_regions": [
+        {
+            "id": 3,
+            "x_angle": 0.5,
+            "interaction_region_width": 420
+        },
+        {
+            "id": 4,
+            "x_angle": 2.5,
+            "interaction_region_width": 420
+        }
+    ]
+}
