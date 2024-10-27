@@ -13,8 +13,14 @@ if [ ! -d "build" ]; then
     mkdir "build"
 fi
 
+# Create ut sandbox directory if it doesn't exist
+if [ ! -d "/tmp/ut_sandbox" ]; then
+    mkdir "/tmp/ut_sandbox"
+fi
+
 if [ "$clean" = true ]; then
     rm -rf build/*
+    rm -rf /tmp/ut_sandbox/*
 fi
 
 if [ "${SETVARS_COMPLETED:-}" != "1" ]; then
