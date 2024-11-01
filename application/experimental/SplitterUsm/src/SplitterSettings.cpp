@@ -82,9 +82,9 @@ SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngl
         std::vector<Range> zRanges = angleWrapPi(uniformRangeSplit(numZRanges, 0.0, 2.0 * M_PI, zAngleMargin));
         std::vector<Range> xRanges = uniformRangeSplit(numXRanges, minXAgle, M_PI - minXAgle, xAngleMargin);
         const float interactionRegionWidth = interactionRegionMax - interactionRegionMin;
-        for(auto& zRange : zRanges)
+        for(auto& xRange : xRanges)
         {
-            for(auto& xRange : xRanges)
+            for(auto& zRange : zRanges)
             {
                 regionId++;
                 wedges_.emplace_back(regionId, zRange.first, zRange.second, xRange.first, xRange.second, interactionRegionWidth);

@@ -2,6 +2,7 @@
 
 #include "SplitterUsm/SplitterSettings.h"
 #include "EventUsm/EventUsm.h"
+#include "SplitterUsm/Splitter.h"
 
 #include <array>
 #include <optional>
@@ -15,12 +16,16 @@ public:
     class PointsWithRegionIds
     {
     public:
-        static constexpr u_int32_t MaxRegionsPerPoint = 16;
+        PointsWithRegionIds() = default;
+        PointsWithRegionIds(std::unique_ptr<EventUsm>&& event, std::unique_ptr<std::unordered_map<u_int32_t, Splitter::RegionIds>>&& regionIdsByPointIndex);
+        PointsWithRegionIds(const PointsWithRegionIds&) = delete;
+        PointsWithRegionIds(PointsWithRegionIds&&) = default;
+        PointsWithRegionIds& operator=(const PointsWithRegionIds&) = delete;
+        PointsWithRegionIds& operator=(PointsWithRegionIds&&) = default;
+        ~PointsWithRegionIds() = default;
 
-        PointsWithRegionIds(std::unique_ptr<EventUsm>&& event, std::unique_ptr<std::unordered_map<u_int32_t, std::array<u_int16_t, MaxRegionsPerPoint>>>&& regionIdsByPointIndex);
-
-        std::unique_ptr<EventUsm> event;
-        std::unique_ptr<std::unordered_map<u_int32_t, std::array<uint16_t, MaxRegionsPerPoint>>> regionIdsByPointIndex;
+        std::unique_ptr<EventUsm> event_;
+        std::unique_ptr<std::unordered_map<u_int32_t, Splitter::RegionIds>> regionIdsByPointIndex_;
     };
 
     static std::optional<SplitterSettings> readSplitterSettings(const std::string& path);

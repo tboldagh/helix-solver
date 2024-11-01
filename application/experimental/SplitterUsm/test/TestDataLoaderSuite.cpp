@@ -11,7 +11,7 @@ protected:
 
     ~TestDataLoaderTest() override {}
 
-    static SplitterSettings getSplitterSettings()
+    SplitterSettings getSplitterSettings()
     {
         constexpr float maxAbsXy = 1100.0;
         constexpr float maxAbsZ = 3100.0;
@@ -79,47 +79,44 @@ TEST_F(TestDataLoaderTest, ReadPointsWithRegionIds)
             160.233093, 58.9596481, -1123.19995, 4
             124.91214, 39.9765129, -1123.19995, 4
             )";
-    {
+    {   // ofstream scope
         std::ofstream file(path);
-        if (!file.is_open())
-        {
-            FAIL() << "Failed to open file " << path;
-        }
+        ASSERT_TRUE(file.is_open());
         file << content;
-    }
+    }   // ofstream scope
 
     std::optional<TestDataLoader::PointsWithRegionIds> pointsWithRegionIds = TestDataLoader::readPointsWithRegionIds(path, 42);
     ASSERT_TRUE(pointsWithRegionIds.has_value());
-    ASSERT_EQ(pointsWithRegionIds->event->eventId_, 42);
-    ASSERT_EQ(pointsWithRegionIds->event->hostNumPoints_, 7);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->size(), 7);
+    ASSERT_EQ(pointsWithRegionIds->event_->eventId_, 42);
+    ASSERT_EQ(pointsWithRegionIds->event_->hostNumPoints_, 7);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->size(), 7);
 
     // Check the first point
-    ASSERT_EQ(pointsWithRegionIds->event->hostXs_[0], -59.243309f);
-    ASSERT_EQ(pointsWithRegionIds->event->hostYs_[0], 115.000717f);
-    ASSERT_EQ(pointsWithRegionIds->event->hostZs_[0], -1123.19995f);
+    ASSERT_EQ(pointsWithRegionIds->event_->hostXs_[0], -59.243309f);
+    ASSERT_EQ(pointsWithRegionIds->event_->hostYs_[0], 115.000717f);
+    ASSERT_EQ(pointsWithRegionIds->event_->hostZs_[0], -1123.19995f);
 
     // Check last point
-    ASSERT_EQ(pointsWithRegionIds->event->hostXs_[6], 124.91214f);
-    ASSERT_EQ(pointsWithRegionIds->event->hostYs_[6], 39.9765129f);
-    ASSERT_EQ(pointsWithRegionIds->event->hostZs_[6], -1123.19995f);
+    ASSERT_EQ(pointsWithRegionIds->event_->hostXs_[6], 124.91214f);
+    ASSERT_EQ(pointsWithRegionIds->event_->hostYs_[6], 39.9765129f);
+    ASSERT_EQ(pointsWithRegionIds->event_->hostZs_[6], -1123.19995f);
 
     // Check the region ids
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(0)[0], 2);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(0)[1], 0); // Rest of the array zeroed
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(0)[0], 2);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(0)[1], 0); // Rest of the array zeroed
 
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(2)[0], 21);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(2)[1], 37);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(2)[2], 0); // Rest of the array zeroed
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(2)[0], 21);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(2)[1], 37);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(2)[2], 0); // Rest of the array zeroed
 
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(3)[0], 4);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(3)[1], 2);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(3)[2], 42);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(3)[3], 420);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(3)[4], 0); // Rest of the array zeroed
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(3)[0], 4);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(3)[1], 2);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(3)[2], 42);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(3)[3], 420);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(3)[4], 0); // Rest of the array zeroed
 
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(6)[0], 4);
-    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex->at(6)[1], 0); // Rest of the array zeroed
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(6)[0], 4);
+    ASSERT_EQ(pointsWithRegionIds->regionIdsByPointIndex_->at(6)[1], 0); // Rest of the array zeroed
 
     // Remove the file
     ASSERT_EQ(std::remove(path.c_str()), 0);

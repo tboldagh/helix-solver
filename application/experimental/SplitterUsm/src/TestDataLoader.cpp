@@ -5,9 +5,9 @@
 #include <cmath>
 
 
-TestDataLoader::PointsWithRegionIds::PointsWithRegionIds(std::unique_ptr<EventUsm>&& event, std::unique_ptr<std::unordered_map<u_int32_t, std::array<u_int16_t, MaxRegionsPerPoint>>>&& regionIdsByPointIndex)
-: event(std::move(event))
-, regionIdsByPointIndex(std::move(regionIdsByPointIndex)) {}
+TestDataLoader::PointsWithRegionIds::PointsWithRegionIds(std::unique_ptr<EventUsm>&& event, std::unique_ptr<std::unordered_map<u_int32_t, Splitter::RegionIds>>&& regionIdsByPointIndex)
+: event_(std::move(event))
+, regionIdsByPointIndex_(std::move(regionIdsByPointIndex)) {}
 
 
 std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::string& path)
@@ -151,7 +151,7 @@ std::optional<TestDataLoader::PointsWithRegionIds> TestDataLoader::readPointsWit
         static_cast<void>(columnNames);
 
         auto event = std::make_unique<EventUsm>(eventId);
-        auto regionIdsByPointIndex = std::make_unique<std::unordered_map<u_int32_t, std::array<uint16_t, TestDataLoader::PointsWithRegionIds::MaxRegionsPerPoint>>>();
+        auto regionIdsByPointIndex = std::make_unique<std::unordered_map<u_int32_t, Splitter::RegionIds>>();
 
         // Read the points with region ids
         std::string line;
@@ -174,7 +174,7 @@ std::optional<TestDataLoader::PointsWithRegionIds> TestDataLoader::readPointsWit
                 numRegions++;
             }
 
-            for (unsigned i = numRegions; i < TestDataLoader::PointsWithRegionIds::MaxRegionsPerPoint; ++i)
+            for (unsigned i = numRegions; i < Splitter::MaxRegionsPerPoint; ++i)
             {
                 (*regionIdsByPointIndex)[event->hostNumPoints_][i] = 0;
             }
