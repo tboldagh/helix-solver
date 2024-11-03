@@ -19,16 +19,18 @@ void Splitter::getRegionIdsNaive(float x, float y, float z, RegionIds& regionIds
 
     u_int8_t inRegionCount = 0;
 
-    for (const auto& poleRegion : settings_.poleRegions_)
+    for (auto i = 0; i < settings_.poleRegions_.getSize(); i++)
     {
+        const auto& poleRegion = settings_.poleRegions_[i];
         if (isPointInPoleRegion(x, y, z, poleRegion))
         {
             regionIds[inRegionCount++] = poleRegion.id_;
         }
     }
 
-    for (const auto& wedge : settings_.wedges_)
+    for (auto i = 0; i < settings_.wedges_.getSize(); i++)
     {
+        const auto& wedge = settings_.wedges_[i];
         if (isPointInWedge(x, y, z, wedge))
         {
             regionIds[inRegionCount++] = wedge.id_;

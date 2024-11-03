@@ -8,12 +8,16 @@
 class Splitter
 {
 public:
-    static constexpr u_int8_t MaxRegionsPerPoint = 32;
-    using RegionIds = std::array<u_int16_t, MaxRegionsPerPoint>;
+    using RegionIds = std::array<u_int16_t, SplitterSettings::MaxRegionsPerPoint>;
 
+    Splitter() {}; // Clang bug: https://stackoverflow.com/questions/43819314/default-member-initializer-needed-within-definition-of-enclosing-class-outside
     Splitter(const SplitterSettings& settings);
+    Splitter(const Splitter&) = default;
+    Splitter(Splitter&&) = default;
+    Splitter& operator=(const Splitter&) = default;
+    Splitter& operator=(Splitter&&) = default;
 
-    void getRegionIds(float x, float y, float z, RegionIds& regionIds) const;
+    SYCL_EXTERNAL void getRegionIds(float x, float y, float z, RegionIds& regionIds) const;
 
 private:
     void getRegionIdsNaive(float x, float y, float z, RegionIds& regionIds) const;
@@ -25,5 +29,5 @@ private:
     static float atan2Wrap2Pi(float y, float x);
     static float wrap2Pi(float angle);
 
-    const SplitterSettings settings_;
+    SplitterSettings settings_;
 };

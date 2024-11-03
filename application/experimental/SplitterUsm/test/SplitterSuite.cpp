@@ -1,6 +1,9 @@
 #include "SplitterUsm/TestDataLoader.h"
 #include "SplitterUsm/SplitterSettings.h"
 #include "SplitterUsm/Splitter.h"
+#include "EventUsm/EventUsm.h"
+#include "Logger/Logger.h"
+#include "ILoggerMock/ILoggerMock.h"
 
 #include <gtest/gtest.h>
 #include <fstream>
@@ -122,6 +125,77 @@ protected:
 const std::string SplitterTest::SandboxPath = "/tmp/ut_sandbox";
 const std::string SplitterTest::SplitterSettingsPath = SandboxPath + "/SplitterTest_splitterSettings.json";
 const std::string SplitterTest::TestDataGeneratorPath = "/helix/repo/application/experimental/SplitterUsm/TestDataGenerator/TestDataGenerator.py";
+
+class SyclSplitterTest : public SplitterTest
+{
+protected:
+    SyclSplitterTest()
+    {
+        Logger::ILogger::setGlobalInstance(&logger_);
+
+        queue_ = sycl::queue(sycl::gpu_selector_v);
+    }
+
+    ~SyclSplitterTest() override
+    {
+        Logger::ILogger::setGlobalInstance(nullptr);
+    }
+
+    Logger::ILoggerMock logger_;
+    sycl::queue queue_;
+};
+
+TEST_F(SyclSplitterTest, Random10Points)
+{
+    EventUsm::EventId eventId = 42;
+    auto event = std::make_unique<EventUsm>(eventId);
+    std::array<float, 10> xs{1000, 200, -300, 420, -800, 0, 500, 600, -700, 800};
+    std::array<float, 10> ys{300, 200, -300, 300, 90, 20, 0, 832, -500, 900};
+    std::array<float, 10> zs{100, 0, 420, 2137, 1500, -2500, -400, 1800, -1900, 1000};
+    std::array<EventUsm::LayerNumber, 10> layers{0, 1, 2, 3, 4, 0, 1, 2, 3, 4};
+    for (u_int32_t i = 0; i < 10; ++i)
+    {
+        event->hostXs_[i] = xs[i];
+        event->hostYs_[i] = ys[i];
+        event->hostZs_[i] = zs[i];
+        event->hostLayers_[i] = layers[i];
+    }
+    event->hostNumPoints_ = 10;
+
+    event->allocateOnDevice(queue_);
+    event->transferToDevice(queue_);
+
+    auto deviceSplitter = sycl::malloc_device<Splitter>(1, queue_);
+    queue_.memcpy(deviceSplitter, &splitter_, sizeof(Splitter)).wait();
+
+    std::array<Splitter::RegionIds, 10> regionIds;
+    auto deviceRegionIds = sycl::malloc_device<Splitter::RegionIds>(10, queue_);
+
+    queue_.submit([&](sycl::handler& handler)
+    {
+        auto xs = event->deviceXs_;
+        auto ys = event->deviceYs_;
+        auto zs = event->deviceZs_;
+
+        handler.parallel_for(sycl::range<1>(event->hostNumPoints_), [xs, ys, zs, deviceRegionIds, deviceSplitter](sycl::id<1> idx)
+        {
+            deviceSplitter->getRegionIds(xs[idx], ys[idx], zs[idx], deviceRegionIds[idx]);
+        });
+    }).wait();
+
+    event->deallocateOnDevice(queue_);
+
+    queue_.memcpy(regionIds.data(), deviceRegionIds, 10 * sizeof(Splitter::RegionIds)).wait();
+
+    for (u_int32_t i = 0; i < 10; ++i)
+    {
+        Splitter::RegionIds expectedRegionIds{0};
+        splitter_.getRegionIds(xs[i], ys[i], zs[i], expectedRegionIds);
+        ASSERT_TRUE(regionIdsEqual(regionIds[i], expectedRegionIds));
+    }
+
+    sycl::free(deviceRegionIds, queue_);
+}
 
 
 class SinglePointTest : public SplitterTest

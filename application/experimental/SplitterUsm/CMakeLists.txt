@@ -13,6 +13,7 @@ SRC
     src/Splitter.cpp
 
 PUBLIC
+    ConstSizeVector
     EventUsm
 )
 
@@ -30,6 +31,20 @@ PRIVATE
     SplitterUsm
 )
 
+helix_solver_add_library(SplitterSettingsSuite
+UNIT_TEST
+SYCL
+
+LOCATION
+    application/experimental/SplitterUsm
+
+SRC
+    test/SplitterSettingsSuite.cpp
+
+PRIVATE
+    SplitterUsm
+)
+
 helix_solver_add_library(SplitterSuite
 UNIT_TEST
 SYCL
@@ -42,4 +57,5 @@ SRC
 
 PRIVATE
     SplitterUsm
+    ILoggerMock
 )

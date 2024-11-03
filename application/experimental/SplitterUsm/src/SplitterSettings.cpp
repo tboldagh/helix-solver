@@ -58,8 +58,7 @@ bool SplitterSettings::PoleRegion::isValid() const
             interactionRegionWidth_ > 0.0;
 }
 
-
-SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAgle, float maxXAgle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, std::vector<Wedge>&& wedges, std::vector<PoleRegion>&& poleRegions)
+SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAgle, float maxXAgle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges, ConstSizeVector<PoleRegion, 2>&& poleRegions)
 : maxAbsXy_(maxAbsXy)
 , maxAbsZ_(maxAbsZ)
 , minZAngle_(minZAngle)
@@ -76,7 +75,7 @@ SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngl
 , wedges_(std::move(wedges))
 , poleRegions_(std::move(poleRegions))
 {
-    if (wedges_.empty())
+    if (wedges_.isEmpty())
     {
         u_int16_t regionId = 0;
         std::vector<Range> zRanges = angleWrapPi(uniformRangeSplit(numZRanges, 0.0, 2.0 * M_PI, zAngleMargin));
@@ -87,19 +86,19 @@ SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngl
             for(auto& zRange : zRanges)
             {
                 regionId++;
-                wedges_.emplace_back(regionId, zRange.first, zRange.second, xRange.first, xRange.second, interactionRegionWidth);
+                wedges_.pushBack(Wedge(regionId, zRange.first, zRange.second, xRange.first, xRange.second, interactionRegionWidth));
             }
         }
     }
 
-    if (poleRegions_.empty())
+    if (poleRegions_.isEmpty())
     {
-        u_int16_t regionId = std::max_element(wedges_.begin(), wedges_.end(), [](const Wedge& a, const Wedge& b) { return a.id_ < b.id_; })->id_;
+        u_int16_t regionId = wedges_.back().id_;
 
         regionId++;
-        poleRegions_.emplace_back(regionId, M_PI - poleRegionAngle - xAngleMargin, interactionRegionMax - interactionRegionMin);
+        poleRegions_.pushBack(PoleRegion(regionId, M_PI - poleRegionAngle - xAngleMargin, interactionRegionMax - interactionRegionMin));
         regionId++;
-        poleRegions_.emplace_back(regionId, poleRegionAngle + xAngleMargin, interactionRegionMax - interactionRegionMin);
+        poleRegions_.pushBack(PoleRegion(regionId, poleRegionAngle + xAngleMargin, interactionRegionMax - interactionRegionMin));
     }
 }
 
@@ -126,6 +125,19 @@ bool SplitterSettings::operator==(const SplitterSettings& other) const
 bool SplitterSettings::isValid() const
 {
     constexpr float epsilon = 1e-6;
+
+    bool wedgesValid = !wedges_.isEmpty();
+    for (auto i = 0; i < wedges_.getSize(); ++i)
+    {
+        wedgesValid = wedgesValid && wedges_[i].isValid();
+    }
+
+    bool poleRegionsValid = !poleRegions_.isEmpty();
+    for (auto i = 0; i < poleRegions_.getSize(); ++i)
+    {
+        poleRegionsValid = poleRegionsValid && poleRegions_[i].isValid();
+    }
+
     return maxAbsXy_ > 0.0 && maxAbsZ_ > 0.0 &&
             minZAngle_ >= 0.0 && minZAngle_ < 2.0 * M_PI + epsilon &&
             maxZAngle_ >= 0.0 && maxZAngle_ < 2.0 * M_PI + epsilon &&
@@ -137,10 +149,8 @@ bool SplitterSettings::isValid() const
             poleRegionAngle_ > 0.0 && poleRegionAngle_ < M_PI &&
             interactionRegionMin_ < 0.0 && interactionRegionMax_ > 0.0 &&
             numZRanges_ > 0 && numXRanges_ > 0 &&
-            !wedges_.empty() &&
-            std::all_of(wedges_.begin(), wedges_.end(), [](const Wedge& wedge) { return wedge.isValid(); }) &&
-            !poleRegions_.empty() &&
-            std::all_of(poleRegions_.begin(), poleRegions_.end(), [](const PoleRegion& poleRegion) { return poleRegion.isValid(); });
+            wedgesValid &&
+            poleRegionsValid;
 }
 
 std::vector<SplitterSettings::Range> SplitterSettings::uniformRangeSplit(u_int8_t numRanges, float minValue, float maxValue, float margin)

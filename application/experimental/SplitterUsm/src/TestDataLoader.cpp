@@ -1,4 +1,6 @@
 #include "SplitterUsm/TestDataLoader.h"
+#include "SplitterUsm/SplitterSettings.h"
+#include "ConstSizeVector/ConstSizeVector.h"
 
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -41,7 +43,7 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
         const u_int8_t numXRanges = json["splitter_properties"]["num_x_ranges"];
 
         // Wedges
-        std::vector<SplitterSettings::Wedge> wedges;
+        ConstSizeVector<SplitterSettings::Wedge, SplitterSettings::MaxWedgesNum> wedges;
         for (const auto& wedgeJson : json["wedges"])
         {
             const u_int16_t id = wedgeJson["id"];
@@ -50,17 +52,17 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
             const float xAngleMin = wedgeJson["x_angle_min"];
             const float xAngleMax = wedgeJson["x_angle_max"];
             const float interactionRegionWidth = wedgeJson["interaction_region_width"];
-            wedges.emplace_back(id, zAngleMin, zAngleMax, xAngleMin, xAngleMax, interactionRegionWidth);
+            wedges.pushBack(SplitterSettings::Wedge(id, zAngleMin, zAngleMax, xAngleMin, xAngleMax, interactionRegionWidth));
         }
 
         // Pole regions
-        std::vector<SplitterSettings::PoleRegion> poleRegions;
+        ConstSizeVector<SplitterSettings::PoleRegion, 2> poleRegions;
         for (const auto& poleRegionJson : json["pole_regions"])
         {
             const u_int16_t id = poleRegionJson["id"];
             const float xAngle = poleRegionJson["x_angle"];
             const float interactionRegionWidth = poleRegionJson["interaction_region_width"];
-            poleRegions.emplace_back(id, xAngle, interactionRegionWidth);
+            poleRegions.pushBack(SplitterSettings::PoleRegion(id, xAngle, interactionRegionWidth));
         }
 
         return SplitterSettings(
@@ -102,8 +104,9 @@ bool TestDataLoader::writeSplitterSettings(const std::string& path, const Splitt
     json["splitter_properties"]["num_x_ranges"] = settings.numXRanges_;
 
     // Wedges
-    for (const auto& wedge : settings.wedges_)
+    for (auto i = 0; i < settings.wedges_.getSize(); ++i)
     {
+        const auto& wedge = settings.wedges_[i];
         nlohmann::json wedgesJson;
         wedgesJson["id"] = wedge.id_;
         wedgesJson["z_angle_min"] = wedge.zAngleMin_;
@@ -115,8 +118,9 @@ bool TestDataLoader::writeSplitterSettings(const std::string& path, const Splitt
     }
 
     // Pole regions
-    for (const auto& poleRegion : settings.poleRegions_)
+    for (auto i = 0; i < settings.poleRegions_.getSize(); ++i)
     {
+        const auto& poleRegion = settings.poleRegions_[i];
         nlohmann::json poleRegionJson;
         poleRegionJson["id"] = poleRegion.id_;
         poleRegionJson["x_angle"] = poleRegion.xAngle_;
@@ -174,7 +178,7 @@ std::optional<TestDataLoader::PointsWithRegionIds> TestDataLoader::readPointsWit
                 numRegions++;
             }
 
-            for (unsigned i = numRegions; i < Splitter::MaxRegionsPerPoint; ++i)
+            for (unsigned i = numRegions; i < SplitterSettings::MaxRegionsPerPoint; ++i)
             {
                 (*regionIdsByPointIndex)[event->hostNumPoints_][i] = 0;
             }
