@@ -11,6 +11,7 @@ enum class DeviceResourceType : u_int8_t
     Zs,
     Layers,
     NumSolutions,
+    Splitter,
     SomeSolutionParameters
 };
 
