@@ -11,15 +11,15 @@ class ConstSizeVector final
 {
     using AccessorType = sycl::accessor<Type>;
 public:
-    explicit ConstSizeVector() = default;
-    explicit ConstSizeVector(const ConstSizeVector<Type, MaxSize>& other);
+    ConstSizeVector() = default;
+    explicit ConstSizeVector(const ConstSizeVector<Type, MaxSize>& other) = default;
+    explicit ConstSizeVector(ConstSizeVector<Type, MaxSize>&& other) = default;
     explicit ConstSizeVector(const AccessorType& accessor);
-    ConstSizeVector(ConstSizeVector&& other) = delete;
-
+    ConstSizeVector& operator=(const ConstSizeVector<Type, MaxSize>& other);
+    ConstSizeVector& operator=(ConstSizeVector&& other) = default;
     ~ConstSizeVector() = default;
 
-    ConstSizeVector& operator=(const ConstSizeVector<Type, MaxSize>& other);
-    ConstSizeVector& operator=(ConstSizeVector&& other) = delete;
+    bool operator==(const ConstSizeVector<Type, MaxSize>& other) const;
 
     inline const Type& operator[](uint32_t index) const;
     inline Type& operator[](uint32_t index);
@@ -47,16 +47,6 @@ private:
     Type elements[MaxSize];
 };
 
-template<typename Type, uint32_t MaxSize>
-ConstSizeVector<Type, MaxSize>::ConstSizeVector(const ConstSizeVector<Type, MaxSize>& other)
-: size(other.size)
-{
-    size = other.size;
-    for(uint32_t i = 0; i < size; ++i)
-    {
-        elements[i] = other.elements[i];
-    }
-}
 
 template<typename Type, uint32_t MaxSize>
 ConstSizeVector<Type, MaxSize>::ConstSizeVector(const AccessorType& accessor)
@@ -78,6 +68,25 @@ ConstSizeVector<Type, MaxSize>& ConstSizeVector<Type, MaxSize>::operator=(const 
     }
 
     return *this;
+}
+
+template<typename Type, uint32_t MaxSize>
+bool ConstSizeVector<Type, MaxSize>::operator==(const ConstSizeVector<Type, MaxSize>& other) const
+{
+    if(size != other.size)
+    {
+        return false;
+    }
+
+    for(uint32_t i = 0; i < size; ++i)
+    {
+        if(elements[i] != other.elements[i])
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 template<typename Type, uint32_t MaxSize>

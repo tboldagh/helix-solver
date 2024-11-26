@@ -137,7 +137,7 @@ A list of pole regions. Each one consists of following attributes:
 ```
 
 ### Points CSV
-A file containg a list of points in CSV format with column names in the first row and ',' as separator. The file has to contain columns `measurement_id`, `x`, `y`, `z`, and optionally `var_r` and `var_z`. Columns have to be in that order. Only `x`, `y`, and `z` are actually used.
+A file containg a list of points in CSV format with column names in the first row and ',' as separator. The file has to contain columns `measurement_id`, `geometry_id`, `x`, `y`, `z`, and optionally `var_r` and `var_z`. Columns have to be in that order. Only `x`, `y`, and `z` are actually used.
 
 #### Example
 ```csv

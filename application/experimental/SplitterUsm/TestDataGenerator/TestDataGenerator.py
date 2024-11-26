@@ -198,6 +198,8 @@ def read_spacepoints(path):
 
     points = []
     for line in lines[1:]:
+        if len(line.strip()) == 0:
+            continue
         point_variables = line.strip().split(',')
         point = {
             'x': float(point_variables[2]),
@@ -250,7 +252,7 @@ def main():
     parse_command_line_arguments()
 
     load_splitter_settings(CommandLineArguments.splitter_settings_path)
-    print_splitter_settings()
+    # print_splitter_settings()
 
     points = read_spacepoints(CommandLineArguments.points_path)
     points = points_with_region_ids(points)
