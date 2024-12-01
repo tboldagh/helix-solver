@@ -13,6 +13,31 @@ void Splitter::getRegionIds(float x, float y, float z, RegionIds& regionIds) con
     getRegionIdsNaive(x, y, z, regionIds);
 }
 
+u_int16_t Splitter::getNumRegions() const
+{
+    return settings_.numZRanges_ * settings_.numXRanges_ + 2;   // + 2 for poles
+}
+
+const SplitterSettings& Splitter::getSettings() const
+{
+    return settings_;
+}
+
+bool Splitter::isPointInRegion(float x, float y, float z, u_int16_t regionId) const
+{
+    const auto lastWedgeId = settings_.numZRanges_ * settings_.numXRanges_; // 0 reserved for invalid region
+    if (regionId <= lastWedgeId)
+    {
+        const auto& wedge = settings_.wedges_[regionId - 1];
+        return isPointInWedge(x, y, z, wedge);
+    }
+    else
+    {
+        const auto& poleRegion = settings_.poleRegions_[regionId - lastWedgeId - 1];
+        return isPointInPoleRegion(x, y, z, poleRegion);
+    }
+}
+
 void Splitter::getRegionIdsNaive(float x, float y, float z, RegionIds& regionIds) const
 {
     // TODO: Assert regionIds is zeroed

@@ -9,6 +9,8 @@ INCLUDE
 
 SRC
     src/HelixSolverTask.cpp
+    src/SingleRegionKernel.cpp
+    src/HelixSolverQueue.cpp
 
 PUBLIC
     EventUsm

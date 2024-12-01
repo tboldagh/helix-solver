@@ -4,6 +4,7 @@
 #include "EventUsm/EventUsm.h"
 #include "EventUsm/ResultUsm.h"
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
@@ -40,6 +41,7 @@ public:
     virtual bool isStateChanging() const = 0;
     virtual bool isEventResourcesAssigned() const = 0;
     virtual bool isResultResourcesAssigned() const = 0;
+    virtual std::chrono::milliseconds getExecutionTime() const = 0;
 
     virtual void takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_ptr<ResultUsm>&& result) = 0;
     // TODO

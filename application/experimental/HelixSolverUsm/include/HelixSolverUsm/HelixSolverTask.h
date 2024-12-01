@@ -11,8 +11,9 @@
 class HelixSolverTask : public TaskUsm
 {
 public:
-    explicit HelixSolverTask(ITask::TaskId id)
-    : TaskUsm(id) {}
+    explicit HelixSolverTask(ITask::TaskId id, const Splitter& splitter)
+    : TaskUsm(id)
+    , splitter_(splitter) {}
 
     ~HelixSolverTask() override = default;
 
@@ -21,9 +22,11 @@ public:
     // From TaskUsm
     ExecutionEvents executeOnDevice(sycl::queue& syclQueue) override;
 
-private:
+protected:
     bool splitterResourcesAssigned_ = false;
     Splitter* deviceSplitter_ = nullptr;
+    // Must be same as deviceSplitter_, a bit ugly
+    const Splitter splitter_;
 
     FRIEND_TEST(HelixSolverTaskTest, TakeEventResources);
 };

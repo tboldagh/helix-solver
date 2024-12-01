@@ -19,6 +19,7 @@ public:
     inline bool isStateChanging() const override;
     inline bool isEventResourcesAssigned() const override;
     inline bool isResultResourcesAssigned() const override;
+    inline std::chrono::milliseconds getExecutionTime() const override;
 
     void takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_ptr<ResultUsm>&& result) override;
     void onAssignedToWorker(ITaskStateObserver& stateObserver) override;
@@ -57,6 +58,9 @@ private:
     bool resultResourcesAssigned_ = false;
     IQueue::DeviceResourceGroupId eventResourceGroupId_;
     IQueue::DeviceResourceGroupId resultResourceGroupId_;
+
+    std::chrono::steady_clock::time_point executionStart_;
+    std::chrono::steady_clock::time_point executionEnd_;
 };
 
 inline ITask::TaskId TaskUsm::getId() const
@@ -82,4 +86,9 @@ inline bool TaskUsm::isEventResourcesAssigned() const
 inline bool TaskUsm::isResultResourcesAssigned() const
 {
     return resultResourcesAssigned_;
+}
+
+inline std::chrono::milliseconds TaskUsm::getExecutionTime() const
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(executionEnd_ - executionStart_);
 }

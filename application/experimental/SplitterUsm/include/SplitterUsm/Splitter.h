@@ -18,6 +18,9 @@ public:
     Splitter& operator=(Splitter&&) = default;
 
     SYCL_EXTERNAL void getRegionIds(float x, float y, float z, RegionIds& regionIds) const;
+    SYCL_EXTERNAL bool isPointInRegion(float x, float y, float z, u_int16_t regionId) const;
+    SYCL_EXTERNAL u_int16_t getNumRegions() const;
+    SYCL_EXTERNAL const SplitterSettings& getSettings() const;
 
 private:
     void getRegionIdsNaive(float x, float y, float z, RegionIds& regionIds) const;

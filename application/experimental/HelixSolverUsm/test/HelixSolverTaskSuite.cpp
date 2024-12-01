@@ -75,7 +75,7 @@ protected:
     static constexpr IQueue::DeviceResourceGroupId eventResourceGroupId_ = 43;
     static constexpr IQueue::DeviceResourceGroupId resultResourceGroupId_ = 44;
 
-    HelixSolverTask task_{taskId_};
+    HelixSolverTask task_{taskId_, splitter_};
 
     sycl::queue syclQueue_{sycl::gpu_selector_v};
     ITaskStateObserverMock stateObserverMock_;

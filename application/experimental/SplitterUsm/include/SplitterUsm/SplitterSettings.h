@@ -23,7 +23,7 @@ public:
         bool operator!=(const Wedge& other) const { return !(*this == other); }
         bool isValid() const;   // See SplitterNotebook.ipynb notes
 
-        u_int16_t id_ = 0;
+        u_int16_t id_ = 0;  // 0 is reserved for invalid region
         float zAngleMin_ = 0;
         float zAngleMax_ = 0;
         float xAngleMin_ = 0;
@@ -45,7 +45,7 @@ public:
         bool operator!=(const PoleRegion& other) const { return !(*this == other); }
         bool isValid() const;   // See SplitterNotebook.ipynb notes
 
-        u_int16_t id_ = 0;
+        u_int16_t id_ = 0;  // 0 is reserved for invalid region
         float xAngle_ = 0;
         float interactionRegionWidth_ = 0;
     };

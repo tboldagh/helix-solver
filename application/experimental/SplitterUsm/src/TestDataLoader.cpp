@@ -139,6 +139,53 @@ bool TestDataLoader::writeSplitterSettings(const std::string& path, const Splitt
     return true;
 }
 
+std::optional<std::unique_ptr<EventUsm>> TestDataLoader::readEvent(const std::string& path, EventUsm::EventId eventId)
+{
+    try
+    {
+        std::ifstream file(path);
+        if (!file.is_open())
+        {
+            return std::nullopt;
+        }
+
+        // Column names
+        std::string columnNames;
+        std::getline(file, columnNames);
+        static_cast<void>(columnNames);
+
+        auto event = std::make_unique<EventUsm>(eventId);
+
+        // Read the points
+        std::string line;
+        while (std::getline(file, line) && line.find(",") != std::string::npos)
+        {
+            std::istringstream iss(line);
+            std::string valueStr;
+
+            // Skip measurement_id and geometry_id
+            std::getline(iss, valueStr, ',');
+            std::getline(iss, valueStr, ',');
+
+            std::getline(iss, valueStr, ',');
+            event->hostXs_[event->hostNumPoints_] = std::stof(valueStr);
+            std::getline(iss, valueStr, ',');
+            event->hostYs_[event->hostNumPoints_] = std::stof(valueStr);
+            std::getline(iss, valueStr, ',');
+            event->hostZs_[event->hostNumPoints_] = std::stof(valueStr);
+
+            event->hostNumPoints_++;
+        }
+
+        return std::optional<std::unique_ptr<EventUsm>>(std::move(event));
+    }
+    catch (const std::exception&)
+    {
+        return std::nullopt;
+    }
+}
+
+
 std::optional<TestDataLoader::PointsWithRegionIds> TestDataLoader::readPointsWithRegionIds(const std::string& path, EventUsm::EventId eventId)
 {
     try

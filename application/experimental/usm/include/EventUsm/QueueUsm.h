@@ -9,7 +9,6 @@
 
 class QueueUsm : public IQueue
 {
-    
 public:
     QueueUsm(sycl::queue& syclQueue, Capacity eventResourcesCapacity, Capacity resultResourcesCapacity, Capacity workCapacity);
     ~QueueUsm() override;
@@ -39,7 +38,7 @@ public:
     static const DeviceResourceGroup NullResultResourceGroup; // Used when no resources are available.
     static constexpr DeviceResourceGroupId NullResultResourceGroupId{0};
 
-private:
+protected:
     sycl::queue& syclQueue_;
     std::mutex syclQueueMutex_;
 

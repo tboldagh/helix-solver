@@ -139,6 +139,7 @@ void TaskUsm::transferEventToDeviceThread()
 void TaskUsm::executeThread()
 {
     sycl::queue& syclQueue = queue_->checkoutQueue();
+    executionStart_ = std::chrono::steady_clock::now();
     ITask::ExecutionEvents executionEvents = executeOnDevice(syclQueue);
     queue_->checkinQueue();
 
@@ -146,6 +147,7 @@ void TaskUsm::executeThread()
     {
         executionEvent->wait();
     }
+    executionEnd_ = std::chrono::steady_clock::now();
 
     isStateChanging_ = false;
     setState(State::Executed);
