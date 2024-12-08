@@ -30,4 +30,5 @@ void SplitterOnlyKernel::operator()(sycl::id<1> regionIdIdx) const
     {
         deviceSomeSolutionParameters_[regionIdIdx] += indexes[i] + xs[i] + ys[i] + zs[i] + layers[i];
     }
+    *deviceNumSolutions_ = splitter_->getNumRegions();
 }

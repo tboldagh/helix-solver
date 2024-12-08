@@ -22,4 +22,6 @@ public:
 
     // From TaskUsm
     ExecutionEvents executeOnDevice(sycl::queue& syclQueue) override;
+
+    const ResultUsm& getResult() const { return *result_; }
 };
