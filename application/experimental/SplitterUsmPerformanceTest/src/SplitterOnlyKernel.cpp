@@ -25,4 +25,9 @@ void SplitterOnlyKernel::operator()(sycl::id<1> regionIdIdx) const
     EventUsm::LayerNumber layers[MaxPointsInRegion];
 
     filterPointsInRegion(regionId, numPoints, indexes, xs, ys, zs, layers);
+
+    for (uint32_t i = 0; i < numPoints; ++i)
+    {
+        deviceSomeSolutionParameters_[regionIdIdx] += indexes[i] + xs[i] + ys[i] + zs[i] + layers[i];
+    }
 }

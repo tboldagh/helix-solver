@@ -7,6 +7,8 @@ SingleRegionKernel::SingleRegionKernel(const Splitter* splitter, const EventUsm*
 , deviceYs_(event->deviceYs_)
 , deviceZs_(event->deviceZs_)
 , deviceLayers_(event->deviceLayers_)
+, deviceNumSolutions_(result->deviceNumSolutions_)
+, deviceSomeSolutionParameters_(result->deviceSomeSolutionParameters_)
 , event_(event)
 , result_(result) {}
 

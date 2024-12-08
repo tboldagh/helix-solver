@@ -59,6 +59,9 @@ protected:
     const float* deviceZs_;
     const EventUsm::LayerNumber* deviceLayers_;
 
+    u_int32_t* deviceNumSolutions_;
+    float* deviceSomeSolutionParameters_;
+
     const EventUsm* event_; // TODO: Remove
     const ResultUsm* result_;    // TODO: Remove
 
