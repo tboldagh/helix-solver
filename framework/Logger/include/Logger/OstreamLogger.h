@@ -14,8 +14,10 @@ public:
     ~OstreamLogger() override = default;
 
     void log(LogMessage&& message) override;
+    void setMinSeverity(LogMessage::Severity minSeverity) override;
 
 private:
     std::ostream& ostream_;
+    LogMessage::Severity minSeverity_ = LogMessage::Severity::Debug;
 };
 } // namespace Logger

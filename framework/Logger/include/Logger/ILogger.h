@@ -13,6 +13,7 @@ public:
     ILogger& operator=(const ILogger&) = delete;
 
     virtual void log(LogMessage&& message) = 0;
+    virtual void setMinSeverity(LogMessage::Severity minSeverity) = 0;
     
     static ILogger* getGlobalInstance();
     static void setGlobalInstance(ILogger* instance);

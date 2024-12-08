@@ -13,5 +13,6 @@ public:
     ~ILoggerMock() override = default;
 
     MOCK_METHOD(void, log, (LogMessage&& message), (override));
+    MOCK_METHOD(void, setMinSeverity, (LogMessage::Severity minSeverity), (override));
 };
 } // namespace Logger

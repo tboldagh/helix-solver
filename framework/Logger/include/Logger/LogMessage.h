@@ -11,11 +11,11 @@ class LogMessage
 public:
     enum class Severity : u_int8_t
     {
-        Debug,
-        Info,
-        Warning,
-        Error,
-        Fatal
+        Debug = 0,
+        Info = 1,
+        Warning = 2,
+        Error = 3,
+        Fatal = 4
     };
 
     using Timestamp = std::chrono::time_point<std::chrono::system_clock>;

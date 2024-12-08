@@ -32,6 +32,7 @@ int main()
 {
     // Setup logging
     Logger::OstreamLogger logger(std::cout);
+    logger.setMinSeverity(Logger::LogMessage::Severity::Info);
     Logger::ILogger::setGlobalInstance(&logger);
 
     const std::string testDataDir = "/helix/repo/application/experimental/SplitterUsm/test-data";
