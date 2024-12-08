@@ -33,6 +33,8 @@ public:
     // Deallocates resources on device without host data.
     static void deallocateDeviceResources(const DeviceResourceGroup& resourceGroup, sycl::queue& queue);
 
+    static void copyHostData(const EventUsm& source, EventUsm& destination);
+
     // Direct access to frequently accessed data for performance reasons.
     // Manipulate data under the pointers but don't manage memory directly.
     EventId eventId_;

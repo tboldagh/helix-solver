@@ -5,6 +5,49 @@
 #include <gtest/gtest.h>
 #include <CL/sycl.hpp>
 
+
+class EventUsmTest : public ::testing::Test
+{
+protected:
+    EventUsmTest()
+    {
+        Logger::ILogger::setGlobalInstance(&logger_);
+    }
+
+    ~EventUsmTest() override
+    {
+        Logger::ILogger::setGlobalInstance(nullptr);
+    }
+
+    Logger::ILoggerMock logger_;
+};
+
+TEST_F(EventUsmTest, CopyHostData)
+{
+    constexpr u_int32_t numPoints = 2137;
+
+    EventUsm source(42);
+    source.hostNumPoints_ = numPoints;
+    for (u_int32_t i = 0; i < numPoints; ++i)
+    {
+        source.hostXs_[i] = i;
+        source.hostYs_[i] = i;
+        source.hostZs_[i] = i;
+        source.hostLayers_[i] = i;
+    }
+
+    EventUsm destination(43);
+    EventUsm::copyHostData(source, destination);
+    ASSERT_EQ(destination.hostNumPoints_, source.hostNumPoints_);
+    for (u_int32_t i = 0; i < numPoints; ++i)
+    {
+        ASSERT_EQ(destination.hostXs_[i], source.hostXs_[i]);
+        ASSERT_EQ(destination.hostYs_[i], source.hostYs_[i]);
+        ASSERT_EQ(destination.hostZs_[i], source.hostZs_[i]);
+        ASSERT_EQ(destination.hostLayers_[i], source.hostLayers_[i]);
+    }
+}
+
 class EventUsmAllocationTest : public ::testing::Test
 {
 protected:

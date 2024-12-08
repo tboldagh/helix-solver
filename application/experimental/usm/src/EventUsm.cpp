@@ -67,6 +67,15 @@ bool EventUsm::deallocateOnDevice(sycl::queue& queue)
     return true;
 }
 
+void EventUsm::copyHostData(const EventUsm& source, EventUsm& destination)
+{
+    destination.hostNumPoints_ = source.hostNumPoints_;
+    std::copy(source.hostXs_, source.hostXs_ + source.hostNumPoints_, destination.hostXs_);
+    std::copy(source.hostYs_, source.hostYs_ + source.hostNumPoints_, destination.hostYs_);
+    std::copy(source.hostZs_, source.hostZs_ + source.hostNumPoints_, destination.hostZs_);
+    std::copy(source.hostLayers_, source.hostLayers_ + source.hostNumPoints_, destination.hostLayers_);
+}
+
 DataUsm::TransferEvents EventUsm::transferToDevice(sycl::queue& queue)
 {
     if (!allocated_ && !resourcesBorrowed_)
