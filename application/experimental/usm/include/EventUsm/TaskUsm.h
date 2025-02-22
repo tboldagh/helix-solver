@@ -38,10 +38,6 @@ protected:
     IQueue* queue_;
 
 private:
-    FRIEND_TEST(TaskUsmExecutionTest, TransferEventThread);
-    FRIEND_TEST(TaskUsmExecutionTest, ExecuteThread);
-    FRIEND_TEST(TaskUsmExecutionTest, TransferResultThread);
-
     void setState(State state);
     void checkResourcesAssigned();
     void transferEventToDeviceThread();
@@ -61,6 +57,12 @@ private:
 
     std::chrono::steady_clock::time_point executionStart_;
     std::chrono::steady_clock::time_point executionEnd_;
+
+    FRIEND_TEST(TaskUsmExecutionTest, TransferEventThread);
+    FRIEND_TEST(TaskUsmExecutionTest, ExecuteThread);
+    FRIEND_TEST(TaskUsmExecutionTest, TransferResultThread);
+    friend class HelixSolverTaskExecutionTest;
+    FRIEND_TEST(HelixSolverTaskExecutionTest, ExecuteOnDevice);
 };
 
 inline ITask::TaskId TaskUsm::getId() const

@@ -11,13 +11,15 @@ SRC
     src/HelixSolverTask.cpp
     src/SingleRegionKernel.cpp
     src/HelixSolverQueue.cpp
+    src/SumRegionNumSolutionsKernel.cpp
+    src/ConcentrateSolutionsKernel.cpp
 
 PUBLIC
     EventUsm
     SplitterUsm
 )
 
-helix_solver_add_library(HelixSolverUsmSuite
+helix_solver_add_library(HelixSolverTaskSuite
 UNIT_TEST
 SYCL
 
@@ -32,4 +34,18 @@ PRIVATE
     ITaskStateObserverMock
     Logger
     SplitterTest
+)
+
+helix_solver_add_library(SingleRegionKernelSuite
+UNIT_TEST
+SYCL
+
+LOCATION
+    application/experimental/HelixSolverUsm
+
+SRC
+    test/SingleRegionKernelSuite.cpp
+
+PRIVATE
+    HelixSolverUsm
 )

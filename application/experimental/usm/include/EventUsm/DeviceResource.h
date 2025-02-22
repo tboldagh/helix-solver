@@ -11,8 +11,11 @@ enum class DeviceResourceType : u_int8_t
     Zs,
     Layers,
     NumSolutions,
-    Splitter,
-    SomeSolutionParameters
+    RegionNumSolutions,
+    SolutionHitCounts,
+    Rs,
+    Phis,
+    Splitter
 };
 
 using DeviceResourceGroup = std::unordered_map<DeviceResourceType, void*>;

@@ -28,7 +28,7 @@ void SplitterOnlyKernel::operator()(sycl::id<1> regionIdIdx) const
 
     for (uint32_t i = 0; i < numPoints; ++i)
     {
-        deviceSomeSolutionParameters_[regionIdIdx] += indexes[i] + xs[i] + ys[i] + zs[i] + layers[i];
+        deviceSolutionRs_[regionIdIdx] += indexes[i] + xs[i] + ys[i] + zs[i] + layers[i];
     }
     *deviceNumSolutions_ = splitter_->getNumRegions();
 }

@@ -12,7 +12,9 @@ class ResultUsm : public DataUsm
 public:
     using ResultId = u_int32_t;
 
-    static constexpr u_int32_t MaxSolutions = 1e5;
+    static constexpr u_int16_t MaxRegions = 1024;
+    static constexpr u_int16_t MaxSolutionsPerRegion = 1024;
+    static constexpr u_int32_t MaxSolutions = MaxRegions * MaxSolutionsPerRegion;
 
     ResultUsm(ResultId resultId);
     ResultUsm(const ResultUsm&) = delete;
@@ -38,8 +40,14 @@ public:
     ResultId resultId_;
 
     u_int32_t hostNumSolutions_ = 0;
-    float hostSomeSolutionParameters_[MaxSolutions];
+    u_int32_t hostNumRegionSolutions_[MaxRegions];
+    u_int8_t hostSolutionHitCounts_[MaxSolutions];
+    float hostSolutionRs_[MaxSolutions];
+    float hostSolutionPhis_[MaxSolutions];
 
     u_int32_t* deviceNumSolutions_ = nullptr;
-    float* deviceSomeSolutionParameters_ = nullptr;
+    u_int32_t* deviceNumRegionSolutions_ = nullptr;
+    u_int8_t* deviceSolutionHitCounts_ = nullptr;
+    float* deviceSolutionRs_ = nullptr;
+    float* deviceSolutionPhis_ = nullptr;
 };

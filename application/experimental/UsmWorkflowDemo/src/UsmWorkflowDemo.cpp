@@ -31,11 +31,16 @@ public:
             float* zs = event_->deviceZs_;
             EventUsm::LayerNumber* layers = event_->deviceLayers_;
 
-            float* someSolutionParameters = result_->deviceSomeSolutionParameters_;            
+            [[maybe_unused]] u_int32_t* numSolutions = result_->deviceNumSolutions_;
+            [[maybe_unused]] u_int32_t* numRegionSolutions = result_->deviceNumRegionSolutions_;
+            [[maybe_unused]] u_int8_t* solutionHitCounts = result_->deviceSolutionHitCounts_;
+            float* solutionRs = result_->deviceSolutionRs_;
+            float* solutionPhis = result_->deviceSolutionPhis_;            
             
             handler.parallel_for(sycl::range<1>(event_->hostNumPoints_), [=](sycl::id<1> idx)
             {
-                someSolutionParameters[idx] = xs[idx] + ys[idx] + zs[idx] + layers[idx] + *numPoints;
+                solutionRs[idx] = xs[idx] + ys[idx] + zs[idx] + layers[idx] + *numPoints;
+                solutionPhis[idx] = xs[idx] + ys[idx] + zs[idx] + layers[idx] + *numPoints;
             });
         }));
         executionEvents.insert(std::move(executionEvent));

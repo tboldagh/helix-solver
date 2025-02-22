@@ -9,3 +9,6 @@ source /opt/intel/oneapi/setvars.sh --include-intel-llvm --force
 source lib/root/bin/thisroot.sh
 
 export TEST_SANDBOX_DIR="/helix/repo/build/tmp"
+
+alias build="/helix/repo/build.sh"
+alias run_test="/helix/repo/run_test.py"

@@ -28,5 +28,6 @@ protected:
     // Must be same as deviceSplitter_, a bit ugly
     const Splitter splitter_;
 
-    FRIEND_TEST(HelixSolverTaskTest, TakeEventResources);
+    FRIEND_TEST(HelixSolverTaskInitTest, TakeEventResources);
+    friend class HelixSolverTaskExecutionTest;
 };

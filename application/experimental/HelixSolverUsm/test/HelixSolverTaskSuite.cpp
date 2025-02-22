@@ -13,10 +13,10 @@
 #include <CL/sycl.hpp>
 
 
-class HelixSolverTaskTest : public SplitterTest
+class HelixSolverTaskInitTest : public SplitterTest
 {
 protected:
-    HelixSolverTaskTest()
+    HelixSolverTaskInitTest()
     : logger_(std::cout)
     , event_(std::make_unique<EventUsm>(eventId_))
     , result_(std::make_unique<ResultUsm>(resultId_))
@@ -29,19 +29,23 @@ protected:
 
         EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
         task_.onAssignedToWorker(stateObserverMock_);
+        // State: ReadyToQueue
 
         EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
         EXPECT_CALL(queueMock_, getQueue()).WillRepeatedly(testing::ReturnRef(syclQueue_));
         task_.assignQueue(queueMock_);
+        // State: WaitingForResources
 
         prepareEventResources();
+        prepareResultResources();
     }
 
-    ~HelixSolverTaskTest() override
+    ~HelixSolverTaskInitTest() override
     {
         Logger::ILogger::setGlobalInstance(nullptr);
 
         freeEventResources();
+        freeResultResources();
     }
 
     void prepareEventResources()
@@ -90,7 +94,7 @@ protected:
     std::unique_ptr<DeviceResourceGroup> resultResources_;
 };
 
-TEST_F(HelixSolverTaskTest, TakeEventResources)
+TEST_F(HelixSolverTaskInitTest, TakeEventResources)
 {
     task_.takeEventResources(std::make_pair(eventResourceGroupId_, *eventResources_));
 
@@ -103,3 +107,50 @@ TEST_F(HelixSolverTaskTest, TakeEventResources)
     ASSERT_EQ(eventPtr_->deviceLayers_, eventResources_->at(DeviceResourceType::Layers));
     ASSERT_EQ(task_.deviceSplitter_, eventResources_->at(DeviceResourceType::Splitter));
 }
+
+class HelixSolverTaskExecutionTest : public HelixSolverTaskInitTest
+{
+protected:
+    HelixSolverTaskExecutionTest()
+    : HelixSolverTaskInitTest()
+    {
+        EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+        task_.takeEventResources(std::make_pair(eventResourceGroupId_, *eventResources_));
+        // State: WaitingForResources
+
+        EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+        task_.takeResultResources(std::make_pair(resultResourceGroupId_, *resultResources_));
+        // State: WaitingForEventTransfer
+
+        task_.isStateChanging_ = true;
+        EXPECT_CALL(queueMock_, checkoutQueue()).WillOnce(testing::ReturnRef(syclQueue_));
+        EXPECT_CALL(queueMock_, checkinQueue());
+        EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+        task_.transferEventToDeviceThread();
+        // State: WaitingForExecution
+    }
+};
+
+TEST_F(HelixSolverTaskExecutionTest, ExecuteOnDevice)
+{
+    task_.isStateChanging_ = true;
+    EXPECT_CALL(queueMock_, checkoutQueue()).WillOnce(testing::ReturnRef(syclQueue_));
+    EXPECT_CALL(queueMock_, checkinQueue());
+    EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+    task_.executeThread();
+    EXPECT_EQ(task_.getState(), ITask::State::Executed);
+
+
+    EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+    task_.releaseEventResourceGroup();
+    EXPECT_EQ(task_.getState(), ITask::State::WaitingForResultTransfer);
+
+    EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+    task_.transferResult();
+    EXPECT_EQ(task_.getState(), ITask::State::ResultTransferred);
+
+    EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+    task_.releaseResultResourceGroup();
+    EXPECT_EQ(task_.getState(), ITask::State::Completed);
+}
+

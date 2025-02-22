@@ -174,7 +174,10 @@ TEST_F(TaskUsmTakeResourcesTest, TakeResultResources)
     task_.takeResultResources(std::make_pair(resultResourceGroupId_, *resultResources));
 
     ASSERT_EQ(resultPtr_->deviceNumSolutions_, resultResources->at(DeviceResourceType::NumSolutions));
-    ASSERT_EQ(resultPtr_->deviceSomeSolutionParameters_, resultResources->at(DeviceResourceType::SomeSolutionParameters));
+    ASSERT_EQ(resultPtr_->deviceNumRegionSolutions_, resultResources->at(DeviceResourceType::RegionNumSolutions));
+    ASSERT_EQ(resultPtr_->deviceSolutionHitCounts_, resultResources->at(DeviceResourceType::SolutionHitCounts));
+    ASSERT_EQ(resultPtr_->deviceSolutionRs_, resultResources->at(DeviceResourceType::Rs));
+    ASSERT_EQ(resultPtr_->deviceSolutionPhis_, resultResources->at(DeviceResourceType::Phis));
 
     // Result borrowed resources so it should not deallocate them
     ResultUsm::deallocateDeviceResources(*resultResources, syclQueue_);

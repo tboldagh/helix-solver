@@ -91,7 +91,11 @@ TEST_F(QueueUsmTest, GetResultResourceGroup)
         auto [resourceGroupId, resourceGroup] = queueUsm_.getResultResourceGroup();
         ASSERT_NE(resourceGroupId, QueueUsm::NullResultResourceGroupId);
         ASSERT_NE(&resourceGroup, &QueueUsm::NullResultResourceGroup);
-        ASSERT_NE(resourceGroup.at(DeviceResourceType::SomeSolutionParameters), nullptr);
+        ASSERT_NE(resourceGroup.at(DeviceResourceType::NumSolutions), nullptr);
+        ASSERT_NE(resourceGroup.at(DeviceResourceType::RegionNumSolutions), nullptr);
+        ASSERT_NE(resourceGroup.at(DeviceResourceType::SolutionHitCounts), nullptr);
+        ASSERT_NE(resourceGroup.at(DeviceResourceType::Rs), nullptr);
+        ASSERT_NE(resourceGroup.at(DeviceResourceType::Phis), nullptr);
     }
     ASSERT_EQ(queueUsm_.getResultResourcesLoad(), queueUsm_.getResultResourcesCapacity());
 }
