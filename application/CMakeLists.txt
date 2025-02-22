@@ -1,3 +1,3 @@
 add_subdirectory(AvailableDevicesInfo)
 add_subdirectory(experimental)
-add_subdirectory(HelixSolver)
+# add_subdirectory(HelixSolver)

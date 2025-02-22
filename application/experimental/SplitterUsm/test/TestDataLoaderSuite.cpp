@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <fstream>
+#include <cmath>
 
 class TestDataLoaderTest : public ::testing::Test
 {

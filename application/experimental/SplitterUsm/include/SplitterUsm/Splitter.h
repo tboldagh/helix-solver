@@ -2,7 +2,7 @@
 
 #include "SplitterUsm/SplitterSettings.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 
 class Splitter

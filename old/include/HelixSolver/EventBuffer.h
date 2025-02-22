@@ -3,7 +3,7 @@
 #include "SolutionCircle.h"
 
 #ifdef USE_SYCL
-    #include <CL/sycl.hpp>
+    #include <sycl/sycl.hpp>
     using FloatBuffer=sycl::buffer<float, 1>;
     using SolutionBuffer=sycl::buffer<HelixSolver::SolutionCircle, 1>;
 #else

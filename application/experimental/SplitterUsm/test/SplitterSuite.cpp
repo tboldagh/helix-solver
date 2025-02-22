@@ -9,7 +9,7 @@
 #include <fstream>
 #include <string>
 #include <cstdlib>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <cmath>
 #include <unordered_set>
 

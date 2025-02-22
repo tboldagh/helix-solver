@@ -2,7 +2,7 @@
 
 #include "EventUsm/DeviceResource.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <map>
 #include <memory>
 

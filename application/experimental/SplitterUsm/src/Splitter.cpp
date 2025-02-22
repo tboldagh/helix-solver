@@ -1,7 +1,7 @@
 #include "SplitterUsm/Splitter.h"
 
 #include <cmath>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <tuple>
 
 
@@ -69,8 +69,8 @@ bool Splitter::isPointInPoleRegion(float x, float y, float z, const SplitterSett
     float xPlaneDirectionZ = sycl::cos(poleRegion.xAngle_);
     float xPlaneDirectionY = sycl::sin(poleRegion.xAngle_);
 
-    float xPlaneScaleToZLimit = sycl::abs(xPlaneDirectionZ) / settings_.maxAbsZ_;
-    float xPlaneScaleToYLimit = sycl::abs(xPlaneDirectionY) / settings_.maxAbsXy_;
+    float xPlaneScaleToZLimit = sycl::fabs(xPlaneDirectionZ) / settings_.maxAbsZ_;
+    float xPlaneScaleToYLimit = sycl::fabs(xPlaneDirectionY) / settings_.maxAbsXy_;
     float scale = 1 / sycl::max(xPlaneScaleToZLimit, xPlaneScaleToYLimit);
 
     xPlaneOutermostY = xPlaneDirectionY * scale;
@@ -118,8 +118,8 @@ bool Splitter::isPointInWedgeXAngle(float x, float y, float z, const SplitterSet
         const float xPlaneDirectionZ = sycl::cos(xAngle);
         const float xPlaneDirectionY = sycl::sin(xAngle);
 
-        const float xPlaneScaleToZLimit = sycl::abs(xPlaneDirectionZ) / settings_.maxAbsZ_;
-        const float xPlaneScaleToYLimit = sycl::abs(xPlaneDirectionY) / settings_.maxAbsXy_;
+        const float xPlaneScaleToZLimit = sycl::fabs(xPlaneDirectionZ) / settings_.maxAbsZ_;
+        const float xPlaneScaleToYLimit = sycl::fabs(xPlaneDirectionY) / settings_.maxAbsXy_;
         const float scale = 1.0f / sycl::max(xPlaneScaleToZLimit, xPlaneScaleToYLimit);
 
         const float x = xPlaneDirectionY * sycl::cos(wedge.zAngleMin_) * scale;

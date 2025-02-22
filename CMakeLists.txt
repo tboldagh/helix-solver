@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(IntelSYCL_DIR "/opt/intel/oneapi/compiler/2023.2.1/linux/IntelSYCL")
-set(ICX_PATH "/opt/intel/oneapi/compiler/2023.2.1/linux/bin/icx")
-set(ICPX_PATH "/opt/intel/oneapi/compiler/2023.2.1/linux/bin/icpx")
+set(IntelSYCL_DIR "/opt/intel/oneapi/compiler/2025.0/linux/IntelSYCL")
+set(ICX_PATH "/opt/intel/oneapi/compiler/2025.0/bin/icx")
+set(ICPX_PATH "/opt/intel/oneapi/compiler/2025.0/bin/icpx")
 
 # Must be set before project() call
 set(CMAKE_C_COMPILER ${ICX_PATH})

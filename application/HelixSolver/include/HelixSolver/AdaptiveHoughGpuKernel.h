@@ -10,7 +10,7 @@
 #include "HelixSolver/ZPhiPartitioning.h"
 
 #ifdef USE_SYCL
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 using FloatBufferReadAccessor = sycl::accessor<float, 1, sycl::access::mode::read, sycl::access::target::device>;
 using SolutionsWriteAccessor = sycl::accessor<HelixSolver::SolutionCircle, 1, sycl::access::mode::write, sycl::access::target::device>;
 using OptionsAccessor = sycl::accessor<HelixSolver::Options, 1, sycl::access::mode::read, sycl::access::target::device>;

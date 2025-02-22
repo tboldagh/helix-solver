@@ -2,7 +2,7 @@
 
 #include "EventUsm/ResultUsm.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <gtest/gtest_prod.h>
 
 

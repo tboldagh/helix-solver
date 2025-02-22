@@ -4,7 +4,7 @@
 #include "ITaskStateObserverMock/ITaskStateObserverMock.h"
 #include "EventUsm/TaskUsm.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <gtest/gtest.h>
 
 

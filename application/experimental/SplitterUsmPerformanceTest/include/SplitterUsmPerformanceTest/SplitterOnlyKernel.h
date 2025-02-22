@@ -5,7 +5,7 @@
 #include "EventUsm/ResultUsm.h"
 #include "HelixSolverUsm/SingleRegionKernel.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 
 class SplitterOnlyKernel : public SingleRegionKernel

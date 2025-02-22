@@ -7,7 +7,7 @@
 #include "Logger/Logger.h"
 #include "Logger/OstreamLogger.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <thread>
 
 

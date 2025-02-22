@@ -4,7 +4,7 @@
 #include "EventUsm/EventUsm.h"
 #include "EventUsm/ResultUsm.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <cmath>
 #include <gtest/gtest_prod.h>
 

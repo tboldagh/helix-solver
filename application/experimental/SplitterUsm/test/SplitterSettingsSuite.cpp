@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <string>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <cmath>
 
 
@@ -41,7 +41,7 @@ TEST_F(SyclCompatibilityTest, WedgeTransferableToKernel)
         {
             deviceWedgeCopy[0] = deviceWedge[0];
         });
-    });
+    }).wait();
 
     SplitterSettings::Wedge wedgeCopy;
     queue_.memcpy(&wedgeCopy, deviceWedgeCopy, sizeof(SplitterSettings::Wedge)).wait();
@@ -68,7 +68,7 @@ TEST_F(SyclCompatibilityTest, PoleRegionTransferableToKernel)
         {
             devicePoleRegionCopy[0] = devicePoleRegion[0];
         });
-    });
+    }).wait();
 
     SplitterSettings::PoleRegion poleRegionCopy;
     queue_.memcpy(&poleRegionCopy, devicePoleRegionCopy, sizeof(SplitterSettings::PoleRegion)).wait();

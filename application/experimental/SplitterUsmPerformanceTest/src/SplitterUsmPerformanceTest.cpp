@@ -10,7 +10,7 @@
 #include "SplitterUsm/TestDataLoader.h"
 #include "HelixSolverUsm/HelixSolverQueue.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <thread>
 #include <numeric>
 

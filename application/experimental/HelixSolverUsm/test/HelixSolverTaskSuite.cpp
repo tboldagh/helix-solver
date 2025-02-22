@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 #include <iostream>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 
 class HelixSolverTaskInitTest : public SplitterTest

@@ -8,7 +8,7 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <numeric>
 
 

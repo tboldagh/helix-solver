@@ -3,7 +3,7 @@
 #include "ILoggerMock/ILoggerMock.h"
 
 #include <gtest/gtest.h>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 
 class EventUsmTest : public ::testing::Test

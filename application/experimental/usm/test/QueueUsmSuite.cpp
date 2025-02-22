@@ -3,7 +3,7 @@
 #include "IQueueMock/IQueueMock.h"
 #include "EventUsm/QueueUsm.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <gtest/gtest.h>
 
 class QueueUsmTest : public ::testing::Test

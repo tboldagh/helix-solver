@@ -1,7 +1,7 @@
 #pragma once
 
 #include <unordered_map>
-
+#include <sycl/sycl.hpp>
 
 enum class DeviceResourceType : u_int8_t
 {

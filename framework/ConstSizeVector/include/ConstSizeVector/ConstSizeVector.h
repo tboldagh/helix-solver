@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <utility>  
 
 // Container with subset of functionality of std::vector. Size is constant and
