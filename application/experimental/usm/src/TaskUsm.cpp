@@ -32,6 +32,28 @@ void TaskUsm::takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_
     setState(State::EventAndResultAssigned);
 }
 
+std::unique_ptr<EventUsm> TaskUsm::releaseEvent()
+{
+    if (event_ == nullptr)
+    {
+        LOG_WARNING("Task has no event assigned, task id: " + std::to_string(id_));
+        return nullptr;
+    }
+
+    return std::move(event_);
+}
+
+std::unique_ptr<ResultUsm> TaskUsm::releaseResult()
+{
+    if (result_ == nullptr)
+    {
+        LOG_WARNING("Task has no result assigned, task id: " + std::to_string(id_));
+        return nullptr;
+    }
+
+    return std::move(result_);
+}
+
 void TaskUsm::onAssignedToWorker(ITaskStateObserver& stateObserver)
 {
     stateObserver_ = &stateObserver;

@@ -19,8 +19,8 @@ public:
     MOCK_METHOD(std::chrono::milliseconds, getExecutionTime, (), (const, override));
 
     MOCK_METHOD(void, takeEventAndResult, ((std::unique_ptr<EventUsm>&& event), (std::unique_ptr<ResultUsm>&& result)), (override));
-    // MOCK_METHOD(void, releaseEvent, (), (override));
-    // MOCK_METHOD(void, releaseResult, (), (override));
+    MOCK_METHOD(std::unique_ptr<EventUsm>, releaseEvent, (), (override));
+    MOCK_METHOD(std::unique_ptr<ResultUsm>, releaseResult, (), (override));
 
     MOCK_METHOD(void, onAssignedToWorker, (ITaskStateObserver& stateObserver), (override));
     MOCK_METHOD(void, assignQueue, (IQueue& queue), (override));

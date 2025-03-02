@@ -9,6 +9,7 @@ INCLUDE
 
 SRC
     src/EventUsm.cpp
+    src/KernelMemory.cpp
     src/ResultUsm.cpp
     src/ITask.cpp
     src/QueueUsm.cpp

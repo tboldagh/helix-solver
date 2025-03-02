@@ -44,9 +44,8 @@ public:
     virtual std::chrono::milliseconds getExecutionTime() const = 0;
 
     virtual void takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_ptr<ResultUsm>&& result) = 0;
-    // TODO
-    // virtual void releaseEvent(/* TODO */) = 0;
-    // virtual void releaseResult(/* TODO */) = 0;
+    virtual std::unique_ptr<EventUsm> releaseEvent() = 0;
+    virtual std::unique_ptr<ResultUsm> releaseResult() = 0;
 
     virtual void onAssignedToWorker(ITaskStateObserver& stateObserver) = 0;
     virtual void assignQueue(IQueue& queue) = 0;

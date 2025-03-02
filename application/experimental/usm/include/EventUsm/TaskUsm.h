@@ -22,6 +22,9 @@ public:
     inline std::chrono::milliseconds getExecutionTime() const override;
 
     void takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_ptr<ResultUsm>&& result) override;
+    virtual std::unique_ptr<EventUsm> releaseEvent() override;
+    virtual std::unique_ptr<ResultUsm> releaseResult() override;
+
     void onAssignedToWorker(ITaskStateObserver& stateObserver) override;
     void assignQueue(IQueue& queue) override;
     void takeEventResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> eventResources) override;
@@ -33,21 +36,20 @@ public:
     IQueue::DeviceResourceGroupId releaseResultResourceGroup() override;
 
 protected:
+    void setState(State state);
+    
     std::unique_ptr<EventUsm> event_;
     std::unique_ptr<ResultUsm> result_;
     IQueue* queue_;
+    State state_ = State::Created;  // Only one state change allowed between calls to onTaskStateChange on tx_
+    bool isStateChanging_ = false;
+    const ITask::TaskId id_;
 
 private:
-    void setState(State state);
     void checkResourcesAssigned();
     void transferEventToDeviceThread();
     void executeThread();
     void transferResultFromDeviceThread();
-
-    const ITask::TaskId id_;
-
-    State state_ = State::Created;  // Only one state change allowed between calls to onTaskStateChange on tx_
-    bool isStateChanging_ = false;
 
     ITaskStateObserver* stateObserver_ = nullptr;
     bool eventResourcesAssigned_ = false;
@@ -63,6 +65,7 @@ private:
     FRIEND_TEST(TaskUsmExecutionTest, TransferResultThread);
     friend class HelixSolverTaskExecutionTest;
     FRIEND_TEST(HelixSolverTaskExecutionTest, ExecuteOnDevice);
+    FRIEND_TEST(HelixSolverTaskFullEvent, Basic);
 };
 
 inline ITask::TaskId TaskUsm::getId() const

@@ -18,6 +18,7 @@ public:
     ~HelixSolverTask() override = default;
 
     void takeEventResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> eventResources) override;
+    void transferEvent() override;
 
     // From TaskUsm
     ExecutionEvents executeOnDevice(sycl::queue& syclQueue) override;
@@ -28,6 +29,10 @@ protected:
     // Must be same as deviceSplitter_, a bit ugly
     const Splitter splitter_;
 
+private:
+    void transferEventToDeviceThread();
+
     FRIEND_TEST(HelixSolverTaskInitTest, TakeEventResources);
     friend class HelixSolverTaskExecutionTest;
+    FRIEND_TEST(HelixSolverTaskFullEvent, Basic);
 };

@@ -1,7 +1,7 @@
 #include "HelixSolverUsm/SingleRegionKernel.h"
 
 
-SingleRegionKernel::SingleRegionKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result)
+SingleRegionKernel::SingleRegionKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result, const SingleRegionKernelMemory& memory)
 : splitter_(splitter)
 , deviceNumPoints_(event->deviceNumPoints_)
 , deviceXs_(event->deviceXs_)
@@ -14,7 +14,15 @@ SingleRegionKernel::SingleRegionKernel(const Splitter* splitter, const EventUsm*
 , deviceSolutionRs_(result->deviceSolutionRs_)
 , deviceSolutionPhis_(result->deviceSolutionPhis_)
 , event_(event)
-, result_(result) {}
+, result_(result)
+, kernelIndexes_(memory.indexes_)
+, kernelXs_(memory.xs_)
+, kernelYs_(memory.ys_)
+, kernelZs_(memory.zs_)
+, kernelLayers_(memory.layers_)
+, kernelPointLists_(memory.pointLists_)
+, kernelRs_(memory.rs_)
+, kernelPhis_(memory.phis_) {}
 
 void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
 {
@@ -27,20 +35,20 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
     }
 
     u_int32_t numPoints = 0;
-    u_int32_t indexes[MaxPointsInRegion];   // Just in case we need to keep info about which points form a helix
-    float xs[MaxPointsInRegion];
-    float ys[MaxPointsInRegion];
-    float zs[MaxPointsInRegion];
-    EventUsm::LayerNumber layers[MaxPointsInRegion];
+    u_int32_t* indexes = kernelIndexes_;
+    float* xs = kernelXs_;
+    float* ys = kernelYs_;
+    float* zs = kernelZs_;
+    EventUsm::LayerNumber* layers = kernelLayers_;
 
     filterPointsInRegion(regionId, numPoints, indexes, xs, ys, zs, layers);
 
-    float phis[MaxPointsInRegion];
-    float rs[MaxPointsInRegion];
+    float* rs = kernelRs_;
+    float* phis = kernelPhis_;
 
     AccumulatorRegion accumulatorRegions[MaxAccumulatorRegionStackSize];
     u_int8_t accumulatorRegionStackSize = 0;
-    u_int32_t pointLists[MaxPointListsPointsNum];
+    u_int32_t* pointLists = kernelPointLists_;
 
 
     convertToPolarCoordinates(phis, rs, xs, ys, numPoints);
@@ -71,6 +79,8 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
 
     // Zero out region solutions counter
     deviceRegionNumSolutions_[regionId - 1] = 0;
+
+    // deviceRegionNumSolutions_[regionId - 1] = numPoints + regionId;
 
     while (accumulatorRegionStackSize > 0)
     {

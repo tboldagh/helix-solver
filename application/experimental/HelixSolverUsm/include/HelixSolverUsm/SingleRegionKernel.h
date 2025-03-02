@@ -3,6 +3,7 @@
 #include "SplitterUsm/Splitter.h"
 #include "EventUsm/EventUsm.h"
 #include "EventUsm/ResultUsm.h"
+#include "HelixSolverUsm/SingleRegionKernelMemory.h"
 
 #include <sycl/sycl.hpp>
 #include <cmath>
@@ -12,7 +13,7 @@
 class SingleRegionKernel
 {
 public:
-    SingleRegionKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result);
+    SingleRegionKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result, const SingleRegionKernelMemory& memory);
 
     SYCL_EXTERNAL void operator()(sycl::id<1> regionIdIdx) const;
 
@@ -108,26 +109,28 @@ protected:
     const EventUsm* event_; // TODO: Remove
     const ResultUsm* result_;    // TODO: Remove
 
-    static constexpr u_int16_t MaxPointsInRegion = 5000;   // TODO: Tune
+    u_int32_t* kernelIndexes_;
+    float* kernelXs_;
+    float* kernelYs_;
+    float* kernelZs_;
+    EventUsm::LayerNumber* kernelLayers_;
+    u_int32_t* kernelPointLists_;
+    float* kernelRs_;
+    float* kernelPhis_;
+
     // Based on thesis p. 22 Phi_0 is in range dependent on region
     // Phi_min and Phi_max are region dependent
     static constexpr float SpaceMaxPhiPhi0AbsDiff = 0.42f;  // TODO: Tune
     static constexpr float SpaceMinQOverPt = 0.0f;   // TODO: I have no idea what this value should be, tune
     static constexpr float SpaceMaxQOverPt = 0.0005f;    // TODO: I have no idea what this value should be, tune
-    static constexpr u_int8_t Phi0MaxDivisionLevel = 10;   // TODO: Tune
-    static constexpr u_int8_t QOverPtMaxDivisionLevel = 10;   // TODO: Tune
-    static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
-    static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
-    static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
-    // ! When MaxPointListsPointsNum is above about 60000, the following error occurs:
-    // ! PI CUDA ERROR:
-	// ! Value:           1
-	// ! Name:            CUDA_ERROR_INVALID_VALUE
-	// ! Description:     invalid argument
-	// ! Function:        cuda_piEnqueueKernelLaunch
-	// ! Source Location: /root/intel-llvm-mirror/sycl/plugins/cuda/pi_cuda.cpp:3164
-    static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;    // TODO: This is max possible number of points in all lists combined. Can be tuned
-    static constexpr u_int8_t SolutionHitsThreshold = 6;    // TODO: Tune
+    static constexpr u_int8_t Phi0MaxDivisionLevel = SingleRegionKernelMemory::Phi0MaxDivisionLevel;
+    static constexpr u_int8_t QOverPtMaxDivisionLevel = SingleRegionKernelMemory::QOverPtMaxDivisionLevel;
+    static constexpr u_int8_t MaxDivisionLevel = SingleRegionKernelMemory::MaxDivisionLevel;
+    static constexpr u_int8_t MaxAccumulatorRegionStackSize = SingleRegionKernelMemory::MaxAccumulatorRegionStackSize;
+    static constexpr u_int8_t MaxPointListsNum = SingleRegionKernelMemory::MaxPointListsNum;
+    static constexpr u_int16_t MaxPointsInRegion = SingleRegionKernelMemory::MaxPointsInRegion;
+    static constexpr u_int32_t MaxPointListsPointsNum = SingleRegionKernelMemory::MaxPointListsPointsNum;
+    static constexpr u_int8_t SolutionHitsThreshold = 8;    // TODO: Tune
     static constexpr float BMagnitude = 2.0f;   // TODO: Tune
 
     // Auxiliary functions, move somewhere else later

@@ -10,9 +10,9 @@
 #include <gmock/gmock.h>
 #include <sycl/sycl.hpp>
 #include <numeric>
-
-
+#include <sycl/sycl.hpp>
 #include <fstream>
+
 
 class SingleRegionKernelTest : public ::testing::Test
 {
@@ -452,8 +452,26 @@ class SingleHelixDetectionTest : public ::testing::Test
 {
 protected:
     SingleHelixDetectionTest()
-    : settings_(getSplitterSettings()),
-        splitter_(settings_) {}
+    : logger_(std::cout)
+    , settings_(getSplitterSettings())
+    , splitter_(settings_)
+    , queue_(sycl::default_selector_v)
+    , kernelMemory_(queue_)
+    {
+        logger_.setMinSeverity(Logger::LogMessage::Severity::Info);
+        Logger::ILogger::setGlobalInstance(&logger_);
+
+        // Fake device kernel memory
+        kernelMemory_.indexes_ = kernelIndexes_.get();
+        kernelMemory_.xs_ = kernelXs_.get();
+        kernelMemory_.ys_ = kernelYs_.get();
+        kernelMemory_.zs_ = kernelZs_.get();
+        kernelMemory_.layers_ = kernelLayers_.get();
+        kernelMemory_.pointLists_ = kernelPointLists_.get();
+        kernelMemory_.rs_ = kernelRs_.get();
+        kernelMemory_.phis_ = kernelPhis_.get();
+    }
+
     ~SingleHelixDetectionTest() override = default;
 
     static SplitterSettings getSplitterSettings()
@@ -595,7 +613,7 @@ protected:
         copyEventToDevice();
 
         // Run kernel
-        SingleRegionKernel kernel(&splitter_, &event_, &result_);
+        SingleRegionKernel kernel(&splitter_, &event_, &result_, kernelMemory_);
         initKernel(kernel);
         kernel(sycl::id<1>(regionIndex));
 
@@ -632,6 +650,8 @@ protected:
         EXPECT_TRUE(matchingSolutionExists(expectedR, expectedPhi));
     }
 
+    Logger::OstreamLogger logger_;
+
     static const std::string TestDataDir;
     static constexpr EventUsm::EventId eventId = 42;
     static constexpr ResultUsm::ResultId resultId = 42;
@@ -652,6 +672,18 @@ protected:
     std::unique_ptr<float[]> deviceSolutionRs_{new float[ResultUsm::MaxSolutions]};
     std::unique_ptr<float[]> deviceSolutionPhis_{new float[ResultUsm::MaxSolutions]};
 
+    // Fake kernel memory
+    sycl::queue queue_;
+    SingleRegionKernelMemory kernelMemory_;
+    std::unique_ptr<u_int32_t[]> kernelIndexes_{new u_int32_t[SingleRegionKernel::MaxPointsInRegion]};
+    std::unique_ptr<float[]> kernelXs_{new float[SingleRegionKernel::MaxPointsInRegion]};
+    std::unique_ptr<float[]> kernelYs_{new float[SingleRegionKernel::MaxPointsInRegion]};
+    std::unique_ptr<float[]> kernelZs_{new float[SingleRegionKernel::MaxPointsInRegion]};
+    std::unique_ptr<EventUsm::LayerNumber[]> kernelLayers_{new EventUsm::LayerNumber[SingleRegionKernel::MaxPointsInRegion]};
+    std::unique_ptr<u_int32_t[]> kernelPointLists_{new u_int32_t[SingleRegionKernel::MaxPointListsPointsNum]};
+    std::unique_ptr<float[]> kernelRs_{new float[SingleRegionKernel::MaxPointsInRegion]};
+    std::unique_ptr<float[]> kernelPhis_{new float[SingleRegionKernel::MaxPointsInRegion]};
+
     // Extracted result
     u_int32_t regionNumSolutions_; 
     std::vector<float> rs_;
@@ -667,7 +699,7 @@ TEST_F(SingleHelixDetectionTest, BasicR1050Phi200XAngle04)
     constexpr u_int16_t regionIndex = 1;
     constexpr float r = 1050.0f;
     constexpr float phi = 2.0f;
-    constexpr u_int8_t numPoints = 8;
+    constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.4f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
@@ -683,7 +715,7 @@ TEST_F(SingleHelixDetectionTest, BasicR2000Phi190XAngle06)
     constexpr u_int16_t regionIndex = 1;
     constexpr float r = 2000.0f;
     constexpr float phi = 1.9f;
-    constexpr u_int8_t numPoints = 8;
+    constexpr u_int8_t numPoints = 10;
     constexpr float xAngle = 0.6f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
@@ -709,13 +741,13 @@ TEST_F(SingleHelixDetectionTest, BasicR5000Phi210XAngle06)
     assertSolutionsCorrect(r, phi, numPoints);
 }
 
-TEST_F(SingleHelixDetectionTest, BasicR10000Phi180XAngle06)
+TEST_F(SingleHelixDetectionTest, BasicR10000Phi190XAngle06)
 {
     // Define helix
     constexpr u_int16_t regionIndex = 1;
     constexpr float r = 10000.0f;
     constexpr float phi = 1.9f;
-    constexpr u_int8_t numPoints = 8;
+    constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.6f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
@@ -731,7 +763,7 @@ TEST_F(SingleHelixDetectionTest, RotatedR1200Phi160XAngle04)
     constexpr u_int16_t regionIndex = 0;    // Region requiring rotation due to atan2 discontinuity
     constexpr float r = 1200.0f;
     constexpr float phi = 1.6f;
-    constexpr u_int8_t numPoints = 8;
+    constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.4f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
@@ -836,7 +868,7 @@ protected:
         copyEventToDevice();
 
         // Run kernel
-        SingleRegionKernel kernel(&splitter_, &event_, &result_);
+        SingleRegionKernel kernel(&splitter_, &event_, &result_, kernelMemory_);
         initKernel(kernel);
         kernel(sycl::id<1>(regionIndex));
 
@@ -851,15 +883,15 @@ TEST_F(MultipleHelixDetectionTest, Basic)
     // Define helixes
     constexpr u_int16_t regionIndex = 1;
     const std::vector<Helix> helixes = {
-        Helix(1200.0f, 2.0f, 0.1f, 8),
+        Helix(1200.0f, 2.0f, 0.1f, 10),
         Helix(1200.0f, 2.1f, 0.4f, 10),
         Helix(2000.0f, 1.9f, 0.8f, 10),
         Helix(2000.0f, 2.0f, 0.5f, 12),
         Helix(2000.0f, 2.1f, 0.2f, 8),
-        Helix(5000.0f, 1.9f, 0.8f, 8),
+        Helix(5000.0f, 1.9f, 0.8f, 10),
         Helix(5000.0f, 2.0f, 0.4f, 8),
         Helix(5000.0f, 2.1f, 0.9f, 10),
-        Helix(10000.0f, 1.9f, 0.8f, 10),
+        Helix(10000.0f, 1.9f, 0.8f, 12),
         Helix(10000.0f, 2.0f, 0.4f, 12),
         Helix(10000.0f, 2.1f, 0.1f, 8),
         Helix(20000.0f, 2.0f, 0.2f, 8),
@@ -884,15 +916,15 @@ TEST_F(MultipleHelixDetectionTest, Rotated)
     // Define helixes
     constexpr u_int16_t regionIndex = 0;
     const std::vector<Helix> helixes = {
-        Helix(1200.0f, 1.5f, 0.1f, 8),
-        Helix(1200.0f, 1.8f, 0.4f, 10),
+        Helix(1200.0f, 1.5f, 0.1f, 10),
+        Helix(1200.0f, 1.8f, 0.4f, 14),
         Helix(2000.0f, 1.5f, 0.8f, 10),
         Helix(2000.0f, 1.6f, 0.5f, 12),
         Helix(2000.0f, 1.7f, 0.2f, 8),
-        Helix(5000.0f, 1.5f, 0.8f, 8),
+        Helix(5000.0f, 1.5f, 0.8f, 10),
         Helix(5000.0f, 1.6f, 0.4f, 8),
         Helix(5000.0f, 1.7f, 0.9f, 10),
-        Helix(10000.0f, 1.5f, 0.8f, 10),
+        Helix(10000.0f, 1.6f, 0.8f, 12),
         Helix(10000.0f, 1.6f, 0.4f, 12),
         Helix(10000.0f, 1.7f, 0.1f, 8),
         Helix(20000.0f, 1.6f, 0.2f, 8),
@@ -942,7 +974,7 @@ TEST_F(MultipleHelixDetectionTest, FullEvent)
 
     // logger_.setMinSeverity(Logger::LogMessage::Severity::Debug);
 
-    SingleRegionKernel kernel(&splitter_, &event_, &result_);
+    SingleRegionKernel kernel(&splitter_, &event_, &result_, kernelMemory_);
     initKernel(kernel);
     bool allRegionsContainHelix = true;
     for (u_int16_t regionIndex = 0; regionIndex < settings_.wedges_.getSize(); ++regionIndex)

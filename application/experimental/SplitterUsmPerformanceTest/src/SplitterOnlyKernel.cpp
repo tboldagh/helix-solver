@@ -1,7 +1,7 @@
 #include "SplitterUsmPerformanceTest/SplitterOnlyKernel.h"
 
-SplitterOnlyKernel::SplitterOnlyKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result)
-: SingleRegionKernel(splitter, event, result) {}
+SplitterOnlyKernel::SplitterOnlyKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result, const SingleRegionKernelMemory& memory)
+: SingleRegionKernel(splitter, event, result, memory) {}
 
 void SplitterOnlyKernel::operator()(sycl::id<1> regionIdIdx) const
 {
@@ -17,13 +17,14 @@ void SplitterOnlyKernel::operator()(sycl::id<1> regionIdIdx) const
         return;
     }
 
-    u_int32_t numPoints = 0;
-    u_int32_t indexes[MaxPointsInRegion];   // Just in case we need to keep info about which points form a helix
-    float xs[MaxPointsInRegion];
-    float ys[MaxPointsInRegion];
-    float zs[MaxPointsInRegion];
-    EventUsm::LayerNumber layers[MaxPointsInRegion];
+    u_int32_t* indexes = kernelIndexes_;
+    float* xs = kernelXs_;
+    float* ys = kernelYs_;
+    float* zs = kernelZs_;
+    EventUsm::LayerNumber* layers = kernelLayers_;
 
+
+    u_int32_t numPoints = 0;
     filterPointsInRegion(regionId, numPoints, indexes, xs, ys, zs, layers);
 
     for (uint32_t i = 0; i < numPoints; ++i)
