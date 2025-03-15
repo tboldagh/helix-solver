@@ -5,6 +5,7 @@
 #include <sycl/sycl.hpp>
 #include <map>
 #include <memory>
+#include <functional>
 
 
 class IQueue
@@ -12,19 +13,16 @@ class IQueue
 public:
     using Capacity = u_int16_t;
     using DeviceResourceGroupId = u_int16_t;
+    using CreateResourceGroupFunction = std::function<std::unique_ptr<DeviceResourceGroup>(sycl::queue&)>;
 
     virtual ~IQueue() = default;
 
-    virtual Capacity getEventResourcesCapacity() const = 0;
-    virtual Capacity getEventResourcesLoad() const = 0;
-    // Used to borrow a resource group from the queue. Resource group has to be returned with returnEventResourceGroup.
-    virtual std::pair<DeviceResourceGroupId, const DeviceResourceGroup&> getEventResourceGroup() = 0;
-    virtual void returnEventResourceGroup(DeviceResourceGroupId resourceGroupId) = 0;
+    virtual bool createResources(const CreateResourceGroupFunction& createResourceGroupFunction) = 0;
 
-    virtual Capacity getResultResourcesCapacity() const = 0;
-    virtual Capacity getResultResourcesLoad() const = 0;
-    virtual std::pair<DeviceResourceGroupId, const DeviceResourceGroup&> getResultResourceGroup() = 0;
-    virtual void returnResultResourceGroup(DeviceResourceGroupId resourceGroupId) = 0;
+    virtual Capacity getResourcesCapacity() const = 0;
+    virtual Capacity getResourcesLoad() const = 0;
+    virtual std::pair<DeviceResourceGroupId, const DeviceResourceGroup&> getResources() = 0;
+    virtual void returnResources(DeviceResourceGroupId resourceGroupId) = 0;
 
     virtual Capacity getWorkCapacity() const = 0;
     virtual Capacity getWorkLoad() const = 0;

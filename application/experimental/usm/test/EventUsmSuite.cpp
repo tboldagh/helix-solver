@@ -6,6 +6,67 @@
 #include <sycl/sycl.hpp>
 
 
+class EventKernelMemoryTest : public ::testing::Test
+{
+protected:
+    EventKernelMemoryTest()
+    {
+        queue_ = sycl::queue(sycl::gpu_selector_v);
+    }
+
+    sycl::queue queue_;
+};
+
+TEST_F(EventKernelMemoryTest, Allocation)
+{
+    EventUsm::EventKernelMemory memory(queue_);
+
+    memory.allocate();
+    ASSERT_TRUE(memory.isAllocated());
+    ASSERT_NE(nullptr, memory.numPoints_);
+    ASSERT_NE(nullptr, memory.xs_);
+    ASSERT_NE(nullptr, memory.ys_);
+    ASSERT_NE(nullptr, memory.zs_);
+    ASSERT_NE(nullptr, memory.layers_);
+
+    memory.deallocate();
+    ASSERT_FALSE(memory.isAllocated());
+}
+
+TEST_F(EventKernelMemoryTest, NoDoubleAllocation)
+{
+    EventUsm::EventKernelMemory memory(queue_);
+
+    memory.allocate();
+    auto* numPoints = memory.numPoints_;
+    auto* xs = memory.xs_;
+    auto* ys = memory.ys_;
+    auto* zs = memory.zs_;
+    auto* layers = memory.layers_;
+
+    memory.allocate();
+    ASSERT_TRUE(memory.isAllocated());
+    ASSERT_EQ(numPoints, memory.numPoints_);
+    ASSERT_EQ(xs, memory.xs_);
+    ASSERT_EQ(ys, memory.ys_);
+    ASSERT_EQ(zs, memory.zs_);
+    ASSERT_EQ(layers, memory.layers_);
+
+    memory.deallocate();
+    ASSERT_FALSE(memory.isAllocated());
+}
+
+TEST_F(EventKernelMemoryTest, AllocationDeallocationAllocation)
+{
+    EventUsm::EventKernelMemory memory(queue_);
+
+    memory.allocate();
+    memory.deallocate();
+
+    memory.allocate();
+    ASSERT_TRUE(memory.isAllocated());
+}
+
 class EventUsmTest : public ::testing::Test
 {
 protected:
@@ -33,7 +94,7 @@ TEST_F(EventUsmTest, CopyHostData)
         source.hostXs_[i] = i;
         source.hostYs_[i] = i;
         source.hostZs_[i] = i;
-        source.hostLayers_[i] = i;
+        source.hostLayers_[i] = i % 256;
     }
 
     EventUsm destination(43);
@@ -48,92 +109,55 @@ TEST_F(EventUsmTest, CopyHostData)
     }
 }
 
-class EventUsmAllocationTest : public ::testing::Test
+TEST_F(EventUsmTest, SetKernelMemory)
+{
+    EventUsm event(42);
+    sycl::queue queue = sycl::queue(sycl::gpu_selector_v);
+    EventUsm::EventKernelMemory kernelMemory(queue);
+    event.setKernelMemory(&kernelMemory);
+    ASSERT_TRUE(event.isKernelMemorySet());
+    ASSERT_EQ(event.kernelMemory_, &kernelMemory);
+}
+
+TEST_F(EventUsmTest, SetAndUnsetKernelMemory)
+{
+    EventUsm event(42);
+    sycl::queue queue = sycl::queue(sycl::gpu_selector_v);
+    EventUsm::EventKernelMemory kernelMemory(queue);
+    event.setKernelMemory(&kernelMemory);
+    ASSERT_TRUE(event.isKernelMemorySet());
+    ASSERT_EQ(event.kernelMemory_, &kernelMemory);
+
+    event.setKernelMemory(nullptr);
+    ASSERT_FALSE(event.isKernelMemorySet());
+    ASSERT_EQ(event.kernelMemory_, nullptr);
+}
+
+class EventUsmTransferTest : public ::testing::Test
 {
 protected:
-    EventUsmAllocationTest()
+    EventUsmTransferTest()
+    : event_(42)
     {
         Logger::ILogger::setGlobalInstance(&logger_);
 
         queue_ = sycl::queue(sycl::gpu_selector_v);
-    }
 
-    ~EventUsmAllocationTest() override
-    {
-        Logger::ILogger::setGlobalInstance(nullptr);
-    }
-
-    sycl::queue queue_;
-    Logger::ILoggerMock logger_;
-};
-
-TEST_F(EventUsmAllocationTest, Allocation)
-{
-    EventUsm event(42);
-    ASSERT_TRUE(event.allocateOnDevice(queue_));
-
-    ASSERT_TRUE(event.deallocateOnDevice(queue_));
-}
-
-TEST_F(EventUsmAllocationTest, NoDoubleAllocation)
-{
-    EventUsm event(42);
-    ASSERT_TRUE(event.allocateOnDevice(queue_));
-    ASSERT_FALSE(event.allocateOnDevice(queue_));
-
-    ASSERT_TRUE(event.deallocateOnDevice(queue_));
-}
-
-TEST_F(EventUsmAllocationTest, NoDoubleDeallocation)
-{
-    EventUsm event(42);
-    ASSERT_TRUE(event.allocateOnDevice(queue_));
- 
-    ASSERT_TRUE(event.deallocateOnDevice(queue_));
-    ASSERT_FALSE(event.deallocateOnDevice(queue_));
-}
-
-TEST_F(EventUsmAllocationTest, MissingDeallocationLogged)
-{
-    EventUsm* event = new EventUsm(42);
-    ASSERT_TRUE(event->allocateOnDevice(queue_));
-
-    u_int32_t* deviceNumPoints = event->deviceNumPoints_;
-    float* deviceXs = event->deviceXs_;
-    float* deviceYs = event->deviceYs_;
-    float* deviceZs = event->deviceZs_;
-    EventUsm::LayerNumber* deviceLayers = event->deviceLayers_;
-
-    EXPECT_CALL(logger_, log(testing::AllOf(
-        testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
-        testing::Property(&Logger::LogMessage::getMessage, "Memory leak in EventUsm with eventId " + std::to_string(event->eventId_) + ". Memory was not deallocated on device before destruction.")
-    )));
-
-    delete event;
-
-    sycl::free(deviceNumPoints, queue_);
-    sycl::free(deviceXs, queue_);
-    sycl::free(deviceYs, queue_);
-    sycl::free(deviceZs, queue_);
-    sycl::free(deviceLayers, queue_);
-}
-
-class EventUsmTransferTest : public EventUsmAllocationTest
-{
-protected:
-    EventUsmTransferTest()
-        : EventUsmAllocationTest()
-        , event_(42)
-    {
-        event_.allocateOnDevice(queue_);
+        kernelMemory_.allocate();
+        event_.setKernelMemory(&kernelMemory_);
     }
 
     ~EventUsmTransferTest() override
     {
-        event_.deallocateOnDevice(queue_);
+        kernelMemory_.deallocate();
+
+        Logger::ILogger::setGlobalInstance(nullptr);
     }
 
+    sycl::queue queue_;
     EventUsm event_;
+    EventUsm::EventKernelMemory kernelMemory_{queue_};
+    Logger::ILoggerMock logger_;
 };
 
 TEST_F(EventUsmTransferTest, Transfer)
@@ -147,18 +171,25 @@ TEST_F(EventUsmTransferTest, Transfer)
         event_.hostLayers_[i] = i;
     }
 
-    ASSERT_FALSE(event_.transferToDevice(queue_).empty());
+    {   // Transfer to device
+        TransferableData::TransferEvents transferEvents = event_.transferToDevice();
+        ASSERT_FALSE(transferEvents.empty());
+        for (auto& transferEvent : transferEvents)
+        {
+            transferEvent->wait();
+        }
+    }
 
     // Double all 
-    queue_.submit([&](sycl::handler& cgh)
+    queue_.submit([&](sycl::handler& handler)
     {
-        u_int32_t* numPoints = event_.deviceNumPoints_;
-        float* xs = event_.deviceXs_;
-        float* ys = event_.deviceYs_;
-        float* zs = event_.deviceZs_;
-        EventUsm::LayerNumber* layers = event_.deviceLayers_;
+        u_int32_t* numPoints = event_.kernelMemory_->numPoints_;
+        float* xs = event_.kernelMemory_->xs_;
+        float* ys = event_.kernelMemory_->ys_;
+        float* zs = event_.kernelMemory_->zs_;
+        EventUsm::LayerNumber* layers = event_.kernelMemory_->layers_;
 
-        cgh.parallel_for(sycl::range<1>(event_.hostNumPoints_), [=](sycl::id<1> idx)
+        handler.parallel_for(sycl::range<1>(event_.hostNumPoints_), [=](sycl::id<1> idx)
         {
             *numPoints = 420;
             xs[idx] *= 2;
@@ -166,10 +197,17 @@ TEST_F(EventUsmTransferTest, Transfer)
             zs[idx] *= 2;
             layers[idx] = layers[idx] * 2 % 256;
         });
-    });
-    queue_.wait();
+    }).wait();
 
-    ASSERT_FALSE(event_.transferToHost(queue_).empty());
+    {   // Transfer to host
+        TransferableData::TransferEvents transferEvents = event_.transferToHost();
+        ASSERT_FALSE(transferEvents.empty());
+        for (auto& transferEvent : transferEvents)
+        {
+            transferEvent->wait();
+        }
+    }
+
     ASSERT_EQ(event_.hostNumPoints_, 420);
     for (u_int32_t i = 0; i < 420; ++i)
     {
@@ -187,41 +225,4 @@ TEST_F(EventUsmTransferTest, Transfer)
         ASSERT_EQ(event_.hostZs_[i], i);
         ASSERT_EQ(event_.hostLayers_[i], i % 256);
     }
-}
-
-TEST_F(EventUsmTransferTest, NoAllocationBeforeTransferLogged)
-{
-    EventUsm* event = new EventUsm(42);
-
-    EXPECT_CALL(logger_, log(testing::AllOf(
-        testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
-        testing::Property(&Logger::LogMessage::getMessage, "Memory not allocated on device for EventUsm with eventId " + std::to_string(event->eventId_) + ".")
-    )));
-
-    ASSERT_TRUE(event->transferToDevice(queue_).empty());
-}
-
-TEST_F(EventUsmTransferTest, TransferToDeviceWrongQueueLogged)
-{
-    sycl::queue otherQueue(sycl::gpu_selector_v);
-
-    EXPECT_CALL(logger_, log(testing::AllOf(
-        testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
-        testing::Property(&Logger::LogMessage::getMessage, "Memory allocated on different queue for EventUsm with eventId " + std::to_string(event_.eventId_) + ".")
-    )));
-
-    ASSERT_TRUE(event_.transferToDevice(otherQueue).empty());
-}
-
-TEST_F(EventUsmTransferTest, TransferToHostWrongQueueLogged)
-{
-    ASSERT_FALSE(event_.transferToDevice(queue_).empty());
-
-    EXPECT_CALL(logger_, log(testing::AllOf(
-        testing::Property(&Logger::LogMessage::getSeverity, Logger::LogMessage::Severity::Error),
-        testing::Property(&Logger::LogMessage::getMessage, "Memory allocated on different queue for EventUsm with eventId " + std::to_string(event_.eventId_) + ".")
-    )));
-
-    sycl::queue otherQueue(sycl::gpu_selector_v);
-    ASSERT_TRUE(event_.transferToHost(otherQueue).empty());
 }

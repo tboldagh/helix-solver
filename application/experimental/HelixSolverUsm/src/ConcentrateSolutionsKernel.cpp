@@ -1,10 +1,10 @@
 #include "HelixSolverUsm/ConcentrateSolutionsKernel.h"
 
 ConcentrateSolutionsKernel::ConcentrateSolutionsKernel(const ResultUsm* result)
-: deviceRegionNumSolutions_(result->deviceNumRegionSolutions_)
-, deviceSolutionHitCounts_(result->deviceSolutionHitCounts_)
-, deviceSolutionRs_(result->deviceSolutionRs_)
-, deviceSolutionPhis_(result->deviceSolutionPhis_) {}
+: deviceRegionNumSolutions_(result->kernelMemory_->regionNumSolutions_)
+, deviceSolutionHitCounts_(result->kernelMemory_->solutionHitCounts_)
+, deviceSolutionRs_(result->kernelMemory_->solutionRs_)
+, deviceSolutionPhis_(result->kernelMemory_->solutionPhis_) {}
 
 void ConcentrateSolutionsKernel::operator()(sycl::id<1> index) const
 {

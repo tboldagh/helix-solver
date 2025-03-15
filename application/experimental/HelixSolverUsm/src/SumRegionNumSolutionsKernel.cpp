@@ -2,8 +2,8 @@
 
 
 SumRegionNumSolutionsKernel::SumRegionNumSolutionsKernel(const ResultUsm* result)
-: deviceNumSolutions_(result->deviceNumSolutions_)
-, deviceRegionNumSolutions_(result->deviceNumRegionSolutions_) {}
+: deviceNumSolutions_(result->kernelMemory_->numSolutions_)
+, deviceRegionNumSolutions_(result->kernelMemory_->regionNumSolutions_) {}
 
 SYCL_EXTERNAL void SumRegionNumSolutionsKernel::operator()() const
 {

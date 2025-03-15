@@ -8,7 +8,7 @@ SingleRegionKernelMemory::SingleRegionKernelMemory(sycl::queue& queue)
 : KernelMemory(queue) {}
 
 
-void SingleRegionKernelMemory::allocateOnDevice()
+void SingleRegionKernelMemory::allocateInternal()
 {
     indexes_ = sycl::malloc_device<u_int32_t>(MaxPointsInRegion, queue_);
     xs_ = sycl::malloc_device<float>(MaxPointsInRegion, queue_);
@@ -20,7 +20,7 @@ void SingleRegionKernelMemory::allocateOnDevice()
     phis_ = sycl::malloc_device<float>(MaxPointsInRegion, queue_);
 }
 
-void SingleRegionKernelMemory::deallocateOnDevice()
+void SingleRegionKernelMemory::deallocateInternal()
 {
     sycl::free(indexes_, queue_);
     sycl::free(xs_, queue_);

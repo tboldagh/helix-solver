@@ -16,9 +16,6 @@ public:
 
     void operator=(const SingleRegionKernelMemory&) = delete;
 
-    void allocateOnDevice() override;
-    void deallocateOnDevice() override;
-
     static constexpr u_int8_t Phi0MaxDivisionLevel = 10;   // TODO: Tune
     static constexpr u_int8_t QOverPtMaxDivisionLevel = 10;   // TODO: Tune
     static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
@@ -27,16 +24,16 @@ public:
     static constexpr u_int16_t MaxPointsInRegion = 10000;   // TODO: Tune
     static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;    // TODO: This is max possible number of points in all lists combined. Can be tuned
 
-private:
-    u_int32_t* indexes_;   // Just in case we need to keep info about which points form a helix
-    float* xs_;
-    float* ys_;
-    float* zs_;
-    EventUsm::LayerNumber* layers_;
-    u_int32_t* pointLists_;
-    float* rs_;
-    float* phis_;
+    u_int32_t* indexes_ = nullptr;   // Just in case we need to keep info about which points form a helix
+    float* xs_ = nullptr;
+    float* ys_ = nullptr;
+    float* zs_ = nullptr;
+    EventUsm::LayerNumber* layers_ = nullptr;
+    u_int32_t* pointLists_ = nullptr;
+    float* rs_ = nullptr;
+    float* phis_ = nullptr;
 
-    friend class SingleRegionKernel;
-    friend class SingleHelixDetectionTest;
+protected:
+    void allocateInternal() override;
+    void deallocateInternal() override;
 };

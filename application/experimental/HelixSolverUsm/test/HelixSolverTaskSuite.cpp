@@ -1,4 +1,5 @@
 #include "HelixSolverUsm/HelixSolverTask.h"
+#include "HelixSolverUsm/SingleRegionKernel.h"
 #include "SplitterUsm/SplitterSettings.h"
 #include "SplitterUsm/Splitter.h"
 #include "EventUsm/EventUsm.h"
@@ -36,39 +37,23 @@ protected:
         task_.assignQueue(queueMock_);
         // State: WaitingForResources
 
-        prepareEventResources();
-        prepareResultResources();
+        deviceResources_ = SingleRegionKernel::createResourceGroup(syclQueue_);
     }
 
     ~HelixSolverTaskInitTest() override
     {
+        for (auto& [type, resource] : *deviceResources_)
+        {
+            static_cast<KernelMemory*>(resource)->deallocate();
+        }
+
         Logger::ILogger::setGlobalInstance(nullptr);
-
-        freeEventResources();
-        freeResultResources();
     }
 
-    void prepareEventResources()
+    void prepareResources()
     {
-        eventResources_ = EventUsm::allocateDeviceResources(syclQueue_);
-        eventResources_->emplace(DeviceResourceType::Splitter, sycl::malloc_device<Splitter>(1, syclQueue_));
-        syclQueue_.memcpy(eventResources_->at(DeviceResourceType::Splitter), &splitter_, sizeof(Splitter)).wait();
-    }
-
-    void prepareResultResources()
-    {
-        resultResources_ = ResultUsm::allocateDeviceResources(syclQueue_);
-    }
-
-    void freeEventResources()
-    {
-        EventUsm::deallocateDeviceResources(*eventResources_, syclQueue_);
-        sycl::free(eventResources_->at(DeviceResourceType::Splitter), syclQueue_);
-    }
-
-    void freeResultResources()
-    {
-        ResultUsm::deallocateDeviceResources(*resultResources_, syclQueue_);
+        splitter_.setKernelMemory(static_cast<KernelMemory*>(deviceResources_->at(DeviceResourceType::SplitterSettingsKernelMemory)));
+        splitter_.transferToDevice();
     }
 
     Logger::OstreamLogger logger_;
@@ -90,22 +75,27 @@ protected:
     EventUsm* eventPtr_;
     ResultUsm* resultPtr_;
 
-    std::unique_ptr<DeviceResourceGroup> eventResources_;
-    std::unique_ptr<DeviceResourceGroup> resultResources_;
+    std::unique_ptr<DeviceResourceGroup> deviceResources_;
 };
 
-TEST_F(HelixSolverTaskInitTest, TakeEventResources)
+TEST_F(HelixSolverTaskInitTest, TakeResources)
 {
-    task_.takeEventResources(std::make_pair(eventResourceGroupId_, *eventResources_));
-
-    ASSERT_TRUE(task_.isEventResourcesAssigned());
     ASSERT_EQ(task_.getState(), ITask::State::WaitingForResources);
-    ASSERT_EQ(eventPtr_->deviceNumPoints_, eventResources_->at(DeviceResourceType::NumPoints));
-    ASSERT_EQ(eventPtr_->deviceXs_, eventResources_->at(DeviceResourceType::Xs));
-    ASSERT_EQ(eventPtr_->deviceYs_, eventResources_->at(DeviceResourceType::Ys));
-    ASSERT_EQ(eventPtr_->deviceZs_, eventResources_->at(DeviceResourceType::Zs));
-    ASSERT_EQ(eventPtr_->deviceLayers_, eventResources_->at(DeviceResourceType::Layers));
-    ASSERT_EQ(task_.deviceSplitter_, eventResources_->at(DeviceResourceType::Splitter));
+
+    EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
+    task_.takeResources(std::make_pair(eventResourceGroupId_, *deviceResources_));
+    ASSERT_TRUE(task_.isResourcesAssigned());
+    ASSERT_EQ(task_.getState(), ITask::State::WaitingForEventTransfer);
+    ASSERT_TRUE(task_.event_->isKernelMemorySet());
+    ASSERT_EQ(eventPtr_->kernelMemory_, deviceResources_->at(DeviceResourceType::EventKernelMemory));
+    ASSERT_TRUE(eventPtr_->kernelMemory_->isAllocated());
+    ASSERT_TRUE(task_.result_->isKernelMemorySet());
+    ASSERT_EQ(resultPtr_->kernelMemory_, deviceResources_->at(DeviceResourceType::ResultKernelMemory));
+    ASSERT_TRUE(resultPtr_->kernelMemory_->isAllocated());
+    ASSERT_EQ(task_.singleRegionKernelMemory_, deviceResources_->at(DeviceResourceType::KernelMemory));
+    ASSERT_TRUE(task_.singleRegionKernelMemory_->isAllocated());
+    ASSERT_EQ(task_.splitter_.splitterSettingsKernelMemory_, deviceResources_->at(DeviceResourceType::SplitterSettingsKernelMemory));
+    ASSERT_TRUE(task_.splitter_.splitterSettingsKernelMemory_->isAllocated());
 }
 
 class HelixSolverTaskExecutionTest : public HelixSolverTaskInitTest
@@ -114,11 +104,8 @@ protected:
     HelixSolverTaskExecutionTest()
     : HelixSolverTaskInitTest()
     {
-        task_.takeEventResources(std::make_pair(eventResourceGroupId_, *eventResources_));
-        // State: WaitingForResources
-
         EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
-        task_.takeResultResources(std::make_pair(resultResourceGroupId_, *resultResources_));
+        task_.takeResources(std::make_pair(eventResourceGroupId_, *deviceResources_));
         // State: WaitingForEventTransfer
 
         task_.isStateChanging_ = true;
@@ -139,10 +126,6 @@ TEST_F(HelixSolverTaskExecutionTest, ExecuteOnDevice)
     task_.executeThread();
     EXPECT_EQ(task_.getState(), ITask::State::Executed);
 
-    EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
-    task_.releaseEventResourceGroup();
-    EXPECT_EQ(task_.getState(), ITask::State::WaitingForResultTransfer);
-
     task_.isStateChanging_ = true;
     EXPECT_CALL(queueMock_, checkoutQueue()).WillOnce(testing::ReturnRef(syclQueue_));
     EXPECT_CALL(queueMock_, checkinQueue());
@@ -151,7 +134,7 @@ TEST_F(HelixSolverTaskExecutionTest, ExecuteOnDevice)
     EXPECT_EQ(task_.getState(), ITask::State::ResultTransferred);
 
     EXPECT_CALL(stateObserverMock_, onTaskStateChange(testing::Ref(task_)));
-    task_.releaseResultResourceGroup();
+    ASSERT_EQ(task_.releaseResources(), eventResourceGroupId_);
     EXPECT_EQ(task_.getState(), ITask::State::Completed);
 }
 
@@ -194,6 +177,11 @@ TEST_F(HelixSolverTaskFullEvent, Basic)
     IQueueMock queueMock;
     sycl::queue syclQueue{sycl::gpu_selector_v};
 
+    constexpr IQueue::DeviceResourceGroupId resourceGroupId = 43;
+    std::unique_ptr<DeviceResourceGroup> deviceResources = SingleRegionKernel::createResourceGroup(syclQueue);
+    splitter_.setKernelMemory(static_cast<KernelMemory*>(deviceResources->at(DeviceResourceType::SplitterSettingsKernelMemory)));
+    splitter_.transferToDevice();
+
     task.takeEventAndResult(std::move(event), std::move(result));
 
     EXPECT_CALL(stateObserverMock, onTaskStateChange(testing::Ref(task)));
@@ -205,19 +193,8 @@ TEST_F(HelixSolverTaskFullEvent, Basic)
     task.assignQueue(queueMock);
     EXPECT_EQ(task.getState(), ITask::State::WaitingForResources);
 
-    std::unique_ptr<DeviceResourceGroup> eventResources = EventUsm::allocateDeviceResources(syclQueue);
-    eventResources->emplace(DeviceResourceType::Splitter, sycl::malloc_device<Splitter>(1, syclQueue));
-    syclQueue.memcpy(eventResources->at(DeviceResourceType::Splitter), &splitter_, sizeof(Splitter)).wait();
-
-    std::unique_ptr<DeviceResourceGroup> resultResources = ResultUsm::allocateDeviceResources(syclQueue);
-
-    constexpr IQueue::DeviceResourceGroupId eventResourceGroupId = 43;
-    task.takeEventResources(std::make_pair(eventResourceGroupId, *eventResources));
-    EXPECT_EQ(task.getState(), ITask::State::WaitingForResources);
-
-    constexpr IQueue::DeviceResourceGroupId resultResourceGroupId = 44;
     EXPECT_CALL(stateObserverMock, onTaskStateChange(testing::Ref(task)));
-    task.takeResultResources(std::make_pair(resultResourceGroupId, *resultResources));
+    task.takeResources(std::make_pair(resourceGroupId, *deviceResources));
     EXPECT_EQ(task.getState(), ITask::State::WaitingForEventTransfer);
 
     task.isStateChanging_ = true;
@@ -234,10 +211,6 @@ TEST_F(HelixSolverTaskFullEvent, Basic)
     task.executeThread();
     EXPECT_EQ(task.getState(), ITask::State::Executed);
 
-    EXPECT_CALL(stateObserverMock, onTaskStateChange(testing::Ref(task)));
-    task.releaseEventResourceGroup();
-    EXPECT_EQ(task.getState(), ITask::State::WaitingForResultTransfer);
-
     task.isStateChanging_ = true;
     EXPECT_CALL(queueMock, checkoutQueue()).WillOnce(testing::ReturnRef(syclQueue));
     EXPECT_CALL(queueMock, checkinQueue());
@@ -246,7 +219,7 @@ TEST_F(HelixSolverTaskFullEvent, Basic)
     EXPECT_EQ(task.getState(), ITask::State::ResultTransferred);
 
     EXPECT_CALL(stateObserverMock, onTaskStateChange(testing::Ref(task)));
-    task.releaseResultResourceGroup();
+    task.releaseResources();
     EXPECT_EQ(task.getState(), ITask::State::Completed);
     event = task.releaseEvent();
     result = task.releaseResult();

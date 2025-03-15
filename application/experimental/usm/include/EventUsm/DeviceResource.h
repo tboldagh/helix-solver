@@ -1,5 +1,7 @@
 #pragma once
 
+#include "EventUsm/KernelMemory.h"
+
 #include <unordered_map>
 #include <sycl/sycl.hpp>
 
@@ -15,7 +17,12 @@ enum class DeviceResourceType : u_int8_t
     SolutionHitCounts,
     Rs,
     Phis,
-    Splitter
+    Splitter,
+    EventKernelMemory,
+    ResultKernelMemory,
+    KernelMemory,
+    SplitterSettingsKernelMemory
 };
 
 using DeviceResourceGroup = std::unordered_map<DeviceResourceType, void*>;
+// using DeviceResourceGroup = std::unordered_map<DeviceResourceType, KernelMemory*>;

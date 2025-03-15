@@ -2,69 +2,95 @@
 #include "Logger/Logger.h"
 
 
+EventUsm::EventKernelMemory::EventKernelMemory(sycl::queue& queue)
+: KernelMemory(queue) {}
+
+void EventUsm::EventKernelMemory::allocateInternal()
+{
+    numPoints_ = sycl::malloc_device<u_int32_t>(1, queue_);
+    xs_ = sycl::malloc_device<float>(EventUsm::MaxPoints, queue_);
+    ys_ = sycl::malloc_device<float>(EventUsm::MaxPoints, queue_);
+    zs_ = sycl::malloc_device<float>(EventUsm::MaxPoints, queue_);
+    layers_ = sycl::malloc_device<EventUsm::LayerNumber>(EventUsm::MaxPoints, queue_);
+}
+
+void EventUsm::EventKernelMemory::deallocateInternal()
+{
+    sycl::free(numPoints_, queue_);
+    sycl::free(xs_, queue_);
+    sycl::free(ys_, queue_);
+    sycl::free(zs_, queue_);
+    sycl::free(layers_, queue_);
+}
+
+
 EventUsm::EventUsm(EventId eventId)
-: eventId_(eventId) {}
+: eventId_(eventId)
+, hostXs_(new float[MaxPoints])
+, hostYs_(new float[MaxPoints])
+, hostZs_(new float[MaxPoints])
+, hostLayers_(new LayerNumber[MaxPoints]) {}
 
 EventUsm::~EventUsm()
 {
-    if (allocated_)
-    {
-        LOG_ERROR("Memory leak in EventUsm with eventId " + std::to_string(eventId_) + ". Memory was not deallocated on device before destruction.");
-    }
+    delete[] hostXs_;
+    delete[] hostYs_;
+    delete[] hostZs_;
+    delete[] hostLayers_;
 }
 
-bool EventUsm::allocateOnDevice(sycl::queue& queue)
+TransferableData::TransferEvents EventUsm::transferToDevice()
 {
-    if (allocated_)
+    if (!isKernelMemorySet())
     {
-        LOG_ERROR("Memory already allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
-        return false;
+        LOG_ERROR("Kernel memory not set for EventUsm, eventId: " + std::to_string(eventId_));
+        return TransferEvents{};
     }
 
+    TransferEvents transferEvents;
     try
     {
-        deviceNumPoints_ = sycl::malloc_device<u_int32_t>(1, queue);
-        deviceXs_ = sycl::malloc_device<float>(MaxPoints, queue);
-        deviceYs_ = sycl::malloc_device<float>(MaxPoints, queue);
-        deviceZs_ = sycl::malloc_device<float>(MaxPoints, queue);
-        deviceLayers_ = sycl::malloc_device<LayerNumber>(MaxPoints, queue);
+        auto queue = kernelMemory_->getQueue();
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->numPoints_, &hostNumPoints_, sizeof(u_int32_t))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->xs_, hostXs_, hostNumPoints_ * sizeof(float))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->ys_, hostYs_, hostNumPoints_ * sizeof(float))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->zs_, hostZs_, hostNumPoints_ * sizeof(float))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->layers_, hostLayers_, hostNumPoints_ * sizeof(LayerNumber))));
     }
     catch (sycl::exception& exception)
     {
-        LOG_ERROR("Failed to allocate memory on device for EventUsm with eventId " + std::to_string(eventId_) + ". Exception: " + exception.what() + ".");
-        return false;
+        LOG_ERROR("Failed to transfer memory to device for EventUsm, eventId " + std::to_string(eventId_) + ", exception: " + exception.what());
+        return TransferEvents{};
     }
 
-    allocated_ = true;
-    allocationQueue_ = &queue;
-    return true;
+    return transferEvents;
 }
 
-bool EventUsm::deallocateOnDevice(sycl::queue& queue)
+TransferableData::TransferEvents EventUsm::transferToHost()
 {
-    if (!allocated_)
+    if (!isKernelMemorySet())
     {
-        LOG_ERROR("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
-        return false;
+        LOG_ERROR("Kernel memory not set for EventUsm, eventId: " + std::to_string(eventId_));
+        return TransferEvents{};
     }
 
+    TransferEvents transferEvents;
     try
     {
-        sycl::free(deviceNumPoints_, queue);
-        sycl::free(deviceXs_, queue);
-        sycl::free(deviceYs_, queue);
-        sycl::free(deviceZs_, queue);
-        sycl::free(deviceLayers_, queue);
+        auto queue = kernelMemory_->getQueue();
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(&hostNumPoints_, kernelMemory_->numPoints_, sizeof(u_int32_t))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostXs_, kernelMemory_->xs_, hostNumPoints_ * sizeof(float))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostYs_, kernelMemory_->ys_, hostNumPoints_ * sizeof(float))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostZs_, kernelMemory_->zs_, hostNumPoints_ * sizeof(float))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostLayers_, kernelMemory_->layers_, hostNumPoints_ * sizeof(LayerNumber))));
     }
     catch (sycl::exception& exception)
     {
-        LOG_ERROR("Failed to deallocate memory on device for EventUsm with eventId " + std::to_string(eventId_) + ". Exception: " + exception.what() + ".");
-        return false;
+        LOG_ERROR("Failed to transfer memory to host for EventUsm, eventId " + std::to_string(eventId_) + ", exception: " + exception.what());
+        return TransferEvents{};
     }
 
-    allocated_ = false;
-    allocationQueue_ = nullptr;
-    return true;
+    return transferEvents;
 }
 
 void EventUsm::copyHostData(const EventUsm& source, EventUsm& destination)
@@ -76,128 +102,7 @@ void EventUsm::copyHostData(const EventUsm& source, EventUsm& destination)
     std::copy(source.hostLayers_, source.hostLayers_ + source.hostNumPoints_, destination.hostLayers_);
 }
 
-DataUsm::TransferEvents EventUsm::transferToDevice(sycl::queue& queue)
+void EventUsm::setKernelMemoryInternal(KernelMemory* kernelMemory)
 {
-    if (!allocated_ && !resourcesBorrowed_)
-    {
-        LOG_ERROR("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
-        return TransferEvents{};
-    }
-
-    if (allocationQueue_ != &queue)
-    {
-        LOG_ERROR("Memory allocated on different queue for EventUsm with eventId " + std::to_string(eventId_) + ".");
-        return TransferEvents{};
-    }
-
-    TransferEvents transferEvents;
-    try
-    {
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceNumPoints_, &hostNumPoints_, sizeof(u_int32_t))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceXs_, hostXs_, hostNumPoints_ * sizeof(float))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceYs_, hostYs_, hostNumPoints_ * sizeof(float))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceZs_, hostZs_, hostNumPoints_ * sizeof(float))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceLayers_, hostLayers_, hostNumPoints_ * sizeof(LayerNumber))));
-    }
-    catch (sycl::exception& exception)
-    {
-        LOG_ERROR("Failed to transfer memory to device for EventUsm with eventId " + std::to_string(eventId_) + ". Exception: " + exception.what() + ".");
-        return TransferEvents{};
-    }
-
-    return transferEvents;
-}
-
-DataUsm::TransferEvents EventUsm::transferToHost(sycl::queue& queue)
-{
-    if (!allocated_ && !resourcesBorrowed_)
-    {
-        LOG_ERROR("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ".");
-        return TransferEvents{};
-    }
-
-    if (allocationQueue_ != &queue)
-    {
-        LOG_ERROR("Memory allocated on different queue for EventUsm with eventId " + std::to_string(eventId_) + ".");
-        return TransferEvents{};
-    }
-
-    TransferEvents transferEvents;
-    try
-    {
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(&hostNumPoints_, deviceNumPoints_, sizeof(u_int32_t))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostXs_, deviceXs_, hostNumPoints_ * sizeof(float))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostYs_, deviceYs_, hostNumPoints_ * sizeof(float))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostZs_, deviceZs_, hostNumPoints_ * sizeof(float))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostLayers_, deviceLayers_, hostNumPoints_ * sizeof(LayerNumber))));
-    }
-    catch (sycl::exception& exception)
-    {
-        LOG_ERROR("Failed to transfer memory to host for EventUsm with eventId " + std::to_string(eventId_) + ". Exception: " + exception.what() + ".");
-        return TransferEvents{};
-    }
-
-    return transferEvents;
-}
-
-bool EventUsm::takeResourceGroup(const DeviceResourceGroup& resourceGroup, const sycl::queue& queue)
-{
-    if (allocated_)
-    {
-        LOG_WARNING("Memory already allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ". Not taking ownership of resource group.");
-        return false;
-    }
-
-    deviceNumPoints_ = static_cast<u_int32_t*>(resourceGroup.at(DeviceResourceType::NumPoints));
-    deviceXs_ = static_cast<float*>(resourceGroup.at(DeviceResourceType::Xs));
-    deviceYs_ = static_cast<float*>(resourceGroup.at(DeviceResourceType::Ys));
-    deviceZs_ = static_cast<float*>(resourceGroup.at(DeviceResourceType::Zs));
-    deviceLayers_ = static_cast<LayerNumber*>(resourceGroup.at(DeviceResourceType::Layers));
-
-    resourcesBorrowed_ = true;
-    allocationQueue_ = &queue;
-
-    return true;
-}
-
-std::pair<std::unique_ptr<DeviceResourceGroup>, const sycl::queue*> EventUsm::releaseResourceGroup()
-{
-    if (allocated_)
-    {
-        LOG_WARNING("Memory not allocated on device for EventUsm with eventId " + std::to_string(eventId_) + ". Not releasing resource group.");
-        return {nullptr, nullptr};
-    }
-
-    auto resourceGroup = std::make_unique<DeviceResourceGroup>();
-    resourceGroup->emplace(DeviceResourceType::NumPoints, deviceNumPoints_);
-    resourceGroup->emplace(DeviceResourceType::Xs, deviceXs_);
-    resourceGroup->emplace(DeviceResourceType::Ys, deviceYs_);
-    resourceGroup->emplace(DeviceResourceType::Zs, deviceZs_);
-    resourceGroup->emplace(DeviceResourceType::Layers, deviceLayers_);
-
-    resourcesBorrowed_ = false;
-    allocationQueue_ = nullptr;
-
-    return {std::move(resourceGroup), allocationQueue_};
-}
-
-std::unique_ptr<DeviceResourceGroup> EventUsm::allocateDeviceResources(sycl::queue& queue)
-{
-    auto resourceGroup = std::make_unique<DeviceResourceGroup>();
-    resourceGroup->emplace(DeviceResourceType::NumPoints, sycl::malloc_device<u_int32_t>(1, queue));
-    resourceGroup->emplace(DeviceResourceType::Xs, sycl::malloc_device<float>(MaxPoints, queue));
-    resourceGroup->emplace(DeviceResourceType::Ys, sycl::malloc_device<float>(MaxPoints, queue));
-    resourceGroup->emplace(DeviceResourceType::Zs, sycl::malloc_device<float>(MaxPoints, queue));
-    resourceGroup->emplace(DeviceResourceType::Layers, sycl::malloc_device<LayerNumber>(MaxPoints, queue));
-
-    return resourceGroup;
-}
-
-void EventUsm::deallocateDeviceResources(const DeviceResourceGroup& resourceGroup, sycl::queue& queue)
-{
-    sycl::free(resourceGroup.at(DeviceResourceType::NumPoints), queue);
-    sycl::free(resourceGroup.at(DeviceResourceType::Xs), queue);
-    sycl::free(resourceGroup.at(DeviceResourceType::Ys), queue);
-    sycl::free(resourceGroup.at(DeviceResourceType::Zs), queue);
-    sycl::free(resourceGroup.at(DeviceResourceType::Layers), queue);
+    kernelMemory_ = static_cast<EventKernelMemory*>(kernelMemory);
 }

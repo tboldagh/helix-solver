@@ -5,88 +5,62 @@
 
 
 const DeviceResourceGroup QueueUsm::NullResourceGroup = {};
-const DeviceResourceGroup QueueUsm::NullResultResourceGroup = {};
 
-QueueUsm::QueueUsm(sycl::queue& syclQueue, Capacity eventResourcesCapacity, Capacity resultResourcesCapacity, Capacity workCapacity)
+QueueUsm::QueueUsm(sycl::queue& syclQueue, Capacity resourcesCapacity, Capacity workCapacity)
 : syclQueue_(syclQueue)
-, eventResourcesCapacity_(eventResourcesCapacity)
-, resultResourcesCapacity_(resultResourcesCapacity)
+, resourcesCapacity_(resourcesCapacity)
 , workLoadCapacity_(workCapacity)
 {
-    // Allocate resources on startup to avoid overhead during event processing.
-    for (DeviceResourceGroupId id = NullEventResourceGroupId + 1; id <= NullEventResourceGroupId + eventResourcesCapacity_; ++id)
-    {
-        eventResources_[id] = EventUsm::allocateDeviceResources(syclQueue_);
-        freeEventResources_.push(id);
-    }
-
-    for (DeviceResourceGroupId id = NullResultResourceGroupId + 1; id <= NullResultResourceGroupId + resultResourcesCapacity_; ++id)
-    {
-        resultResources_[id] = ResultUsm::allocateDeviceResources(syclQueue_);
-        freeResultResources_.push(id);
-    }
 }
 
 QueueUsm::~QueueUsm()
 {
-    for (auto& resourceGroup : eventResources_)
+    for (auto& [id, resourceGroup] : resources_)
     {
-        EventUsm::deallocateDeviceResources(*resourceGroup.second, syclQueue_);
+        if (resourceGroup)
+        {
+            for (auto& [type, resource] : *resourceGroup)
+            {
+                static_cast<KernelMemory*>(resource)->deallocate();
+            }
+        }
+    }
+}
+
+bool QueueUsm::createResources(const CreateResourceGroupFunction& createResourceGroupFunction)
+{
+    for (DeviceResourceGroupId id = NullResourceGroupId + 1; id <= NullResourceGroupId + resourcesCapacity_; ++id)
+    {
+        auto resourceGroup = createResourceGroupFunction(syclQueue_);
+        if (!resourceGroup)
+        {
+            LOG_ERROR("Failed to create resources, id: " + std::to_string(id));
+            return false;
+        }
+
+        resources_[id] = std::move(resourceGroup);
+        freeResources_.push(id);
     }
 
-    for (auto& resourceGroup : resultResources_)
-    {
-        ResultUsm::deallocateDeviceResources(*resourceGroup.second, syclQueue_);
-    }
+    return true;
 }
 
-std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> QueueUsm::getEventResourceGroup()
+std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> QueueUsm::getResources()
 {
-    if (freeEventResources_.empty())
+    if (freeResources_.empty())
     {
-        LOG_ERROR("No free event resources available in the queue.");
-        return {NullEventResourceGroupId, NullResourceGroup};
+        LOG_ERROR("No free resources available in the queue.");
+        return {NullResourceGroupId, NullResourceGroup};
     }
 
-    DeviceResourceGroupId id = freeEventResources_.front();
-    freeEventResources_.pop();
-    eventResourcesLoad_++;
-    return {id, *eventResources_[id]};
+    DeviceResourceGroupId id = freeResources_.front();
+    freeResources_.pop();
+    resourcesLoad_++;
+    return {id, *resources_[id]};
 }
 
-void QueueUsm::returnEventResourceGroup(DeviceResourceGroupId resourceGroupId)
+void QueueUsm::returnResources(DeviceResourceGroupId resourceGroupId)
 {
-    freeEventResources_.push(resourceGroupId);
-    eventResourcesLoad_--;
-}
-
-std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> QueueUsm::getResultResourceGroup()
-{
-    if (freeResultResources_.empty())
-    {
-        LOG_ERROR("No free result resources available in the queue.");
-        return {NullResultResourceGroupId, NullResultResourceGroup};
-    }
-
-    DeviceResourceGroupId id = freeResultResources_.front();
-    freeResultResources_.pop();
-    resultResourcesLoad_++;
-    return {id, *resultResources_[id]};
-}
-
-void QueueUsm::returnResultResourceGroup(DeviceResourceGroupId resourceGroupId)
-{
-    freeResultResources_.push(resourceGroupId);
-    resultResourcesLoad_--;
-}
-
-sycl::queue& QueueUsm::checkoutQueue()
-{
-    syclQueueMutex_.lock();
-    return syclQueue_;
-}
-
-void QueueUsm::checkinQueue()
-{
-    syclQueueMutex_.unlock();
+    freeResources_.push(resourceGroupId);
+    resourcesLoad_--;
 }

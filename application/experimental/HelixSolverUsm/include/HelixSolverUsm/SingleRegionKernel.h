@@ -13,9 +13,11 @@
 class SingleRegionKernel
 {
 public:
-    SingleRegionKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result, const SingleRegionKernelMemory& memory);
+    SingleRegionKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result, const SingleRegionKernelMemory* memory);
 
     SYCL_EXTERNAL void operator()(sycl::id<1> regionIdIdx) const;
+
+    static std::unique_ptr<DeviceResourceGroup> createResourceGroup(sycl::queue& queue);
 
 protected:
     class AccumulatorRegion
@@ -93,7 +95,7 @@ protected:
         u_int32_t pointListEnd;
     };
 
-    const Splitter* splitter_;
+    const SplitterSettings* deviceSplitterSettings_;
     const u_int32_t* deviceNumPoints_;
     const float* deviceXs_;
     const float* deviceYs_;
@@ -149,7 +151,7 @@ protected:
         return angleWrap2Pi(std::atan2(y, x));
     }
 
-    SYCL_EXTERNAL void filterPointsInRegion(u_int16_t regionId, u_int32_t& numPoints, u_int32_t* indexes, float* xs, float* ys, float* zs, EventUsm::LayerNumber* layers) const;
+    SYCL_EXTERNAL void filterPointsInRegion(const Splitter& splitter, u_int16_t regionId, u_int32_t& numPoints, u_int32_t* indexes, float* xs, float* ys, float* zs, EventUsm::LayerNumber* layers) const;
     void convertToPolarCoordinates(float* phis, float* rs, const float* xs, const float* ys, u_int32_t numPoints) const;
     void rotateRegionAndPoints(float& regionPhi0Min, float& regionPhi0Max, float* phis, u_int32_t numPoints) const;
     static void processNextAccumulatorRegion(u_int16_t regionId, AccumulatorRegion* accumulatorRegions, u_int8_t& accumulatorRegionStackSize, u_int32_t* pointLists, const u_int32_t* indexes, const float* rs, const float* phis, uint32_t* regionNumSolutions, u_int8_t* solutionHitCounts, float* solutionRs, float* solutionPhis);

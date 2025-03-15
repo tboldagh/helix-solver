@@ -1,12 +1,93 @@
 #include "SplitterUsm/Splitter.h"
+#include "Logger/Logger.h"
 
 #include <cmath>
 #include <sycl/sycl.hpp>
 #include <tuple>
 
 
+Splitter::SplitterSettingsKernelMemory::SplitterSettingsKernelMemory(sycl::queue& queue)
+: KernelMemory(queue) {}
+
+void Splitter::SplitterSettingsKernelMemory::allocateInternal()
+{
+    settings_ = sycl::malloc_device<SplitterSettings>(1, queue_);
+}
+
+void Splitter::SplitterSettingsKernelMemory::deallocateInternal()
+{
+    sycl::free(settings_, queue_);
+}
+
 Splitter::Splitter(const SplitterSettings& settings)
 : settings_(settings) {}
+
+Splitter::Splitter(const Splitter& other)
+: splitterSettingsKernelMemory_(other.splitterSettingsKernelMemory_)
+, settings_(other.settings_) {}
+
+Splitter::Splitter(Splitter&& other)
+: splitterSettingsKernelMemory_(std::move(other.splitterSettingsKernelMemory_))
+, settings_(std::move(other.settings_)) {}
+
+Splitter& Splitter::operator=(const Splitter& other)
+{
+    settings_ = other.settings_;
+    return *this;
+}
+
+Splitter& Splitter::operator=(Splitter&& other)
+{
+    settings_ = std::move(other.settings_);
+    splitterSettingsKernelMemory_ = std::move(other.splitterSettingsKernelMemory_);
+    return *this;
+}
+
+TransferableData::TransferEvents Splitter::transferToDevice()
+{
+    if (!isKernelMemorySet())
+    {
+        LOG_ERROR("Kernel memory not set for Splitter");
+        return TransferEvents{};
+    }
+
+    TransferEvents transferEvents;
+    try
+    {
+        auto queue = splitterSettingsKernelMemory_->getQueue();
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(splitterSettingsKernelMemory_->settings_, &settings_, sizeof(SplitterSettings))));
+    }
+    catch (sycl::exception& exception)
+    {
+        LOG_ERROR("Failed to transfer Splitter to device: " + std::string(exception.what()));
+        return TransferEvents{};
+    }
+
+    return transferEvents;
+}
+
+TransferableData::TransferEvents Splitter::transferToHost()
+{
+    if (!isKernelMemorySet())
+    {
+        LOG_ERROR("Kernel memory not set for Splitter");
+        return TransferEvents{};
+    }
+
+    TransferEvents transferEvents;
+    try
+    {
+        auto queue = splitterSettingsKernelMemory_->getQueue();
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(&settings_, splitterSettingsKernelMemory_->settings_, sizeof(SplitterSettings))));
+    }
+    catch (sycl::exception& exception)
+    {
+        LOG_ERROR("Failed to transfer Splitter to host: " + std::string(exception.what()));
+        return TransferEvents{};
+    }
+
+    return transferEvents;
+}
 
 void Splitter::getRegionIds(float x, float y, float z, RegionIds& regionIds) const
 {
@@ -36,6 +117,11 @@ bool Splitter::isPointInRegion(float x, float y, float z, u_int16_t regionId) co
         const auto& poleRegion = settings_.poleRegions_[regionId - lastWedgeId - 1];
         return isPointInPoleRegion(x, y, z, poleRegion);
     }
+}
+
+void Splitter::setKernelMemoryInternal(KernelMemory* kernelMemory)
+{
+    splitterSettingsKernelMemory_ = dynamic_cast<SplitterSettingsKernelMemory*>(kernelMemory);
 }
 
 void Splitter::getRegionIdsNaive(float x, float y, float z, RegionIds& regionIds) const

@@ -26,7 +26,7 @@ protected:
     bool regionIdsEqual(const Splitter::RegionIds& actual, const Splitter::RegionIds& expected);
 
     const SplitterSettings splitterSettings_;
-    const Splitter splitter_;
+    Splitter splitter_;
     static const std::string SandboxPath;
     static const std::string SplitterSettingsPath;
     static const std::string TestDataGeneratorPath;

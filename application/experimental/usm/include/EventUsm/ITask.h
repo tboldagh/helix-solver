@@ -26,10 +26,9 @@ public:
         WaitingForResources, // Queued, some resources are missing
         WaitingForEventTransfer, // Queued, resources assigned
         WaitingForExecution, // Resources transferred to device
-        Executed, // Execution finished, event resources can be released
-        WaitingForResultTransfer, // Execution finished, event resources released
-        ResultTransferred, // Result transferred to host, result resources can be released
-        Completed // Execution finished, event resources released, solutions transferred to host, worker can release ownership
+        Executed, // Execution finished, waiting for result transfer
+        ResultTransferred, // Result transferred to host, resources can be released
+        Completed // Execution finished, solutions transferred to host, resources released, worker can release ownership
     };
     static std::string stateToString(State state);
 
@@ -39,8 +38,7 @@ public:
     virtual State getState() const = 0;
     // Indicates whether state changing operation is in progress. If true, task should not be manipulated.
     virtual bool isStateChanging() const = 0;
-    virtual bool isEventResourcesAssigned() const = 0;
-    virtual bool isResultResourcesAssigned() const = 0;
+    virtual bool isResourcesAssigned() const = 0;
     virtual std::chrono::milliseconds getExecutionTime() const = 0;
 
     virtual void takeEventAndResult(std::unique_ptr<EventUsm>&& event, std::unique_ptr<ResultUsm>&& result) = 0;
@@ -49,13 +47,11 @@ public:
 
     virtual void onAssignedToWorker(ITaskStateObserver& stateObserver) = 0;
     virtual void assignQueue(IQueue& queue) = 0;
-    virtual void takeEventResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> eventResources) = 0;
-    virtual void takeResultResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> resultResources) = 0;
+    virtual void takeResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> resources) = 0;
     virtual void transferEvent() = 0;
     virtual void execute() = 0;
     virtual void transferResult() = 0;
-    virtual IQueue::DeviceResourceGroupId releaseEventResourceGroup() = 0;
-    virtual IQueue::DeviceResourceGroupId releaseResultResourceGroup() = 0;
+    virtual IQueue::DeviceResourceGroupId releaseResources() = 0;
 
 protected:
     // The actual job to be executed on the device. Will be called from separate thread.

@@ -3,6 +3,7 @@
 #include "EventUsm/EventUsm.h"
 #include "EventUsm/TaskUsm.h"
 #include "SplitterUsm/Splitter.h"
+#include "HelixSolverUsm/SingleRegionKernelMemory.h"
 
 #include <sycl/sycl.hpp>
 #include <gtest/gtest_prod.h>
@@ -17,22 +18,16 @@ public:
 
     ~HelixSolverTask() override = default;
 
-    void takeEventResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> eventResources) override;
-    void transferEvent() override;
+    void takeResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> resources) override;
 
     // From TaskUsm
     ExecutionEvents executeOnDevice(sycl::queue& syclQueue) override;
 
 protected:
-    bool splitterResourcesAssigned_ = false;
-    Splitter* deviceSplitter_ = nullptr;
-    // Must be same as deviceSplitter_, a bit ugly
-    const Splitter splitter_;
+    Splitter splitter_;
+    SingleRegionKernelMemory* singleRegionKernelMemory_ = nullptr;
 
-private:
-    void transferEventToDeviceThread();
-
-    FRIEND_TEST(HelixSolverTaskInitTest, TakeEventResources);
+    FRIEND_TEST(HelixSolverTaskInitTest, TakeResources);
     friend class HelixSolverTaskExecutionTest;
     FRIEND_TEST(HelixSolverTaskFullEvent, Basic);
 };

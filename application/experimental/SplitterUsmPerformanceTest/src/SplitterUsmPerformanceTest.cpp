@@ -8,7 +8,7 @@
 #include "Logger/Logger.h"
 #include "Logger/OstreamLogger.h"
 #include "SplitterUsm/TestDataLoader.h"
-#include "HelixSolverUsm/HelixSolverQueue.h"
+#include "HelixSolverUsm/SingleRegionKernel.h"
 
 #include <sycl/sycl.hpp>
 #include <thread>
@@ -112,10 +112,10 @@ int main()
         
         sycl::queue syclQueue = sycl::queue(sycl::gpu_selector_v);
         LOG_INFO("Running on device: " + syclQueue.get_device().get_info<sycl::info::device::name>());
-        constexpr IQueue::Capacity EventResourcesCapacity{16};
-        constexpr IQueue::Capacity ResultResourcesCapacity{16};
+        constexpr IQueue::Capacity ResourcesCapacity{16};
         constexpr IQueue::Capacity WorkCapacity{8};
-        HelixSolverQueue queueUsm(syclQueue, EventResourcesCapacity, ResultResourcesCapacity, WorkCapacity, splitter);
+        QueueUsm queueUsm(syclQueue, ResourcesCapacity, WorkCapacity);
+        queueUsm.createResources(SingleRegionKernel::createResourceGroup);
 
         SingleTaskTestWorkerController workerController;
 
@@ -162,10 +162,10 @@ int main()
         
         sycl::queue syclQueue = sycl::queue(sycl::gpu_selector_v);
         LOG_INFO("Running on device: " + syclQueue.get_device().get_info<sycl::info::device::name>());
-        constexpr IQueue::Capacity EventResourcesCapacity{16};
-        constexpr IQueue::Capacity ResultResourcesCapacity{16};
+        constexpr IQueue::Capacity ResourcesCapacity{16};
         constexpr IQueue::Capacity WorkCapacity{8};
-        HelixSolverQueue queueUsm(syclQueue, EventResourcesCapacity, ResultResourcesCapacity, WorkCapacity, splitter);
+        QueueUsm queueUsm(syclQueue, ResourcesCapacity, WorkCapacity);
+        queueUsm.createResources(SingleRegionKernel::createResourceGroup);
 
         MultipleTasksTestWorkerController workerController;
 

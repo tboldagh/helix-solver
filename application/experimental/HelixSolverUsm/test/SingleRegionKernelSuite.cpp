@@ -456,12 +456,29 @@ protected:
     , settings_(getSplitterSettings())
     , splitter_(settings_)
     , queue_(sycl::default_selector_v)
+    , eventMemory_(queue_)
+    , resultMemory_(queue_)
     , kernelMemory_(queue_)
+    , splitterSettingsKernelMemory_(queue_)
     {
         logger_.setMinSeverity(Logger::LogMessage::Severity::Info);
         Logger::ILogger::setGlobalInstance(&logger_);
 
-        // Fake device kernel memory
+        // Fake event memory
+        eventMemory_.numPoints_ = deviceNumPoints_.get();
+        eventMemory_.xs_ = deviceXs_.get();
+        eventMemory_.ys_ = deviceYs_.get();
+        eventMemory_.zs_ = deviceZs_.get();
+        eventMemory_.layers_ = deviceLayers_.get();
+
+        // Fake result memory
+        resultMemory_.numSolutions_ = deviceNumSolutions_.get();
+        resultMemory_.regionNumSolutions_ = deviceRegionNumSolutions_.get();
+        resultMemory_.solutionHitCounts_ = deviceSolutionHitCounts_.get();
+        resultMemory_.solutionRs_ = deviceSolutionRs_.get();
+        resultMemory_.solutionPhis_ = deviceSolutionPhis_.get();
+
+        // Fake kernel memory
         kernelMemory_.indexes_ = kernelIndexes_.get();
         kernelMemory_.xs_ = kernelXs_.get();
         kernelMemory_.ys_ = kernelYs_.get();
@@ -470,6 +487,13 @@ protected:
         kernelMemory_.pointLists_ = kernelPointLists_.get();
         kernelMemory_.rs_ = kernelRs_.get();
         kernelMemory_.phis_ = kernelPhis_.get();
+
+        // Fake splitter kernel memory
+        splitterSettingsKernelMemory_.settings_ = deviceSplitterSettings_.get();
+
+        event_.setKernelMemory(&eventMemory_);
+        result_.setKernelMemory(&resultMemory_);
+        splitter_.setKernelMemory(&splitterSettingsKernelMemory_);
     }
 
     ~SingleHelixDetectionTest() override = default;
@@ -579,20 +603,8 @@ protected:
             deviceZs_[i] = event_.hostZs_[i];
             deviceLayers_[i] = event_.hostLayers_[i];
         }
-    }
 
-    void initKernel(SingleRegionKernel& kernel)
-    {
-        kernel.deviceNumPoints_ = deviceNumPoints_.get();
-        kernel.deviceXs_ = deviceXs_.get();
-        kernel.deviceYs_ = deviceYs_.get();
-        kernel.deviceZs_ = deviceZs_.get();
-        kernel.deviceLayers_ = deviceLayers_.get();
-        kernel.deviceNumSolutions_ = deviceNumSolutions_.get();
-        kernel.deviceRegionNumSolutions_ = deviceRegionNumSolutions_.get();
-        kernel.deviceSolutionHitCounts_ = deviceSolutionHitCounts_.get();
-        kernel.deviceSolutionRs_ = deviceSolutionRs_.get();
-        kernel.deviceSolutionPhis_ = deviceSolutionPhis_.get();
+        *deviceSplitterSettings_ = settings_;
     }
 
     void createRunAndExtractResult(u_int16_t regionIndex, float r, float phi, float xAngle, u_int8_t numPoints)
@@ -613,8 +625,7 @@ protected:
         copyEventToDevice();
 
         // Run kernel
-        SingleRegionKernel kernel(&splitter_, &event_, &result_, kernelMemory_);
-        initKernel(kernel);
+        SingleRegionKernel kernel(&splitter_, &event_, &result_, &kernelMemory_);
         kernel(sycl::id<1>(regionIndex));
 
         extractResult(regionIndex);
@@ -657,15 +668,22 @@ protected:
     static constexpr ResultUsm::ResultId resultId = 42;
     SplitterSettings settings_;
     Splitter splitter_;
+    sycl::queue queue_;
+    EventUsm::EventKernelMemory eventMemory_;
+    ResultUsm::ResultKernelMemory resultMemory_;
+    SingleRegionKernelMemory kernelMemory_;
+    Splitter::SplitterSettingsKernelMemory splitterSettingsKernelMemory_;
     EventUsm event_{eventId};
     ResultUsm result_{resultId};
 
-    // Fake device allocated memory
+    // Fake event memory
     std::unique_ptr<u_int32_t> deviceNumPoints_ = std::make_unique<u_int32_t>();
     std::unique_ptr<float[]> deviceXs_{new float[EventUsm::MaxPoints]};
     std::unique_ptr<float[]> deviceYs_{new float[EventUsm::MaxPoints]};
     std::unique_ptr<float[]> deviceZs_{new float[EventUsm::MaxPoints]};
     std::unique_ptr<EventUsm::LayerNumber[]> deviceLayers_{new EventUsm::LayerNumber[EventUsm::MaxPoints]};
+
+    // Fake result memory
     std::unique_ptr<u_int32_t> deviceNumSolutions_ = std::make_unique<u_int32_t>();
     std::unique_ptr<u_int32_t[]> deviceRegionNumSolutions_{new u_int32_t[ResultUsm::MaxRegions]};
     std::unique_ptr<u_int8_t[]> deviceSolutionHitCounts_{new u_int8_t[ResultUsm::MaxSolutions]};
@@ -673,8 +691,6 @@ protected:
     std::unique_ptr<float[]> deviceSolutionPhis_{new float[ResultUsm::MaxSolutions]};
 
     // Fake kernel memory
-    sycl::queue queue_;
-    SingleRegionKernelMemory kernelMemory_;
     std::unique_ptr<u_int32_t[]> kernelIndexes_{new u_int32_t[SingleRegionKernel::MaxPointsInRegion]};
     std::unique_ptr<float[]> kernelXs_{new float[SingleRegionKernel::MaxPointsInRegion]};
     std::unique_ptr<float[]> kernelYs_{new float[SingleRegionKernel::MaxPointsInRegion]};
@@ -683,6 +699,9 @@ protected:
     std::unique_ptr<u_int32_t[]> kernelPointLists_{new u_int32_t[SingleRegionKernel::MaxPointListsPointsNum]};
     std::unique_ptr<float[]> kernelRs_{new float[SingleRegionKernel::MaxPointsInRegion]};
     std::unique_ptr<float[]> kernelPhis_{new float[SingleRegionKernel::MaxPointsInRegion]};
+
+    // Fake splitter kernel memory
+    std::unique_ptr<SplitterSettings> deviceSplitterSettings_ = std::make_unique<SplitterSettings>();
 
     // Extracted result
     u_int32_t regionNumSolutions_; 
@@ -868,8 +887,7 @@ protected:
         copyEventToDevice();
 
         // Run kernel
-        SingleRegionKernel kernel(&splitter_, &event_, &result_, kernelMemory_);
-        initKernel(kernel);
+        SingleRegionKernel kernel(&splitter_, &event_, &result_, &kernelMemory_);
         kernel(sycl::id<1>(regionIndex));
 
         extractResult(regionIndex);
@@ -947,7 +965,8 @@ TEST_F(MultipleHelixDetectionTest, Rotated)
 TEST_F(MultipleHelixDetectionTest, FullEvent)
 {
     // This test assumes that full event contains at least one helix candidate for each region.
-    // Goal is to assert that the kernel is able to find helixes in all regions.
+    // Goal is to assert that the kernel is able to find helixes in all regions. There is no
+    // guarantee that the found helixes are correct.
 
     const std::string eventPath = TestDataDir + "/event_0.csv";
     constexpr EventUsm::EventId eventId = 42;
@@ -972,10 +991,9 @@ TEST_F(MultipleHelixDetectionTest, FullEvent)
 
     copyEventToDevice();
 
-    // logger_.setMinSeverity(Logger::LogMessage::Severity::Debug);
+    logger_.setMinSeverity(Logger::LogMessage::Severity::Debug);
 
-    SingleRegionKernel kernel(&splitter_, &event_, &result_, kernelMemory_);
-    initKernel(kernel);
+    SingleRegionKernel kernel(&splitter_, &event_, &result_, &kernelMemory_);
     bool allRegionsContainHelix = true;
     for (u_int16_t regionIndex = 0; regionIndex < settings_.wedges_.getSize(); ++regionIndex)
     {
@@ -998,123 +1016,4 @@ TEST_F(MultipleHelixDetectionTest, FullEvent)
     EXPECT_TRUE(allRegionsContainHelix);
 }
 
-
-
-
-// TEST_F(SingleHelixDetectionTest, Basic2)
-// {
-//     // Read event
-//     const std::string eventPath = TestDataDir + "/event_0.csv";
-//     constexpr EventUsm::EventId eventId = 42;
-//     std::optional<std::unique_ptr<EventUsm>> eventOptional = TestDataLoader::readEvent(eventPath, eventId);
-//     ASSERT_TRUE(eventOptional.has_value());
-//     const auto& event = *eventOptional->get();
-
-//     // Create Splitter
-//     SplitterSettings settings = getSplitterSettings();
-//     Splitter splitter(settings);
-
-//     // Select one region to test
-//     constexpr u_int16_t regionId = 2;
-//     constexpr u_int16_t regionIndex = 1;
-//     SplitterSettings::Wedge region = settings.wedges_[regionIndex];
-//     std::cout << region.zAngleMin_ << " " << region.zAngleMax_ << " " << region.xAngleMin_ << " " << region.xAngleMax_ << std::endl;
-
-//     // Create result
-//     constexpr ResultUsm::ResultId resultId = 42;
-//     std::unique_ptr<ResultUsm> result = std::make_unique<ResultUsm>(resultId);
-
-//     // Fake device allocated memory
-//     std::unique_ptr<u_int32_t> deviceNumPoints = std::make_unique<u_int32_t>();
-//     std::unique_ptr<float[]> deviceXs(new float[EventUsm::MaxPoints]);
-//     std::unique_ptr<float[]> deviceYs(new float[EventUsm::MaxPoints]);
-//     std::unique_ptr<float[]> deviceZs(new float[EventUsm::MaxPoints]);
-//     std::unique_ptr<EventUsm::LayerNumber[]> deviceLayers(new EventUsm::LayerNumber[EventUsm::MaxPoints]);
-//     std::unique_ptr<u_int32_t> deviceNumSolutions = std::make_unique<u_int32_t>();
-//     std::unique_ptr<u_int32_t[]> deviceRegionNumSolutions(new u_int32_t[ResultUsm::MaxRegions]);
-//     std::unique_ptr<u_int8_t[]> deviceSolutionHitCounts(new u_int8_t[ResultUsm::MaxSolutions]);
-//     std::unique_ptr<float[]> deviceSolutionRs(new float[ResultUsm::MaxSolutions]);
-//     std::unique_ptr<float[]> deviceSolutionPhis(new float[ResultUsm::MaxSolutions]);
-
-//     // Copy event data to faked device memory
-//     *deviceNumPoints = event.hostNumPoints_;
-//     for (u_int32_t i = 0; i < event.hostNumPoints_; ++i)
-//     {
-//         deviceXs[i] = event.hostXs_[i];
-//         deviceYs[i] = event.hostYs_[i];
-//         deviceZs[i] = event.hostZs_[i];
-//         deviceLayers[i] = event.hostLayers_[i];
-//     }
-
-//     // Create kernel
-//     SingleRegionKernel kernel(&splitter, &event, result.get());
-//     kernel.deviceNumPoints_ = deviceNumPoints.get();
-//     kernel.deviceXs_ = deviceXs.get();
-//     kernel.deviceYs_ = deviceYs.get();
-//     kernel.deviceZs_ = deviceZs.get();
-//     kernel.deviceLayers_ = deviceLayers.get();
-//     kernel.deviceNumSolutions_ = deviceNumSolutions.get();
-//     kernel.deviceRegionNumSolutions_ = deviceRegionNumSolutions.get();
-//     kernel.deviceSolutionHitCounts_ = deviceSolutionHitCounts.get();
-//     kernel.deviceSolutionRs_ = deviceSolutionRs.get();
-//     kernel.deviceSolutionPhis_ = deviceSolutionPhis.get();
-
-//     // Run kernel
-//     kernel(sycl::id<1>(regionIndex));
-
-//     // Save results to file
-//     const std::string sandboxPath = "/tmp/ut_sandbox";
-//     const std::string resultPath = sandboxPath + "/result_0.csv";
-//     std::ofstream resultFile(resultPath);
-//     const u_int32_t regionNumSolutions = deviceRegionNumSolutions[regionIndex];
-//     const u_int32_t regionSolutionsBegin = ResultUsm::MaxSolutionsPerRegion * regionIndex;
-//     std::cout << regionNumSolutions << std::endl;
-//     for (u_int32_t i = 0; i < regionNumSolutions; ++i)
-//     {
-//         resultFile << i << ",\t" 
-//                 << static_cast<unsigned>(deviceSolutionHitCounts[regionSolutionsBegin + i]) << ",\t"
-//                 << deviceSolutionRs[regionSolutionsBegin + i] << ",\t"
-//                 << deviceSolutionPhis[regionSolutionsBegin + i] << "\n";
-//     }
-
-//     resultFile.close();
-    
-
-
-//     // constexpr float bMagnitude = 3.8f;
-//     // constexpr float qOverPt = 0.5f;
-//     // constexpr float phi0 = 0.0f;
-//     // constexpr float r = 1 / (qOverPt * bMagnitude);
-//     // constexpr float phi = phi0 + 0.5f * M_PI;
-
-//     // const std::vector<float> rs = {r};
-//     // const std::vector<float> phis = {phi};
-//     // const std::vector<u_int32_t> indexes = {0};
-
-//     // const std::vector<u_int32_t> regionIds = {0};
-//     // const std::vector<u_int32_t> regionNumSolutions = {0};
-//     // const std::vector<u_int8_t> solutionHitCounts = {1};
-//     // const std::vector<float> solutionRs = {r};
-//     // const std::vector<float> solutionPhis = {phi};
-
-//     // const std::vector<u_int32_t> expectedRegionIds = {0};
-//     // const std::vector<u_int32_t> expectedRegionNumSolutions = {1};
-//     // const std::vector<u_int8_t> expectedSolutionHitCounts = {1};
-//     // const std::vector<float> expectedSolutionRs = {r};
-//     // const std::vector<float> expectedSolutionPhis = {phi};
-
-//     // SingleRegionKernel::SingleHelixDetectionResult result;
-//     // result.regionIds = regionIds.data();
-//     // result.regionNumSolutions = regionNumSolutions.data();
-//     // result.solutionHitCounts = solutionHitCounts.data();
-//     // result.solutionRs = solutionRs.data();
-//     // result.solutionPhis = solutionPhis.data();
-
-//     // SingleRegionKernel::singleHelixDetection(rs.data(), phis.data(), indexes.data(), rs.size(), result);
-
-//     // EXPECT_EQ(result.regionIds, expectedRegionIds.data());
-//     // EXPECT_EQ(result.regionNumSolutions, expectedRegionNumSolutions.data());
-//     // EXPECT_EQ(result.solutionHitCounts, expectedSolutionHitCounts.data());
-//     // EXPECT_EQ(result.solutionRs, expectedSolutionRs.data());
-//     // EXPECT_EQ(result.solutionPhis, expectedSolutionPhis.data());
-// }
+// TODO Full test on GPU

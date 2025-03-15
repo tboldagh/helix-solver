@@ -11,7 +11,6 @@ SRC
     src/HelixSolverTask.cpp
     src/SingleRegionKernel.cpp
     src/SingleRegionKernelMemory.cpp
-    src/HelixSolverQueue.cpp
     src/SumRegionNumSolutionsKernel.cpp
     src/ConcentrateSolutionsKernel.cpp
 

@@ -1,34 +1,36 @@
 #include "HelixSolverUsm/SingleRegionKernel.h"
 
 
-SingleRegionKernel::SingleRegionKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result, const SingleRegionKernelMemory& memory)
-: splitter_(splitter)
-, deviceNumPoints_(event->deviceNumPoints_)
-, deviceXs_(event->deviceXs_)
-, deviceYs_(event->deviceYs_)
-, deviceZs_(event->deviceZs_)
-, deviceLayers_(event->deviceLayers_)
-, deviceNumSolutions_(result->deviceNumSolutions_)
-, deviceRegionNumSolutions_(result->deviceNumRegionSolutions_)
-, deviceSolutionHitCounts_(result->deviceSolutionHitCounts_)
-, deviceSolutionRs_(result->deviceSolutionRs_)
-, deviceSolutionPhis_(result->deviceSolutionPhis_)
+SingleRegionKernel::SingleRegionKernel(const Splitter* splitter, const EventUsm* event, const ResultUsm* result, const SingleRegionKernelMemory* memory)
+: deviceSplitterSettings_(splitter->splitterSettingsKernelMemory_->settings_)
+, deviceNumPoints_(event->kernelMemory_->numPoints_)
+, deviceXs_(event->kernelMemory_->xs_)
+, deviceYs_(event->kernelMemory_->ys_)
+, deviceZs_(event->kernelMemory_->zs_)
+, deviceLayers_(event->kernelMemory_->layers_)
+, deviceNumSolutions_(result->kernelMemory_->numSolutions_)
+, deviceRegionNumSolutions_(result->kernelMemory_->regionNumSolutions_)
+, deviceSolutionHitCounts_(result->kernelMemory_->solutionHitCounts_)
+, deviceSolutionRs_(result->kernelMemory_->solutionRs_)
+, deviceSolutionPhis_(result->kernelMemory_->solutionPhis_)
 , event_(event)
 , result_(result)
-, kernelIndexes_(memory.indexes_)
-, kernelXs_(memory.xs_)
-, kernelYs_(memory.ys_)
-, kernelZs_(memory.zs_)
-, kernelLayers_(memory.layers_)
-, kernelPointLists_(memory.pointLists_)
-, kernelRs_(memory.rs_)
-, kernelPhis_(memory.phis_) {}
+, kernelIndexes_(memory->indexes_)
+, kernelXs_(memory->xs_)
+, kernelYs_(memory->ys_)
+, kernelZs_(memory->zs_)
+, kernelLayers_(memory->layers_)
+, kernelPointLists_(memory->pointLists_)
+, kernelRs_(memory->rs_)
+, kernelPhis_(memory->phis_) {}
 
 void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
 {
+    Splitter splitter{*deviceSplitterSettings_};
+
     const u_int16_t regionId = regionIdIdx[0] + 1;   // 0 is reserved for invalid region
 
-    if (regionId > splitter_->getNumRegions() - 2)   // Pole
+    if (regionId > splitter.getNumRegions() - 2)   // Pole
     {
         // Not sure if we need to care about pole regions, maybe implement later, skip for now
         return;
@@ -41,7 +43,7 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
     float* zs = kernelZs_;
     EventUsm::LayerNumber* layers = kernelLayers_;
 
-    filterPointsInRegion(regionId, numPoints, indexes, xs, ys, zs, layers);
+    filterPointsInRegion(splitter, regionId, numPoints, indexes, xs, ys, zs, layers);
 
     float* rs = kernelRs_;
     float* phis = kernelPhis_;
@@ -53,7 +55,7 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
 
     convertToPolarCoordinates(phis, rs, xs, ys, numPoints);
 
-    const auto& wedge = splitter_->getSettings().wedges_[regionId - 1];
+    const auto& wedge = splitter.getSettings().wedges_[regionId - 1];
     float regionPhi0Min = wrapMinusPiToPi(wedge.zAngleMin_) - SpaceMaxPhiPhi0AbsDiff;
     float regionPhi0Max = wrapMinusPiToPi(wedge.zAngleMax_) + SpaceMaxPhiPhi0AbsDiff;
 
@@ -93,12 +95,30 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
     }
 }
 
-void SingleRegionKernel::filterPointsInRegion(u_int16_t regionId, u_int32_t& numPoints, u_int32_t* indexes, float* xs, float* ys, float* zs, EventUsm::LayerNumber* layers) const
+std::unique_ptr<DeviceResourceGroup> SingleRegionKernel::createResourceGroup(sycl::queue& queue)
+{
+    auto* eventMemory = new EventUsm::EventKernelMemory{queue};
+    auto* resultMemory = new ResultUsm::ResultKernelMemory{queue};
+    auto* kernelMemory = new SingleRegionKernelMemory{queue};
+    auto* splitterSettingsMemory = new Splitter::SplitterSettingsKernelMemory{queue};
+    eventMemory->allocate();
+    resultMemory->allocate();
+    kernelMemory->allocate();
+    splitterSettingsMemory->allocate();
+    return std::make_unique<DeviceResourceGroup>(DeviceResourceGroup{
+        {DeviceResourceType::EventKernelMemory, eventMemory},
+        {DeviceResourceType::ResultKernelMemory, resultMemory},
+        {DeviceResourceType::KernelMemory, kernelMemory},
+        {DeviceResourceType::SplitterSettingsKernelMemory, splitterSettingsMemory}
+    });
+}
+
+void SingleRegionKernel::filterPointsInRegion(const Splitter& splitter, u_int16_t regionId, u_int32_t& numPoints, u_int32_t* indexes, float* xs, float* ys, float* zs, EventUsm::LayerNumber* layers) const
 {
     // TODO: optimize by determining if the region is a pole or a wedge before iterating over all points
     for (uint32_t i = 0; i < *deviceNumPoints_; ++i)
     {
-        if (splitter_->isPointInRegion(deviceXs_[i], deviceYs_[i], deviceZs_[i], regionId))
+        if (splitter.isPointInRegion(deviceXs_[i], deviceYs_[i], deviceZs_[i], regionId))
         {
             indexes[numPoints] = i;
             xs[numPoints] = deviceXs_[i];

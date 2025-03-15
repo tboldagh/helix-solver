@@ -68,22 +68,14 @@ void TaskUsm::assignQueue(IQueue& queue)
     setState(State::WaitingForResources);
 }
 
-void TaskUsm::takeEventResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> eventResources)
+void TaskUsm::takeResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> resources)
 {
-    eventResourceGroupId_ = eventResources.first;
-    event_->takeResourceGroup(eventResources.second, queue_->getQueue());
-    eventResourcesAssigned_ = true;
+    resourceGroupId_ = resources.first;
+    event_->setKernelMemory(static_cast<KernelMemory*>(resources.second.at(DeviceResourceType::EventKernelMemory)));
+    result_->setKernelMemory(static_cast<KernelMemory*>(resources.second.at(DeviceResourceType::ResultKernelMemory)));
+    resourcesAssigned_ = true;
 
-    checkResourcesAssigned();
-}
-
-void TaskUsm::takeResultResources(std::pair<IQueue::DeviceResourceGroupId, const DeviceResourceGroup&> resultResources)
-{
-    resultResourceGroupId_ = resultResources.first;
-    result_->takeResourceGroup(resultResources.second, queue_->getQueue());
-    resultResourcesAssigned_ = true;
-
-    checkResourcesAssigned();
+    setState(State::WaitingForEventTransfer);
 }
 
 void TaskUsm::transferEvent()
@@ -107,20 +99,14 @@ void TaskUsm::transferResult()
     transferThread.detach();
 }
 
-IQueue::DeviceResourceGroupId TaskUsm::releaseEventResourceGroup()
+IQueue::DeviceResourceGroupId TaskUsm::releaseResources()
 {
-    event_->releaseResourceGroup();
-    eventResourcesAssigned_ = false;
-    setState(State::WaitingForResultTransfer);
-    return eventResourceGroupId_;
-}
+    event_->setKernelMemory(nullptr);
+    result_->setKernelMemory(nullptr);
+    resourcesAssigned_ = false;
 
-IQueue::DeviceResourceGroupId TaskUsm::releaseResultResourceGroup()
-{
-    result_->releaseResourceGroup();
-    resultResourcesAssigned_ = false;
     setState(State::Completed);
-    return resultResourceGroupId_;
+    return resourceGroupId_;
 }
 
 void TaskUsm::setState(State state)
@@ -135,18 +121,10 @@ void TaskUsm::setState(State state)
     stateObserver_->onTaskStateChange(*this);
 }
 
-void TaskUsm::checkResourcesAssigned()
-{
-    if (eventResourcesAssigned_ && resultResourcesAssigned_)
-    {
-        setState(State::WaitingForEventTransfer);
-    }
-}
-
 void TaskUsm::transferEventToDeviceThread()
 {
-    sycl::queue& syclQueue = queue_->checkoutQueue();
-    DataUsm::TransferEvents transferEvents = event_->transferToDevice(syclQueue);
+    [[maybe_unused]] sycl::queue& syclQueue = queue_->checkoutQueue();
+    TransferableData::TransferEvents transferEvents = event_->transferToDevice();
     queue_->checkinQueue();
 
     for (auto& transferEvent : transferEvents)
@@ -177,8 +155,8 @@ void TaskUsm::executeThread()
 
 void TaskUsm::transferResultFromDeviceThread()
 {
-    sycl::queue& syclQueue = queue_->checkoutQueue();
-    DataUsm::TransferEvents transferResults = result_->transferToHost(syclQueue);
+    [[maybe_unused]] sycl::queue& syclQueue = queue_->checkoutQueue();
+    TransferableData::TransferEvents transferResults = result_->transferToHost();
     queue_->checkinQueue();
 
     for (auto& transferResult : transferResults)

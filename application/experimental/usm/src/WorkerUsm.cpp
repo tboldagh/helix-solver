@@ -100,9 +100,6 @@ void WorkerUsm::processTasks()
             case ITask::State::Executed:
                 processed = handleTaskExecuted(task);
                 break;
-            case ITask::State::WaitingForResultTransfer:
-                processed = handleTaskWaitingForResultTransfer(task);
-                break;
             case ITask::State::ResultTransferred:
                 processed = handleResultTransferred(task);
                 break;
@@ -150,41 +147,15 @@ bool WorkerUsm::handleTaskWaitingForResources(ITask& task)
 {
     LOG_DEBUG("Task id: " + std::to_string(task.getId()));
     
-    bool processed = true;
-
-    if (!task.isEventResourcesAssigned())
+    if (queue_.getResourcesLoad() == queue_.getResourcesCapacity())
     {
-        LOG_DEBUG("Waiting for event resources");
-
-        if (queue_.getEventResourcesLoad() == queue_.getEventResourcesCapacity())
-        {
-            LOG_DEBUG("Queue has no free event resources");
-            processed = false;
-        }
-        else
-        {
-            task.takeEventResources(queue_.getEventResourceGroup());
-            LOG_DEBUG("Event resources assigned, task id: " + std::to_string(task.getId()));
-        }
+        LOG_DEBUG("Queue has no free resources");
+        return false;
     }
 
-    if (!task.isResultResourcesAssigned())
-    {
-        LOG_DEBUG("Waiting for result resources");
-
-        if (queue_.getResultResourcesLoad() == queue_.getResultResourcesCapacity())
-        {
-            LOG_DEBUG("Queue has no free result resources");
-            processed = false;
-        }
-        else
-        {
-            task.takeResultResources(queue_.getResultResourceGroup());
-            LOG_DEBUG("Result resources assigned, task id: " + std::to_string(task.getId()));
-        }
-    }
-
-    return processed;
+    task.takeResources(queue_.getResources());
+    LOG_DEBUG("Event resources assigned, task id: " + std::to_string(task.getId()));
+    return true;
 }
 
 bool WorkerUsm::handleTaskWaitingForEventTransfer(ITask& task)
@@ -211,16 +182,6 @@ bool WorkerUsm::handleTaskExecuted(ITask& task)
 {
     LOG_DEBUG("Task id: " + std::to_string(task.getId()));
 
-    queue_.returnEventResourceGroup(task.releaseEventResourceGroup());
-    LOG_DEBUG("Event resources returned to queue, task id: " + std::to_string(task.getId()));
-
-    return true;
-}
-
-bool WorkerUsm::handleTaskWaitingForResultTransfer(ITask& task)
-{
-    LOG_DEBUG("Task id: " + std::to_string(task.getId()));
-
     task.transferResult();
     LOG_DEBUG("Result transfer started, task id: " + std::to_string(task.getId()));
 
@@ -231,7 +192,7 @@ bool WorkerUsm::handleResultTransferred(ITask& task)
 {
     LOG_DEBUG("Task id: " + std::to_string(task.getId()));
 
-    queue_.returnResultResourceGroup(task.releaseResultResourceGroup());
+    queue_.returnResources(task.releaseResources());
     LOG_DEBUG("Result resources returned to queue, task id: " + std::to_string(task.getId()));
 
     return true;

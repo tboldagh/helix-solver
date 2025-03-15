@@ -1,20 +1,34 @@
 #pragma once
 
-#include "EventUsm/DataUsm.h"
-
+#include "EventUsm/TransferableData.h"
 
 #include <sycl/sycl.hpp>
 #include <memory>
 
 
-class ResultUsm : public DataUsm
+class ResultUsm : public TransferableData
 {
 public:
     using ResultId = u_int32_t;
 
-    static constexpr u_int16_t MaxRegions = 1024;
-    static constexpr u_int16_t MaxSolutionsPerRegion = 1024;
-    static constexpr u_int32_t MaxSolutions = MaxRegions * MaxSolutionsPerRegion;
+    class ResultKernelMemory : public KernelMemory
+    {
+    public:
+        ResultKernelMemory(sycl::queue& queue);
+        ~ResultKernelMemory() override = default;
+
+        ResultKernelMemory(const ResultKernelMemory&) = delete;
+
+        u_int32_t* numSolutions_ = nullptr;
+        u_int32_t* regionNumSolutions_ = nullptr;
+        u_int8_t* solutionHitCounts_ = nullptr;
+        float* solutionRs_ = nullptr;
+        float* solutionPhis_ = nullptr;
+
+    protected:
+        void allocateInternal() override;
+        void deallocateInternal() override;
+    };
 
     ResultUsm(ResultId resultId);
     ResultUsm(const ResultUsm&) = delete;
@@ -22,32 +36,23 @@ public:
 
     void operator=(const ResultUsm&) = delete;
 
-    bool allocateOnDevice(sycl::queue& queue) override;
-    bool deallocateOnDevice(sycl::queue& queue) override;
-    DataUsm::TransferEvents transferToDevice(sycl::queue& queue) override;
-    DataUsm::TransferEvents transferToHost(sycl::queue& queue) override;
+    static constexpr u_int16_t MaxRegions = 1024;
+    static constexpr u_int16_t MaxSolutionsPerRegion = 1024;
+    static constexpr u_int32_t MaxSolutions = MaxRegions * MaxSolutionsPerRegion;
 
-    bool takeResourceGroup(const DeviceResourceGroup& resourceGroup, const sycl::queue& queue) override;
-    std::pair<std::unique_ptr<DeviceResourceGroup>, const sycl::queue*> releaseResourceGroup() override;
+    TransferableData::TransferEvents transferToDevice() override;
+    TransferableData::TransferEvents transferToHost() override;
 
-    // Allocates resources on device without host data.
-    static std::unique_ptr<DeviceResourceGroup> allocateDeviceResources(sycl::queue& queue);
-    // Deallocates resources on device without host data.
-    static void deallocateDeviceResources(DeviceResourceGroup& resourceGroup, sycl::queue& queue);
+    static void copyHostData(const ResultUsm& source, ResultUsm& destination);
 
-    // Direct access to frequently accessed data for performance reasons.
-    // Manipulate data under the pointers but don't manage memory directly.
     ResultId resultId_;
-
     u_int32_t hostNumSolutions_ = 0;
-    u_int32_t hostNumRegionSolutions_[MaxRegions];
-    u_int8_t hostSolutionHitCounts_[MaxSolutions];
-    float hostSolutionRs_[MaxSolutions];
-    float hostSolutionPhis_[MaxSolutions];
+    u_int32_t* hostRegionNumSolutions_;
+    u_int8_t* hostSolutionHitCounts_;
+    float* hostSolutionRs_;
+    float* hostSolutionPhis_;
+    ResultKernelMemory* kernelMemory_ = nullptr;
 
-    u_int32_t* deviceNumSolutions_ = nullptr;
-    u_int32_t* deviceNumRegionSolutions_ = nullptr;
-    u_int8_t* deviceSolutionHitCounts_ = nullptr;
-    float* deviceSolutionRs_ = nullptr;
-    float* deviceSolutionPhis_ = nullptr;
+protected:
+    void setKernelMemoryInternal(KernelMemory* kernelMemory) override;
 };

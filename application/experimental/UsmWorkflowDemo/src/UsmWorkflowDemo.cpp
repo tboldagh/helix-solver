@@ -25,17 +25,17 @@ public:
         ExecutionEvents executionEvents;
 
         std::unique_ptr<sycl::event> executionEvent = std::make_unique<sycl::event>(syclQueue.submit([&](sycl::handler& handler) {
-            u_int32_t* numPoints = event_->deviceNumPoints_;
-            float* xs = event_->deviceXs_;
-            float* ys = event_->deviceYs_;
-            float* zs = event_->deviceZs_;
-            EventUsm::LayerNumber* layers = event_->deviceLayers_;
+            u_int32_t* numPoints = event_->kernelMemory_->numPoints_;
+            float* xs = event_->kernelMemory_->xs_;
+            float* ys = event_->kernelMemory_->ys_;
+            float* zs = event_->kernelMemory_->zs_;
+            EventUsm::LayerNumber* layers = event_->kernelMemory_->layers_;
 
-            [[maybe_unused]] u_int32_t* numSolutions = result_->deviceNumSolutions_;
-            [[maybe_unused]] u_int32_t* numRegionSolutions = result_->deviceNumRegionSolutions_;
-            [[maybe_unused]] u_int8_t* solutionHitCounts = result_->deviceSolutionHitCounts_;
-            float* solutionRs = result_->deviceSolutionRs_;
-            float* solutionPhis = result_->deviceSolutionPhis_;            
+            [[maybe_unused]] u_int32_t* numSolutions = result_->kernelMemory_->numSolutions_;
+            [[maybe_unused]] u_int32_t* numRegionSolutions = result_->kernelMemory_->regionNumSolutions_;
+            [[maybe_unused]] u_int8_t* solutionHitCounts = result_->kernelMemory_->solutionHitCounts_;
+            float* solutionRs = result_->kernelMemory_->solutionRs_;
+            float* solutionPhis = result_->kernelMemory_->solutionPhis_;
             
             handler.parallel_for(sycl::range<1>(event_->hostNumPoints_), [=](sycl::id<1> idx)
             {
@@ -108,10 +108,22 @@ int main()
 
     // Create queue
     sycl::queue syclQueue = sycl::queue(sycl::gpu_selector_v);
-    constexpr IQueue::Capacity EventResourcesCapacity{10};
-    constexpr IQueue::Capacity ResultResourcesCapacity{10};
+    constexpr IQueue::Capacity ResourcesCapacity{10};
     constexpr IQueue::Capacity WorkCapacity{5};
-    QueueUsm queueUsm(syclQueue, EventResourcesCapacity, ResultResourcesCapacity, WorkCapacity);
+    QueueUsm queueUsm(syclQueue, ResourcesCapacity, WorkCapacity);
+
+    // Create kernel memory resources
+    IQueue::CreateResourceGroupFunction createResources = [&](sycl::queue& syclQueue) -> std::unique_ptr<DeviceResourceGroup> {
+        auto* eventMemory = new EventUsm::EventKernelMemory{syclQueue};
+        auto* resultMemory = new ResultUsm::ResultKernelMemory{syclQueue};
+        eventMemory->allocate();
+        resultMemory->allocate();
+        return std::make_unique<DeviceResourceGroup>(DeviceResourceGroup{
+            {DeviceResourceType::EventKernelMemory, eventMemory},
+            {DeviceResourceType::ResultKernelMemory, resultMemory}
+        });
+    };
+    queueUsm.createResources(createResources);
 
     // Create worker controller
     DemoWorkerController workerController;

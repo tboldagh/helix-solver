@@ -2,182 +2,106 @@
 #include "Logger/Logger.h"
 
 
+ResultUsm::ResultKernelMemory::ResultKernelMemory(sycl::queue& queue)
+: KernelMemory(queue) {}
+
+void ResultUsm::ResultKernelMemory::allocateInternal()
+{
+    numSolutions_ = sycl::malloc_device<u_int32_t>(1, queue_);
+    regionNumSolutions_ = sycl::malloc_device<u_int32_t>(ResultUsm::MaxRegions, queue_);
+    solutionHitCounts_ = sycl::malloc_device<u_int8_t>(ResultUsm::MaxSolutions, queue_);
+    solutionRs_ = sycl::malloc_device<float>(ResultUsm::MaxSolutions, queue_);
+    solutionPhis_ = sycl::malloc_device<float>(ResultUsm::MaxSolutions, queue_);
+}
+
+void ResultUsm::ResultKernelMemory::deallocateInternal()
+{
+    sycl::free(numSolutions_, queue_);
+    sycl::free(regionNumSolutions_, queue_);
+    sycl::free(solutionHitCounts_, queue_);
+    sycl::free(solutionRs_, queue_);
+    sycl::free(solutionPhis_, queue_);
+}
+
 ResultUsm::ResultUsm(ResultId resultId)
-: resultId_(resultId) {}
+: resultId_(resultId)
+, hostRegionNumSolutions_(new u_int32_t[MaxRegions])
+, hostSolutionHitCounts_(new u_int8_t[MaxSolutions])
+, hostSolutionRs_(new float[MaxSolutions])
+, hostSolutionPhis_(new float[MaxSolutions]) {}
 
 ResultUsm::~ResultUsm()
 {
-    if (allocated_)
-    {
-        LOG_ERROR("Memory leak in ResultUsm with resultId " + std::to_string(resultId_) + ". Memory was not deallocated on device before destruction.");
-    }
+    delete[] hostRegionNumSolutions_;
+    delete[] hostSolutionHitCounts_;
+    delete[] hostSolutionRs_;
+    delete[] hostSolutionPhis_;
 }
 
-bool ResultUsm::allocateOnDevice(sycl::queue& queue)
+TransferableData::TransferEvents ResultUsm::transferToDevice()
 {
-    if (allocated_)
+    if (!isKernelMemorySet())
     {
-        LOG_ERROR("Memory already allocated on device for ResultUsm with resultId " + std::to_string(resultId_) + ".");
-        return false;
-    }
-
-    try
-    {
-        deviceNumSolutions_ = sycl::malloc_device<decltype(hostNumSolutions_)>(1, queue);
-        deviceNumRegionSolutions_ = sycl::malloc_device<std::remove_reference<decltype(*hostNumRegionSolutions_)>::type>(MaxRegions, queue);
-        deviceSolutionHitCounts_ = sycl::malloc_device<std::remove_reference<decltype(*hostSolutionHitCounts_)>::type>(MaxSolutions, queue);
-        deviceSolutionRs_ = sycl::malloc_device<std::remove_reference<decltype(*hostSolutionRs_)>::type>(MaxSolutions, queue);
-        deviceSolutionPhis_ = sycl::malloc_device<std::remove_reference<decltype(*hostSolutionPhis_)>::type>(MaxSolutions, queue);
-    }
-    catch (sycl::exception& exception)
-    {
-        LOG_ERROR("Failed to allocate memory on device for ResultUsm with resultId " + std::to_string(resultId_) + ". Exception: " + exception.what() + ".");
-        return false;
-    }
-
-    allocated_ = true;
-    allocationQueue_ = &queue;
-    return true;
-}
-
-bool ResultUsm::deallocateOnDevice(sycl::queue& queue)
-{
-    if (!allocated_ && !resourcesBorrowed_)
-    {
-        LOG_ERROR("Memory not allocated on device for ResultUsm with resultId " + std::to_string(resultId_) + ".");
-        return false;
-    }
-
-    try
-    {
-        sycl::free(deviceNumSolutions_, queue);
-        sycl::free(deviceNumRegionSolutions_, queue);
-        sycl::free(deviceSolutionHitCounts_, queue);
-        sycl::free(deviceSolutionRs_, queue);
-        sycl::free(deviceSolutionPhis_, queue);
-    }
-    catch (sycl::exception& exception)
-    {
-        LOG_ERROR("Failed to deallocate memory on device for ResultUsm with resultId " + std::to_string(resultId_) + ". Exception: " + exception.what() + ".");
-        return false;
-    }
-
-    allocated_ = false;
-    allocationQueue_ = nullptr;
-    return true;
-}
-
-DataUsm::TransferEvents ResultUsm::transferToDevice(sycl::queue& queue)
-{
-    if (!allocated_ && !resourcesBorrowed_)
-    {
-        LOG_ERROR("Memory not allocated on device for ResultUsm with resultId " + std::to_string(resultId_) + ".");
+        LOG_ERROR("Kernel memory not set for ResultUsm, resultId: " + std::to_string(resultId_));
         return TransferEvents{};
     }
 
     TransferEvents transferEvents;
     try
     {
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceNumSolutions_, &hostNumSolutions_, sizeof(hostNumSolutions_))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceNumRegionSolutions_, hostNumRegionSolutions_, MaxRegions * sizeof(hostNumRegionSolutions_[0]))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceSolutionHitCounts_, hostSolutionHitCounts_, MaxSolutions * sizeof(hostSolutionHitCounts_[0]))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceSolutionRs_, hostSolutionRs_, MaxSolutions * sizeof(hostSolutionRs_[0]))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(deviceSolutionPhis_, hostSolutionPhis_, MaxSolutions * sizeof(hostSolutionPhis_[0]))));
+        auto queue = kernelMemory_->getQueue();
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->numSolutions_, &hostNumSolutions_, sizeof(hostNumSolutions_))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->regionNumSolutions_, hostRegionNumSolutions_, MaxRegions * sizeof(u_int32_t))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->solutionHitCounts_, hostSolutionHitCounts_, hostNumSolutions_ * sizeof(u_int8_t))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->solutionRs_, hostSolutionRs_, hostNumSolutions_ * sizeof(float))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(kernelMemory_->solutionPhis_, hostSolutionPhis_, hostNumSolutions_ * sizeof(float))));
     }
     catch (sycl::exception& exception)
     {
-        LOG_ERROR("Failed to transfer data to device for ResultUsm with resultId " + std::to_string(resultId_) + ". Exception: " + exception.what() + ".");
+        LOG_ERROR("Failed to transfer memory to device for ResultUsm, resultId " + std::to_string(resultId_) + ", exception: " + exception.what());
         return TransferEvents{};
     }
 
     return transferEvents;
 }
 
-DataUsm::TransferEvents ResultUsm::transferToHost(sycl::queue& queue)
+TransferableData::TransferEvents ResultUsm::transferToHost()
 {
-    if (!allocated_ && !resourcesBorrowed_)
+    if (!isKernelMemorySet())
     {
-        LOG_ERROR("Memory not allocated on device for ResultUsm with resultId " + std::to_string(resultId_) + ".");
+        LOG_ERROR("Kernel memory not set for ResultUsm, resultId: " + std::to_string(resultId_));
         return TransferEvents{};
     }
 
     TransferEvents transferEvents;
     try
     {
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(&hostNumSolutions_, deviceNumSolutions_, sizeof(hostNumSolutions_))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostNumRegionSolutions_, deviceNumRegionSolutions_, MaxRegions * sizeof(hostNumRegionSolutions_[0]))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostSolutionHitCounts_, deviceSolutionHitCounts_, MaxSolutions * sizeof(hostSolutionHitCounts_[0]))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostSolutionRs_, deviceSolutionRs_, MaxSolutions * sizeof(hostSolutionRs_[0]))));
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostSolutionPhis_, deviceSolutionPhis_, MaxSolutions * sizeof(hostSolutionPhis_[0]))));
+        auto queue = kernelMemory_->getQueue();
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(&hostNumSolutions_, kernelMemory_->numSolutions_, sizeof(hostNumSolutions_))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostRegionNumSolutions_, kernelMemory_->regionNumSolutions_, MaxRegions * sizeof(u_int32_t))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostSolutionHitCounts_, kernelMemory_->solutionHitCounts_, hostNumSolutions_ * sizeof(u_int8_t))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostSolutionRs_, kernelMemory_->solutionRs_, hostNumSolutions_ * sizeof(float))));
+        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostSolutionPhis_, kernelMemory_->solutionPhis_, hostNumSolutions_ * sizeof(float))));
     }
     catch (sycl::exception& exception)
     {
-        LOG_ERROR("Failed to transfer data to host for ResultUsm with resultId " + std::to_string(resultId_) + ". Exception: " + exception.what() + ".");
+        LOG_ERROR("Failed to transfer memory to host for ResultUsm, resultId " + std::to_string(resultId_) + ", exception: " + exception.what());
         return TransferEvents{};
     }
 
     return transferEvents;
 }
 
-bool ResultUsm::takeResourceGroup(const DeviceResourceGroup& resourceGroup, const sycl::queue& queue)
+void ResultUsm::copyHostData(const ResultUsm& source, ResultUsm& destination)
 {
-    if (resourceGroup.size() != 5)
-    {
-        LOG_ERROR("Invalid resource group size for ResultUsm with resultId " + std::to_string(resultId_) + ".");
-        return false;
-    }
-
-    deviceNumSolutions_ = static_cast<decltype(hostNumSolutions_)*>(resourceGroup.at(DeviceResourceType::NumSolutions));
-    deviceNumRegionSolutions_ = static_cast<std::remove_reference<decltype(*hostNumRegionSolutions_)>::type*>(resourceGroup.at(DeviceResourceType::RegionNumSolutions));
-    deviceSolutionHitCounts_ = static_cast<std::remove_reference<decltype(*hostSolutionHitCounts_)>::type*>(resourceGroup.at(DeviceResourceType::SolutionHitCounts));
-    deviceSolutionRs_ = static_cast<std::remove_reference<decltype(*hostSolutionRs_)>::type*>(resourceGroup.at(DeviceResourceType::Rs));
-    deviceSolutionPhis_ = static_cast<std::remove_reference<decltype(*hostSolutionPhis_)>::type*>(resourceGroup.at(DeviceResourceType::Phis));
-
-    resourcesBorrowed_ = true;
-    allocationQueue_ = &queue;
-
-    return true;
+    destination.hostNumSolutions_ = source.hostNumSolutions_;
+    std::copy(source.hostRegionNumSolutions_, source.hostRegionNumSolutions_ + MaxRegions, destination.hostRegionNumSolutions_);
+    std::copy(source.hostSolutionHitCounts_, source.hostSolutionHitCounts_ + MaxSolutions, destination.hostSolutionHitCounts_);
+    std::copy(source.hostSolutionRs_, source.hostSolutionRs_ + MaxSolutions, destination.hostSolutionRs_);
+    std::copy(source.hostSolutionPhis_, source.hostSolutionPhis_ + MaxSolutions, destination.hostSolutionPhis_);
 }
 
-std::pair<std::unique_ptr<DeviceResourceGroup>, const sycl::queue*> ResultUsm::releaseResourceGroup()
+void ResultUsm::setKernelMemoryInternal(KernelMemory* kernelMemory)
 {
-    if (!resourcesBorrowed_)
-    {
-        LOG_ERROR("Resources not borrowed for ResultUsm with resultId " + std::to_string(resultId_) + ".");
-        return {nullptr, nullptr};
-    }
-
-    auto resourceGroup = std::make_unique<DeviceResourceGroup>();
-    resourceGroup->emplace(DeviceResourceType::NumSolutions, deviceNumSolutions_);
-    resourceGroup->emplace(DeviceResourceType::RegionNumSolutions, deviceNumRegionSolutions_);
-    resourceGroup->emplace(DeviceResourceType::SolutionHitCounts, deviceSolutionHitCounts_);
-    resourceGroup->emplace(DeviceResourceType::Rs, deviceSolutionRs_);
-    resourceGroup->emplace(DeviceResourceType::Phis, deviceSolutionPhis_);
-
-    resourcesBorrowed_ = false;
-    allocationQueue_ = nullptr;
-
-    return {std::move(resourceGroup), allocationQueue_};
+    kernelMemory_ = static_cast<ResultKernelMemory*>(kernelMemory);
 }
-
-std::unique_ptr<DeviceResourceGroup> ResultUsm::allocateDeviceResources(sycl::queue& queue)
-{
-    std::unique_ptr<DeviceResourceGroup> resourceGroup = std::make_unique<DeviceResourceGroup>();
-    resourceGroup->emplace(DeviceResourceType::NumSolutions, sycl::malloc_device<decltype(hostNumSolutions_)>(1, queue));
-    resourceGroup->emplace(DeviceResourceType::RegionNumSolutions, sycl::malloc_device<std::remove_reference<decltype(*hostNumRegionSolutions_)>::type>(MaxRegions, queue));
-    resourceGroup->emplace(DeviceResourceType::SolutionHitCounts, sycl::malloc_device<std::remove_reference<decltype(*hostSolutionHitCounts_)>::type>(MaxSolutions, queue));
-    resourceGroup->emplace(DeviceResourceType::Rs, sycl::malloc_device<std::remove_reference<decltype(*hostSolutionRs_)>::type>(MaxSolutions, queue));
-    resourceGroup->emplace(DeviceResourceType::Phis, sycl::malloc_device<std::remove_reference<decltype(*hostSolutionPhis_)>::type>(MaxSolutions, queue));
-
-    return resourceGroup;
-}
-
-void ResultUsm::deallocateDeviceResources(DeviceResourceGroup& resourceGroup, sycl::queue& queue)
-{
-    sycl::free(resourceGroup.at(DeviceResourceType::NumSolutions), queue);
-    sycl::free(resourceGroup.at(DeviceResourceType::RegionNumSolutions), queue);
-    sycl::free(resourceGroup.at(DeviceResourceType::SolutionHitCounts), queue);
-    sycl::free(resourceGroup.at(DeviceResourceType::Rs), queue);
-    sycl::free(resourceGroup.at(DeviceResourceType::Phis), queue);
-}
-

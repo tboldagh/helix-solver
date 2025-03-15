@@ -50,8 +50,10 @@ TEST_F(SyclSplitterTest, Random10Points)
     }
     event->hostNumPoints_ = 10;
 
-    event->allocateOnDevice(queue_);
-    event->transferToDevice(queue_);
+    EventUsm::EventKernelMemory eventMemory(queue_);
+    eventMemory.allocate();
+    event->setKernelMemory(&eventMemory);
+    event->transferToDevice();
 
     auto deviceSplitter = sycl::malloc_device<Splitter>(1, queue_);
     queue_.memcpy(deviceSplitter, &splitter_, sizeof(Splitter)).wait();
@@ -61,17 +63,15 @@ TEST_F(SyclSplitterTest, Random10Points)
 
     queue_.submit([&](sycl::handler& handler)
     {
-        auto xs = event->deviceXs_;
-        auto ys = event->deviceYs_;
-        auto zs = event->deviceZs_;
+        auto xs = event->kernelMemory_->xs_;
+        auto ys = event->kernelMemory_->ys_;
+        auto zs = event->kernelMemory_->zs_;
 
         handler.parallel_for(sycl::range<1>(event->hostNumPoints_), [xs, ys, zs, deviceRegionIds, deviceSplitter](sycl::id<1> idx)
         {
             deviceSplitter->getRegionIds(xs[idx], ys[idx], zs[idx], deviceRegionIds[idx]);
         });
     }).wait();
-
-    event->deallocateOnDevice(queue_);
 
     queue_.memcpy(regionIds.data(), deviceRegionIds, 10 * sizeof(Splitter::RegionIds)).wait();
 
@@ -82,7 +82,9 @@ TEST_F(SyclSplitterTest, Random10Points)
         ASSERT_TRUE(regionIdsEqual(regionIds[i], expectedRegionIds));
     }
 
+    sycl::free(deviceSplitter, queue_);
     sycl::free(deviceRegionIds, queue_);
+    eventMemory.deallocate();
 }
 
 
