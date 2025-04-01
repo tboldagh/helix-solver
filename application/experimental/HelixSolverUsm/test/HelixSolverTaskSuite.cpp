@@ -180,7 +180,11 @@ TEST_F(HelixSolverTaskFullEvent, Basic)
     constexpr IQueue::DeviceResourceGroupId resourceGroupId = 43;
     std::unique_ptr<DeviceResourceGroup> deviceResources = SingleRegionKernel::createResourceGroup(syclQueue);
     splitter_.setKernelMemory(static_cast<KernelMemory*>(deviceResources->at(DeviceResourceType::SplitterSettingsKernelMemory)));
-    splitter_.transferToDevice();
+    auto splitterTransferEvents = splitter_.transferToDevice();
+    for (auto& splitterTransferEvent : splitterTransferEvents)
+    {
+        splitterTransferEvent->wait();
+    }
 
     task.takeEventAndResult(std::move(event), std::move(result));
 

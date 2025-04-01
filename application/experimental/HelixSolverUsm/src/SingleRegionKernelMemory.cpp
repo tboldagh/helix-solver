@@ -10,14 +10,14 @@ SingleRegionKernelMemory::SingleRegionKernelMemory(sycl::queue& queue)
 
 void SingleRegionKernelMemory::allocateInternal()
 {
-    indexes_ = sycl::malloc_device<u_int32_t>(MaxPointsInRegion, queue_);
-    xs_ = sycl::malloc_device<float>(MaxPointsInRegion, queue_);
-    ys_ = sycl::malloc_device<float>(MaxPointsInRegion, queue_);
-    zs_ = sycl::malloc_device<float>(MaxPointsInRegion, queue_);
-    layers_ = sycl::malloc_device<EventUsm::LayerNumber>(MaxPointsInRegion, queue_);
-    pointLists_ = sycl::malloc_device<u_int32_t>(MaxPointListsPointsNum, queue_);
-    rs_ = sycl::malloc_device<float>(MaxPointsInRegion, queue_);
-    phis_ = sycl::malloc_device<float>(MaxPointsInRegion, queue_);
+    indexes_ = sycl::malloc_device<u_int32_t>(MaxPointsInRegion * ResultUsm::MaxRegions, queue_);
+    xs_ = sycl::malloc_device<float>(MaxPointsInRegion * ResultUsm::MaxRegions, queue_);
+    ys_ = sycl::malloc_device<float>(MaxPointsInRegion * ResultUsm::MaxRegions, queue_);
+    zs_ = sycl::malloc_device<float>(MaxPointsInRegion * ResultUsm::MaxRegions, queue_);
+    layers_ = sycl::malloc_device<EventUsm::LayerNumber>(MaxPointsInRegion * ResultUsm::MaxRegions, queue_);
+    pointLists_ = sycl::malloc_device<u_int32_t>(MaxPointListsPointsNum * ResultUsm::MaxRegions, queue_);
+    rs_ = sycl::malloc_device<float>(MaxPointsInRegion * ResultUsm::MaxRegions, queue_);
+    phis_ = sycl::malloc_device<float>(MaxPointsInRegion * ResultUsm::MaxRegions, queue_);
 }
 
 void SingleRegionKernelMemory::deallocateInternal()

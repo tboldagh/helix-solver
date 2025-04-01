@@ -691,14 +691,14 @@ protected:
     std::unique_ptr<float[]> deviceSolutionPhis_{new float[ResultUsm::MaxSolutions]};
 
     // Fake kernel memory
-    std::unique_ptr<u_int32_t[]> kernelIndexes_{new u_int32_t[SingleRegionKernel::MaxPointsInRegion]};
-    std::unique_ptr<float[]> kernelXs_{new float[SingleRegionKernel::MaxPointsInRegion]};
-    std::unique_ptr<float[]> kernelYs_{new float[SingleRegionKernel::MaxPointsInRegion]};
-    std::unique_ptr<float[]> kernelZs_{new float[SingleRegionKernel::MaxPointsInRegion]};
-    std::unique_ptr<EventUsm::LayerNumber[]> kernelLayers_{new EventUsm::LayerNumber[SingleRegionKernel::MaxPointsInRegion]};
-    std::unique_ptr<u_int32_t[]> kernelPointLists_{new u_int32_t[SingleRegionKernel::MaxPointListsPointsNum]};
-    std::unique_ptr<float[]> kernelRs_{new float[SingleRegionKernel::MaxPointsInRegion]};
-    std::unique_ptr<float[]> kernelPhis_{new float[SingleRegionKernel::MaxPointsInRegion]};
+    std::unique_ptr<u_int32_t[]> kernelIndexes_{new u_int32_t[SingleRegionKernel::MaxPointsInRegion * ResultUsm::MaxRegions]};
+    std::unique_ptr<float[]> kernelXs_{new float[SingleRegionKernel::MaxPointsInRegion * ResultUsm::MaxRegions]};
+    std::unique_ptr<float[]> kernelYs_{new float[SingleRegionKernel::MaxPointsInRegion * ResultUsm::MaxRegions]};
+    std::unique_ptr<float[]> kernelZs_{new float[SingleRegionKernel::MaxPointsInRegion * ResultUsm::MaxRegions]};
+    std::unique_ptr<EventUsm::LayerNumber[]> kernelLayers_{new EventUsm::LayerNumber[SingleRegionKernel::MaxPointsInRegion * ResultUsm::MaxRegions]};
+    std::unique_ptr<u_int32_t[]> kernelPointLists_{new u_int32_t[SingleRegionKernel::MaxPointListsPointsNum * ResultUsm::MaxRegions]};
+    std::unique_ptr<float[]> kernelRs_{new float[SingleRegionKernel::MaxPointsInRegion * ResultUsm::MaxRegions]};
+    std::unique_ptr<float[]> kernelPhis_{new float[SingleRegionKernel::MaxPointsInRegion * ResultUsm::MaxRegions]};
 
     // Fake splitter kernel memory
     std::unique_ptr<SplitterSettings> deviceSplitterSettings_ = std::make_unique<SplitterSettings>();

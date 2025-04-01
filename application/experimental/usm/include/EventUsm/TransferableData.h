@@ -28,6 +28,4 @@ protected:
     virtual void setKernelMemoryInternal(KernelMemory* kernelMemory) = 0;
 
     bool kernelMemorySet_ = false;
-    bool resourcesBorrowed_ = false;
-    const sycl::queue* allocationQueue_ = nullptr;    // The queue used for last allocation;
 };

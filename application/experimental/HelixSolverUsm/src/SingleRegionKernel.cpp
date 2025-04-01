@@ -37,20 +37,20 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
     }
 
     u_int32_t numPoints = 0;
-    u_int32_t* indexes = kernelIndexes_;
-    float* xs = kernelXs_;
-    float* ys = kernelYs_;
-    float* zs = kernelZs_;
-    EventUsm::LayerNumber* layers = kernelLayers_;
+    u_int32_t* indexes = kernelIndexes_ + (regionId - 1) * MaxPointsInRegion;
+    float* xs = kernelXs_ + (regionId - 1) * MaxPointsInRegion;
+    float* ys = kernelYs_ + (regionId - 1) * MaxPointsInRegion;
+    float* zs = kernelZs_ + (regionId - 1) * MaxPointsInRegion;
+    EventUsm::LayerNumber* layers = kernelLayers_ + (regionId - 1) * MaxPointsInRegion;
 
     filterPointsInRegion(splitter, regionId, numPoints, indexes, xs, ys, zs, layers);
 
-    float* rs = kernelRs_;
-    float* phis = kernelPhis_;
+    float* rs = kernelRs_ + (regionId - 1) * MaxPointsInRegion;
+    float* phis = kernelPhis_ + (regionId - 1) * MaxPointsInRegion;
 
     AccumulatorRegion accumulatorRegions[MaxAccumulatorRegionStackSize];
     u_int8_t accumulatorRegionStackSize = 0;
-    u_int32_t* pointLists = kernelPointLists_;
+    u_int32_t* pointLists = kernelPointLists_ + (regionId - 1) * MaxPointListsPointsNum;
 
 
     convertToPolarCoordinates(phis, rs, xs, ys, numPoints);
