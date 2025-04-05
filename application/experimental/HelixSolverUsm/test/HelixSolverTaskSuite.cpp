@@ -228,6 +228,15 @@ TEST_F(HelixSolverTaskFullEvent, Basic)
     event = task.releaseEvent();
     result = task.releaseResult();
 
+    // Print region num solutions
+    LOG_DEBUG("Region num solutions: " + std::to_string(*result->hostRegionNumSolutions_));
+    for (u_int16_t i = 0; i < splitter_.getNumRegions() - 1; i++)
+    {
+        std::stringstream ss;
+        ss << i << ",\t" << static_cast<unsigned>(result->hostRegionNumSolutions_[i]);
+        LOG_DEBUG(ss.str());
+    }
+
     // Log 20 random solutions
     u_int32_t numSolutions = result->hostNumSolutions_;
     for (u_int32_t i = 0; i < 20; ++i)
@@ -241,5 +250,17 @@ TEST_F(HelixSolverTaskFullEvent, Basic)
         ss << i << ",\t" << static_cast<unsigned>(hitCount) << ",\t" << r << ",\t" << phi;
         LOG_DEBUG(ss.str());
     }
+
+    // u_int32_t numSolutions = result->hostRegionNumSolutions_[splitter_.getNumRegions() - 1];
+    // for (u_int32_t i = 0; i < numSolutions; ++i)
+    // {
+    //     u_int8_t hitCount = result->hostSolutionHitCounts_[i];
+    //     float r = result->hostSolutionRs_[i];
+    //     float phi = result->hostSolutionPhis_[i];
+
+    //     std::stringstream ss;
+    //     ss << i << ",\t" << static_cast<unsigned>(hitCount) << ",\t" << r << ",\t" << phi;
+    //     LOG_DEBUG(ss.str());
+    // }
 }
 

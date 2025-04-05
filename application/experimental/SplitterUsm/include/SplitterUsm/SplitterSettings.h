@@ -55,7 +55,7 @@ public:
     using Range = std::pair<float, float>;
 
     SplitterSettings() {}; // Clang bug: https://stackoverflow.com/questions/43819314/default-member-initializer-needed-within-definition-of-enclosing-class-outside
-    SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAgle, float maxXAgle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges = {}, ConstSizeVector<PoleRegion, 2>&& poleRegions = {});
+    SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAgle, float maxXAgle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, float filterOutCenterR, float filterOutCenterZ, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges = {}, ConstSizeVector<PoleRegion, 2>&& poleRegions = {});
     SplitterSettings(const SplitterSettings&) = default;
     SplitterSettings(SplitterSettings&&) = default;
     SplitterSettings& operator=(const SplitterSettings&) = default;
@@ -81,6 +81,8 @@ public:
     float xAngleMargin_;
     u_int8_t numZRanges_;
     u_int8_t numXRanges_;
+    float filterOutCenterR_;
+    float filterOutCenterZ_;
 
     // Regions
     ConstSizeVector<Wedge, MaxWedgesNum> wedges_;

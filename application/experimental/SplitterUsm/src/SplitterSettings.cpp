@@ -58,7 +58,7 @@ bool SplitterSettings::PoleRegion::isValid() const
             interactionRegionWidth_ > 0.0;
 }
 
-SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAgle, float maxXAgle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges, ConstSizeVector<PoleRegion, 2>&& poleRegions)
+SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAgle, float maxXAgle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, float filterOutCenterR, float filterOutCenterZ, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges, ConstSizeVector<PoleRegion, 2>&& poleRegions)
 : maxAbsXy_(maxAbsXy)
 , maxAbsZ_(maxAbsZ)
 , minZAngle_(minZAngle)
@@ -72,6 +72,8 @@ SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngl
 , xAngleMargin_(xAngleMargin)
 , numZRanges_(numZRanges)
 , numXRanges_(numXRanges)
+, filterOutCenterR_(filterOutCenterR)
+, filterOutCenterZ_(filterOutCenterZ)
 , wedges_(std::move(wedges))
 , poleRegions_(std::move(poleRegions))
 {
@@ -118,6 +120,8 @@ bool SplitterSettings::operator==(const SplitterSettings& other) const
             std::fabs(xAngleMargin_ - other.xAngleMargin_) < epsilon &&
             numZRanges_ == other.numZRanges_ &&
             numXRanges_ == other.numXRanges_ &&
+            filterOutCenterR_ == other.filterOutCenterR_ &&
+            filterOutCenterZ_ == other.filterOutCenterZ_ &&
             wedges_ == other.wedges_ &&
             poleRegions_ == other.poleRegions_;
 }
@@ -149,6 +153,7 @@ bool SplitterSettings::isValid() const
             poleRegionAngle_ > 0.0 && poleRegionAngle_ < M_PI &&
             interactionRegionMin_ < 0.0 && interactionRegionMax_ > 0.0 &&
             numZRanges_ > 0 && numXRanges_ > 0 &&
+            filterOutCenterR_ > 0.0 && filterOutCenterZ_ > 0.0 &&
             wedgesValid &&
             poleRegionsValid;
 }

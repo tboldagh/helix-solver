@@ -85,13 +85,15 @@ TEST_F(SyclCompatibilityTest, SplitterSettingsTransferableToKernel)
     constexpr float minXAgle = 1.0 / 16 * M_PI;
     constexpr float maxXAgle = 15.0 / 16 * M_PI;
     constexpr float poleRegionAngle = 1.0 / 16 * M_PI;
-    constexpr float interactionRegionMin = -250.0;
-    constexpr float interactionRegionMax = 250.0;
+    constexpr float interactionRegionMin = -200.0;
+    constexpr float interactionRegionMax = 200.0;
     constexpr float zAngleMargin = 4.0 / 256 * M_PI;
     constexpr float xAngleMargin = 2.0 / 256 * M_PI;
     constexpr u_int8_t numZRanges = 16;
     constexpr u_int8_t numXRanges = 8;
-    const SplitterSettings settings(maxAbsXy, maxAbsZ, minZAngle, maxZAngle, minXAgle, maxXAgle, poleRegionAngle, interactionRegionMin, interactionRegionMax, zAngleMargin, xAngleMargin, numZRanges, numXRanges);
+    constexpr float filterOutCenterR = 150.0;
+    constexpr float filterOutCenterZ = 500.0;
+    const SplitterSettings settings(maxAbsXy, maxAbsZ, minZAngle, maxZAngle, minXAgle, maxXAgle, poleRegionAngle, interactionRegionMin, interactionRegionMax, zAngleMargin, xAngleMargin, numZRanges, numXRanges, filterOutCenterR, filterOutCenterZ);
     ASSERT_TRUE(settings.isValid());
 
     auto deviceSettings = sycl::malloc_device<SplitterSettings>(1, queue_);

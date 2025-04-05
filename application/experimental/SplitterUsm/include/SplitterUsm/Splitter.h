@@ -39,10 +39,12 @@ public:
 
     SYCL_EXTERNAL void getRegionIds(float x, float y, float z, RegionIds& regionIds) const;
     SYCL_EXTERNAL bool isPointInRegion(float x, float y, float z, u_int16_t regionId) const;
+    SYCL_EXTERNAL bool isPointInRegionNoFilter(float x, float y, float z, u_int16_t regionId) const;
     SYCL_EXTERNAL u_int16_t getNumRegions() const;
     SYCL_EXTERNAL const SplitterSettings& getSettings() const;
 
     SplitterSettingsKernelMemory* splitterSettingsKernelMemory_ = nullptr;
+    SplitterSettings settings_;
 
 protected:
     void setKernelMemoryInternal(KernelMemory* kernelMemory) override;
@@ -57,5 +59,4 @@ private:
     static float atan2Wrap2Pi(float y, float x);
     static float wrap2Pi(float angle);
 
-    SplitterSettings settings_;
 };

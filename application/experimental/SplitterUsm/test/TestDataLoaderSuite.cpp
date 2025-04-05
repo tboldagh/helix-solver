@@ -27,6 +27,8 @@ protected:
         constexpr float xAngleMargin = 1.0 / 256 * M_PI;
         constexpr u_int8_t numZRanges = 8;
         constexpr u_int8_t numXRanges = 8;
+        constexpr float filterOutCenterR = 150.0;
+        constexpr float filterOutCenterZ = 500.0;
         return SplitterSettings(
             maxAbsXy, maxAbsZ,
             minZAngle, maxZAngle,
@@ -34,7 +36,8 @@ protected:
             poleRegionAngle,
             interactionRegionMin, interactionRegionMax,
             zAngleMargin, xAngleMargin,
-            numZRanges, numXRanges
+            numZRanges, numXRanges,
+            filterOutCenterR, filterOutCenterZ
         );
     }
 

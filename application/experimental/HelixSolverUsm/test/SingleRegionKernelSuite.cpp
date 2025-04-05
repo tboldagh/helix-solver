@@ -507,12 +507,14 @@ protected:
         constexpr float minXAgle = 1.0 / 16 * M_PI;
         constexpr float maxXAgle = 15.0 / 16 * M_PI;
         constexpr float poleRegionAngle = 1.0 / 16 * M_PI;
-        constexpr float interactionRegionMin = -250.0;
-        constexpr float interactionRegionMax = 250.0;
+        constexpr float interactionRegionMin = -200.0;
+        constexpr float interactionRegionMax = 200.0;
         constexpr float zAngleMargin = 4.0 / 256 * M_PI;
         constexpr float xAngleMargin = 2.0 / 256 * M_PI;
         constexpr u_int8_t numZRanges = 16;
         constexpr u_int8_t numXRanges = 8;
+        constexpr float filterOutCenterR = 150.0;
+        constexpr float filterOutCenterZ = 500.0;
         return SplitterSettings(
             maxAbsXy, maxAbsZ,
             minZAngle, maxZAngle,
@@ -520,7 +522,8 @@ protected:
             poleRegionAngle,
             interactionRegionMin, interactionRegionMax,
             zAngleMargin, xAngleMargin,
-            numZRanges, numXRanges
+            numZRanges, numXRanges,
+            filterOutCenterR, filterOutCenterZ
         );
     }
 
@@ -530,7 +533,7 @@ protected:
         const float centerY = std::sin(phi) * r;
 
         // Rotation range resulting in points distributed between the center and the edge of the detector in XY plane
-        const float minRotation = std::atan(10 / r);
+        const float minRotation = std::atan(150 / r);
         const float maxRotation = std::atan(1000 / r);
         
         constexpr float zRangeMin = -100.0f;
@@ -750,7 +753,7 @@ TEST_F(SingleHelixDetectionTest, BasicR5000Phi210XAngle06)
     constexpr u_int16_t regionIndex = 1;
     constexpr float r = 5000.0f;
     constexpr float phi = 2.1f;
-    constexpr u_int8_t numPoints = 8;
+    constexpr u_int8_t numPoints = 10;
     constexpr float xAngle = 0.6f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
@@ -798,7 +801,7 @@ TEST_F(SingleHelixDetectionTest, RotatedR2000Phi170XAngle05)
     constexpr u_int16_t regionIndex = 0;    // Region requiring rotation due to atan2 discontinuity
     constexpr float r = 2000.0f;
     constexpr float phi = 1.7f;
-    constexpr u_int8_t numPoints = 8;
+    constexpr u_int8_t numPoints = 10;
     constexpr float xAngle = 0.5f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
@@ -814,7 +817,7 @@ TEST_F(SingleHelixDetectionTest, RotatedR24000Phi155XAngle05)
     constexpr u_int16_t regionIndex = 0;    // Region requires rotation due to atan2 discontinuity
     constexpr float r = 24000.0f;
     constexpr float phi = 1.55f;    // Some points lay in negative y
-    constexpr u_int8_t numPoints = 8;
+    constexpr u_int8_t numPoints = 10;
     constexpr float xAngle = 0.4;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
@@ -902,7 +905,7 @@ TEST_F(MultipleHelixDetectionTest, Basic)
     constexpr u_int16_t regionIndex = 1;
     const std::vector<Helix> helixes = {
         Helix(1200.0f, 2.0f, 0.1f, 10),
-        Helix(1200.0f, 2.1f, 0.4f, 10),
+        Helix(1200.0f, 2.1f, 0.4f, 12),
         Helix(2000.0f, 1.9f, 0.8f, 10),
         Helix(2000.0f, 2.0f, 0.5f, 12),
         Helix(2000.0f, 2.1f, 0.2f, 8),
@@ -912,9 +915,9 @@ TEST_F(MultipleHelixDetectionTest, Basic)
         Helix(10000.0f, 1.9f, 0.8f, 12),
         Helix(10000.0f, 2.0f, 0.4f, 12),
         Helix(10000.0f, 2.1f, 0.1f, 8),
-        Helix(20000.0f, 2.0f, 0.2f, 8),
-        Helix(20000.0f, 2.1f, 0.7f, 8),
-        Helix(20000.0f, 2.2f, 1.0f, 8)
+        Helix(20000.0f, 2.0f, 0.2f, 10),
+        Helix(20000.0f, 2.1f, 0.7f, 10),
+        Helix(20000.0f, 2.2f, 0.8f, 10)
     };
 
     createRunAndExtractResult(regionIndex, helixes);
@@ -935,19 +938,19 @@ TEST_F(MultipleHelixDetectionTest, Rotated)
     constexpr u_int16_t regionIndex = 0;
     const std::vector<Helix> helixes = {
         Helix(1200.0f, 1.5f, 0.1f, 10),
-        Helix(1200.0f, 1.8f, 0.4f, 14),
+        Helix(1200.0f, 1.7f, 0.4f, 14),
         Helix(2000.0f, 1.5f, 0.8f, 10),
         Helix(2000.0f, 1.6f, 0.5f, 12),
-        Helix(2000.0f, 1.7f, 0.2f, 8),
+        Helix(2000.0f, 1.7f, 0.2f, 10),
         Helix(5000.0f, 1.5f, 0.8f, 10),
         Helix(5000.0f, 1.6f, 0.4f, 8),
         Helix(5000.0f, 1.7f, 0.9f, 10),
         Helix(10000.0f, 1.6f, 0.8f, 12),
         Helix(10000.0f, 1.6f, 0.4f, 12),
         Helix(10000.0f, 1.7f, 0.1f, 8),
-        Helix(20000.0f, 1.6f, 0.2f, 8),
-        Helix(20000.0f, 1.7f, 0.7f, 8),
-        Helix(20000.0f, 1.8f, 1.0f, 8)
+        Helix(20000.0f, 1.6f, 0.2f, 10),
+        Helix(20000.0f, 1.7f, 0.7f, 10),
+        Helix(20000.0f, 1.8f, 0.8f, 12)
     };
 
     createRunAndExtractResult(regionIndex, helixes);

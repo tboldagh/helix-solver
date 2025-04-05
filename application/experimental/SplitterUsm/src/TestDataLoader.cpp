@@ -41,6 +41,8 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
         const float xAngleMargin = json["splitter_properties"]["x_angle_margin"];
         const u_int8_t numZRanges = json["splitter_properties"]["num_z_ranges"];
         const u_int8_t numXRanges = json["splitter_properties"]["num_x_ranges"];
+        const float filterOutCenterR = json["splitter_properties"]["filter_out_center_r"];
+        const float filterOutCenterZ = json["splitter_properties"]["filter_out_center_z"];
 
         // Wedges
         ConstSizeVector<SplitterSettings::Wedge, SplitterSettings::MaxWedgesNum> wedges;
@@ -73,6 +75,7 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
             interactionRegionMin, interactionRegionMax,
             zAngleMargin, xAngleMargin,
             numZRanges, numXRanges,
+            filterOutCenterR, filterOutCenterZ,
             std::move(wedges),
             std::move(poleRegions)
         );
@@ -102,6 +105,8 @@ bool TestDataLoader::writeSplitterSettings(const std::string& path, const Splitt
     json["splitter_properties"]["x_angle_margin"] = settings.xAngleMargin_;
     json["splitter_properties"]["num_z_ranges"] = settings.numZRanges_;
     json["splitter_properties"]["num_x_ranges"] = settings.numXRanges_;
+    json["splitter_properties"]["filter_out_center_r"] = settings.filterOutCenterR_;
+    json["splitter_properties"]["filter_out_center_z"] = settings.filterOutCenterZ_;
 
     // Wedges
     for (auto i = 0; i < settings.wedges_.getSize(); ++i)

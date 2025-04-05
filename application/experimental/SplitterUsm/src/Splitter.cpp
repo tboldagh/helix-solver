@@ -106,6 +106,17 @@ const SplitterSettings& Splitter::getSettings() const
 
 bool Splitter::isPointInRegion(float x, float y, float z, u_int16_t regionId) const
 {
+    // filter out points too close to the center
+    if (sycl::sqrt(x*x + y*y) < settings_.filterOutCenterR_ && sycl::fabs(z) < settings_.filterOutCenterZ_)
+    {
+        return false;
+    }
+
+    return isPointInRegionNoFilter(x, y, z, regionId);
+}
+
+bool Splitter::isPointInRegionNoFilter(float x, float y, float z, u_int16_t regionId) const
+{
     const auto lastWedgeId = settings_.numZRanges_ * settings_.numXRanges_; // 0 reserved for invalid region
     if (regionId <= lastWedgeId)
     {

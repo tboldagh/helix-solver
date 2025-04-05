@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EventUsm/EventUsm.h"
+#include "EventUsm/ResultUsm.h"
 #include "EventUsm/KernelMemory.h"
 
 #include <sycl/sycl.hpp>
@@ -16,8 +17,8 @@ public:
 
     void operator=(const SingleRegionKernelMemory&) = delete;
 
-    static constexpr u_int8_t Phi0MaxDivisionLevel = 10;   // TODO: Tune
-    static constexpr u_int8_t QOverPtMaxDivisionLevel = 10;   // TODO: Tune
+    static constexpr u_int8_t Phi0MaxDivisionLevel = 8;   // TODO: Tune
+    static constexpr u_int8_t QOverPtMaxDivisionLevel = 8;   // TODO: Tune
     static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
     static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
     static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
