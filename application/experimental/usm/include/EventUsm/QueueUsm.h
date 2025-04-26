@@ -29,6 +29,8 @@ public:
     inline void checkinQueue() override;
     inline const sycl::queue& getQueue() const override;
 
+    void forEachResourceGroup(const ForEachResourceGroupFunction& callback) override;
+
     static const DeviceResourceGroup NullResourceGroup; // Used when no resources are available.
     static constexpr DeviceResourceGroupId NullResourceGroupId{0};
 

@@ -29,6 +29,9 @@ public:
     virtual void incrementWorkLoad() = 0;
     virtual void decrementWorkLoad() = 0;
 
+    using ForEachResourceGroupFunction = std::function<void(DeviceResourceGroupId, DeviceResourceGroup&)>;
+    virtual void forEachResourceGroup(const ForEachResourceGroupFunction& callback) = 0;
+
     virtual sycl::queue& checkoutQueue() = 0;
     virtual void checkinQueue() = 0;
     // Used to get queue when no lock is needed.

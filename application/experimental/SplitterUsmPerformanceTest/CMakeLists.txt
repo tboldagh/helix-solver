@@ -6,9 +6,9 @@ INCLUDE
     include
 
 SRC
-src/SplitterOnlyKernel.cpp
-src/SplitterUsmPerformanceTest.cpp
-src/SplitterOnlyTask.cpp
+    src/SplitterOnlyKernel.cpp
+    src/SplitterUsmPerformanceTest.cpp
+    src/SplitterOnlyTask.cpp
 
 PRIVATE
     Logger

@@ -25,4 +25,6 @@ public:
     MOCK_METHOD(sycl::queue&, checkoutQueue, (), (override));
     MOCK_METHOD(void, checkinQueue, (), (override));
     MOCK_METHOD(const sycl::queue&, getQueue, (), (const, override));
+
+    MOCK_METHOD(void, forEachResourceGroup, (const ForEachResourceGroupFunction& callback), (override));
 };

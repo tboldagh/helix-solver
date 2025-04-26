@@ -64,3 +64,10 @@ void QueueUsm::returnResources(DeviceResourceGroupId resourceGroupId)
     freeResources_.push(resourceGroupId);
     resourcesLoad_--;
 }
+
+void QueueUsm::forEachResourceGroup(const ForEachResourceGroupFunction& callback)
+{
+    for (auto& [id, resourceGroup] : resources_) {
+        callback(id, *resourceGroup);
+    }
+}
