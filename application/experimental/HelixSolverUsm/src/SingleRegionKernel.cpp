@@ -36,6 +36,11 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
         return;
     }
 
+    // if (regionId > 3)
+    // {
+    //     return;
+    // }
+
     u_int32_t numPoints = 0;
     u_int32_t* indexes = kernelIndexes_ + (regionId - 1) * MaxPointsInRegion;
     float* xs = kernelXs_ + (regionId - 1) * MaxPointsInRegion;
@@ -78,11 +83,6 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
         pointLists[i] = i;
     }
     accumulatorRegions[0].pointListEnd = numPoints;
-
-    // Zero out region solutions counter
-    deviceRegionNumSolutions_[regionId - 1] = 0;
-
-    // deviceRegionNumSolutions_[regionId - 1] = numPoints + regionId;
 
     while (accumulatorRegionStackSize > 0)
     {

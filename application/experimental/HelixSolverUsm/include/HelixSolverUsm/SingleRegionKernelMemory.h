@@ -22,7 +22,7 @@ public:
     static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
     static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
     static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
-    static constexpr u_int16_t MaxPointsInRegion = 10000;   // TODO: Tune
+    static constexpr u_int16_t MaxPointsInRegion = 5000;   // TODO: Tune
     static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;    // TODO: This is max possible number of points in all lists combined. Can be tuned
 
     u_int32_t* indexes_ = nullptr;   // Just in case we need to keep info about which points form a helix

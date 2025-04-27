@@ -36,8 +36,8 @@ public:
 
     void operator=(const ResultUsm&) = delete;
 
-    static constexpr u_int16_t MaxRegions = 256;
-    static constexpr u_int16_t MaxSolutionsPerRegion = 1024;
+    static constexpr u_int16_t MaxRegions = 140;
+    static constexpr u_int16_t MaxSolutionsPerRegion = 2048;
     static constexpr u_int32_t MaxSolutions = MaxRegions * MaxSolutionsPerRegion;
 
     TransferableData::TransferEvents transferToDevice() override;

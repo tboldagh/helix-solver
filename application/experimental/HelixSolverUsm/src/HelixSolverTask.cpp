@@ -19,6 +19,9 @@ ITask::ExecutionEvents HelixSolverTask::executeOnDevice(sycl::queue& syclQueue)
 {
     ExecutionEvents executionEvents;
 
+    // Zero out regionNumSolutions_
+    syclQueue.memset(result_.get()->kernelMemory_->regionNumSolutions_, 0, sizeof(u_int32_t) * ResultUsm::MaxRegions).wait();
+
     std::unique_ptr<sycl::event> houghEvent = std::make_unique<sycl::event>(syclQueue.submit([&](sycl::handler& handler) {
         const u_int16_t numRegions = splitter_.getNumRegions();
 

@@ -7,10 +7,12 @@ INCLUDE
 
 SRC
     src/RootEventLoader.cpp
+    
+PUBLIC
+    CernRoot
 
 PRIVATE
     EventUsm
-    CernRoot
     Logger
 )
 

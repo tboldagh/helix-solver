@@ -77,7 +77,7 @@ TransferableData::TransferEvents ResultUsm::transferToHost()
     try
     {
         auto queue = kernelMemory_->getQueue();
-        transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(&hostNumSolutions_, kernelMemory_->numSolutions_, sizeof(hostNumSolutions_))));
+        queue.memcpy(&hostNumSolutions_, kernelMemory_->numSolutions_, sizeof(hostNumSolutions_)).wait();
         transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostRegionNumSolutions_, kernelMemory_->regionNumSolutions_, MaxRegions * sizeof(u_int32_t))));
         transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostSolutionHitCounts_, kernelMemory_->solutionHitCounts_, hostNumSolutions_ * sizeof(u_int8_t))));
         transferEvents.insert(std::make_unique<sycl::event>(queue.memcpy(hostSolutionRs_, kernelMemory_->solutionRs_, hostNumSolutions_ * sizeof(float))));
