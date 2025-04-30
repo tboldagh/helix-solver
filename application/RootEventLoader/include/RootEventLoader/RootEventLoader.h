@@ -18,6 +18,7 @@ public:
 
     bool setInputFile(const std::string& path);
     const std::vector<u_int32_t>& getEventIds();
+    bool loadEvent(u_int32_t eventId, float* xs, float* ys, float* zs, u_int32_t* numPoints);
     std::tuple<bool, std::unique_ptr<EventUsm>> loadEvent(u_int32_t eventId);
     std::unique_ptr<std::map<u_int32_t, std::unique_ptr<EventUsm>>> loadAllEvents();
 

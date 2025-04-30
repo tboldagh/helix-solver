@@ -35,20 +35,18 @@ bool RootEventLoader::setInputFile(const std::string& path)
     return loadEventIds();
 }
 
-std::tuple<bool, std::unique_ptr<EventUsm>> RootEventLoader::loadEvent(u_int32_t eventId)
+bool RootEventLoader::loadEvent(u_int32_t eventId, float* xs, float* ys, float* zs, u_int32_t* numPoints)
 {
     if (!eventIdsLoaded_ && !loadEventIds())
     {
-        return std::make_tuple(false, nullptr);
+        return false;
     }
 
     if (std::find(eventIds_.begin(), eventIds_.end(), eventId) == eventIds_.end())
     {
         LOG_WARNING("Event id " + std::to_string(eventId) + " not found in " + inputFilePath_);
-        return std::make_tuple(false, nullptr);
+        return false;
     }
-
-    std::unique_ptr<EventUsm> event = std::make_unique<EventUsm>(eventId);
 
     u_int32_t dataEventId;
     float x;
@@ -68,11 +66,21 @@ std::tuple<bool, std::unique_ptr<EventUsm>> RootEventLoader::loadEvent(u_int32_t
             continue;
         }
 
-        event->hostXs_[event->hostNumPoints_] = x;
-        event->hostYs_[event->hostNumPoints_] = y;
-        event->hostZs_[event->hostNumPoints_] = z;
-        event->hostLayers_[event->hostNumPoints_] = 0;
-        event->hostNumPoints_++;
+        xs[*numPoints] = x;
+        ys[*numPoints] = y;
+        zs[*numPoints] = z;
+        (*numPoints)++;
+    }
+    
+    return true;
+}
+
+std::tuple<bool, std::unique_ptr<EventUsm>> RootEventLoader::loadEvent(u_int32_t eventId)
+{
+    std::unique_ptr<EventUsm> event = std::make_unique<EventUsm>(eventId);
+    if (!loadEvent(eventId, event->hostXs_, event->hostYs_, event->hostZs_, &event->hostNumPoints_))
+    {
+        return std::make_tuple(false, nullptr);
     }
     
     return std::make_tuple(true, std::move(event));
