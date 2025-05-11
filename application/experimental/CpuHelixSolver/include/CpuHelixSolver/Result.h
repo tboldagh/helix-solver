@@ -5,8 +5,13 @@
 class Result
 {
 public:
-    Result();
+    Result(uint32_t resultId = 0);
+    Result(const Result& other) = delete;
+    Result(Result&& other);
     ~Result();
+
+    Result& operator=(const Result& other) = delete;
+    Result& operator=(Result&& other);
 
     static constexpr uint32_t MaxSolutions = 4e6;
 

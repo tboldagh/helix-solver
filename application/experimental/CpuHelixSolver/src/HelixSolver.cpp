@@ -32,6 +32,11 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
         return;
     }
 
+    regionSolverData.regionSolutionHitsThreshold_ = splitter_.getSettings().wedges_[regionId - 1].solutionHitsThreshold_;
+    regionSolverData.regionSolutionHitsThreshold_ = regionSolverData.regionSolutionHitsThreshold_ > 0 ? regionSolverData.regionSolutionHitsThreshold_ : 8;
+    regionSolverData.regionLinesCrossingsThreshold_ = splitter_.getSettings().wedges_[regionId - 1].linesCrossingsThreshold_;
+    regionSolverData.regionLinesCrossingsThreshold_ = regionSolverData.regionLinesCrossingsThreshold_ > 0 ? regionSolverData.regionLinesCrossingsThreshold_ : 3;
+
     // Reset necessary fields in regionSolverData
     regionSolverData.numPoints_ = 0;
 
@@ -127,11 +132,8 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
     // Pop region from stack
     accumulatorRegionStackSize--;
     const AccumulatorRegion region = accumulatorRegions[accumulatorRegionStackSize];
-
-    const u_int32_t numHits = region.pointListEnd_ - region.pointListBegin_;
-    if (numHits < SolutionHitsThreshold)
+    if (!enoughHitsAndLinesCrossings(region, regionSolverData))
     {
-        // Too few points to form a helix, no solution in this region
         return;
     }
     
@@ -194,6 +196,70 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
         // Max division level reached, add solution
         addSolution(result, region, regionSolverData);
     }
+}
+
+bool HelixSolver::enoughHitsAndLinesCrossings(const AccumulatorRegion& region, RegionSolverData& regionSolverData)
+{
+    const u_int32_t numHits = region.pointListEnd_ - region.pointListBegin_;
+    if (numHits < regionSolverData.regionSolutionHitsThreshold_)
+    {
+        // Too few points to form a helix, no solution in this region
+        return false;
+    }
+
+    if (numHits > 8 * regionSolverData.regionSolutionHitsThreshold_)
+    {
+        // Too many points in region, assume enough crossings
+        return true;
+    }
+
+    const float qOverPtMin = region.qOverPtMin_;
+    const float qOverPtMax = region.qOverPtMax_;
+    const u_int8_t linesCrossingsThreshold = regionSolverData.regionLinesCrossingsThreshold_;
+
+    u_int8_t linesWithEnoughCrossings = 0;
+    for (u_int32_t i = region.pointListBegin_; i < region.pointListEnd_; ++i)
+    {
+        const float r = regionSolverData.rs_[regionSolverData.pointLists_[i]];
+        const float phi = regionSolverData.phis_[regionSolverData.pointLists_[i]];
+        const float phi0Left = - 0.5f * BMagnitude * r * qOverPtMin + phi;
+        const float phi0Right = - 0.5f * BMagnitude * r * qOverPtMax + phi;
+
+        u_int8_t crossings = 0;
+        for (u_int32_t j = region.pointListBegin_; j < region.pointListEnd_; ++j)
+        {
+            if (i == j)
+            {
+                continue;
+            }
+
+            const float rOther = regionSolverData.rs_[regionSolverData.pointLists_[j]];
+            const float phiOther = regionSolverData.phis_[regionSolverData.pointLists_[j]];
+            const float phi0LeftOther = - 0.5f * BMagnitude * rOther * qOverPtMin + phiOther;
+            const float phi0RightOther = - 0.5f * BMagnitude * rOther * qOverPtMax + phiOther;
+
+            // Check if lines cross within region
+            if ((phi0Left > phi0LeftOther && phi0Right < phi0RightOther) || (phi0Left < phi0LeftOther && phi0Right > phi0RightOther))
+            {
+                crossings++;
+                if (crossings >= linesCrossingsThreshold)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (crossings >= linesCrossingsThreshold)
+        {
+            linesWithEnoughCrossings++;
+            if (linesWithEnoughCrossings >= linesCrossingsThreshold)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 void HelixSolver::fillNewPointList(AccumulatorRegion& region, const AccumulatorRegion& sourceRegion, RegionSolverData& regionSolverData)

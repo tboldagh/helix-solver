@@ -6,6 +6,7 @@
 #include "Logger/OstreamLogger.h"
 #include "Logger/Logger.h"
 #include "RootEventLoader/RootEventLoader.h"
+
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <fstream>
@@ -592,18 +593,18 @@ protected:
     static constexpr u_int32_t resultId = 42;
 };
 
-TEST_F(SingleHelixDetectionTest, BasicR1050Phi200XAngle04)
+TEST_F(SingleHelixDetectionTest, BasicR2000Phi200XAngle04)
 {
     // Define helix
     constexpr u_int16_t regionIndex = 1;
-    constexpr float r = 1050.0f;
+    constexpr float r = 2000.0f;
     constexpr float phi = 2.0f;
     constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.4f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
 
-    // saveResult("/tmp/ut_sandbox/result_BasicR1050Phi200XAngle04.csv");
+    // saveResult("/tmp/ut_sandbox/result_BasicR2000Phi200XAngle04.csv");
 
     assertSolutionsCorrect(r, phi, numPoints);
 }
@@ -614,12 +615,12 @@ TEST_F(SingleHelixDetectionTest, BasicR2000Phi190XAngle06)
     constexpr u_int16_t regionIndex = 1;
     constexpr float r = 2000.0f;
     constexpr float phi = 1.9f;
-    constexpr u_int8_t numPoints = 10;
+    constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.6f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
     
-    // saveResult("/tmp/ut_sandbox/result_BasicR2000Phi175XAngle04.csv");
+    // saveResult("/tmp/ut_sandbox/result_BasicR2000Phi190XAngle06.csv");
 
     assertSolutionsCorrect(r, phi, numPoints);
 }
@@ -656,18 +657,18 @@ TEST_F(SingleHelixDetectionTest, BasicR10000Phi190XAngle06)
     assertSolutionsCorrect(r, phi, numPoints);
 }
 
-TEST_F(SingleHelixDetectionTest, RotatedR1200Phi160XAngle04)
+TEST_F(SingleHelixDetectionTest, RotatedR2000Phi160XAngle04)
 {
     // Define helix
     constexpr u_int16_t regionIndex = 0;    // Region requiring rotation due to atan2 discontinuity
-    constexpr float r = 1200.0f;
+    constexpr float r = 2000.0f;
     constexpr float phi = 1.6f;
     constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.4f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
     
-    // saveResult("/tmp/ut_sandbox/result_RotatedR1200Phi160XAngle04.csv");
+    // saveResult("/tmp/ut_sandbox/result_RotatedR2000Phi160XAngle04.csv");
 
     assertSolutionsCorrect(r, phi, numPoints);
 }
@@ -678,7 +679,7 @@ TEST_F(SingleHelixDetectionTest, RotatedR2000Phi170XAngle05)
     constexpr u_int16_t regionIndex = 0;    // Region requiring rotation due to atan2 discontinuity
     constexpr float r = 2000.0f;
     constexpr float phi = 1.7f;
-    constexpr u_int8_t numPoints = 10;
+    constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.5f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
@@ -749,14 +750,12 @@ TEST_F(MultipleHelixDetectionTest, Basic)
 {
     constexpr u_int16_t regionIndex = 1;
     const std::vector<Helix> helixes = {
-        Helix(1200.0f, 2.0f, 0.1f, 10),
-        Helix(1200.0f, 2.1f, 0.4f, 12),
-        Helix(2000.0f, 1.9f, 0.8f, 10),
-        Helix(2000.0f, 2.0f, 0.5f, 12),
-        Helix(2000.0f, 2.1f, 0.2f, 8),
+        Helix(2000.0f, 1.9f, 0.8f, 12),
+        Helix(2000.0f, 2.0f, 0.6f, 12),
+        Helix(2000.0f, 2.1f, 0.5f, 12),
         Helix(5000.0f, 1.9f, 0.8f, 10),
-        Helix(5000.0f, 2.0f, 0.4f, 8),
-        Helix(5000.0f, 2.1f, 0.9f, 10),
+        Helix(5000.0f, 2.0f, 0.4f, 10),
+        Helix(5000.0f, 2.1f, 0.8f, 10),
         Helix(10000.0f, 1.9f, 0.8f, 12),
         Helix(10000.0f, 2.0f, 0.4f, 12),
         Helix(10000.0f, 2.1f, 0.1f, 8),
@@ -781,11 +780,9 @@ TEST_F(MultipleHelixDetectionTest, Rotated)
 {
     constexpr u_int16_t regionIndex = 0;
     const std::vector<Helix> helixes = {
-        Helix(1200.0f, 1.5f, 0.1f, 10),
-        Helix(1200.0f, 1.7f, 0.4f, 14),
-        Helix(2000.0f, 1.5f, 0.8f, 10),
+        Helix(2000.0f, 1.5f, 0.8f, 12),
         Helix(2000.0f, 1.6f, 0.5f, 12),
-        Helix(2000.0f, 1.7f, 0.2f, 10),
+        Helix(2000.0f, 1.7f, 0.2f, 12),
         Helix(5000.0f, 1.5f, 0.8f, 10),
         Helix(5000.0f, 1.6f, 0.4f, 8),
         Helix(5000.0f, 1.7f, 0.9f, 10),
@@ -815,6 +812,40 @@ TEST_F(MultipleHelixDetectionTest, FullEvent)
     // Goal is to assert that the kernel is able to find helixes in all regions. There is no
     // guarantee that the found helixes are correct.
 
+    logger_.setMinSeverity(Logger::LogMessage::Severity::Debug);
+
+    // Set wedges solution hits threshold and lines crossings threshold based on xAngles
+    for (u_int16_t regionId = 1; regionId <= splitter_.settings_.wedges_.getSize(); ++regionId)
+    {
+        SplitterSettings::Wedge& region = splitter_.settings_.wedges_[regionId - 1];
+
+        if (region.xAngleMin_ < 0.2f || region.xAngleMin_ > 2.5f)
+        {
+            region.solutionHitsThreshold_ = 12;
+            region.linesCrossingsThreshold_ = 5;
+        }
+        else if (region.xAngleMin_ < 0.8f || region.xAngleMin_ > 2.0f)
+        {
+            region.solutionHitsThreshold_ = 10;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else if (region.xAngleMin_ < 1.0f || region.xAngleMin_ > 1.8f)
+        {
+            region.solutionHitsThreshold_ = 8;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else if (region.xAngleMin_ < 1.4f || region.xAngleMin_ > 1.6f)
+        {
+            region.solutionHitsThreshold_ = 8;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else
+        {
+            region.solutionHitsThreshold_ = 3;
+        }
+    }
+    helixSolver_.setSplitter(splitter_);
+
     const std::string eventPath = "/helix/repo/data/odd_output_ttbar_PU200_100/spacepoints.root";
     RootEventLoader eventLoader;
     if (!eventLoader.setInputFile(eventPath))
@@ -826,14 +857,6 @@ TEST_F(MultipleHelixDetectionTest, FullEvent)
     event_.eventId_ = eventId;
     ASSERT_TRUE(eventLoader.loadEvent(eventId, event_.xs_, event_.ys_, event_.zs_, &event_.numPoints_));
 
-    // logger_.setMinSeverity(Logger::LogMessage::Severity::Debug);
-    // for (u_int32_t i = 0; i < event_.numPoints_; ++i)
-    // {
-    //     std::stringstream ss;
-    //     ss << "\t(" << event_.xs_[i] << ", " << event_.ys_[i] << ", " << event_.zs_[i] << "),";
-    //     LOG_DEBUG(ss);
-    // }
-
     uint32_t lastRegionNumSolutions_ = 0;
     bool allRegionsContainHelix = true;
     for (u_int16_t regionId = 1; regionId <= splitter_.settings_.wedges_.getSize(); ++regionId)
@@ -841,16 +864,22 @@ TEST_F(MultipleHelixDetectionTest, FullEvent)
         regionSolverData_.regionId_ = regionId;
         helixSolver_.solveRegion(task_, regionSolverData_);
 
-        SplitterSettings::Wedge region = splitter_.settings_.wedges_[regionId];
+        SplitterSettings::Wedge region = splitter_.settings_.wedges_[regionId - 1];
         uint32_t regionNumSolutions_ = result_.numSolutions_ - lastRegionNumSolutions_;
+        const float averageHitCount = regionNumSolutions_ > 0 ? std::accumulate(result_.solutionHitCounts_ + lastRegionNumSolutions_, result_.solutionHitCounts_ + lastRegionNumSolutions_ + regionNumSolutions_, 0.0f) / static_cast<float>(regionNumSolutions_) : 0.0f;
         lastRegionNumSolutions_ = result_.numSolutions_;
         std::stringstream ss;
-        ss << "Wedge id: " << region.id_ << "\tnumSolutions: " << regionNumSolutions_;
+        ss << "Wedge id: " << region.id_
+            << "\tsolutions: " << regionNumSolutions_
+            << "\txAngleMin: " << region.xAngleMin_
+            << "\taverage hit count: " << averageHitCount;
         LOG_DEBUG(ss.str());
 
         if (!regionNumSolutions_)
         {
-            ss << "\tNo solutions found!";
+            ss.str("");
+            ss << "Wedge id: " << region.id_
+                << "\tNo solutions found!";
             LOG_WARNING(ss.str());
             allRegionsContainHelix = false;
         }

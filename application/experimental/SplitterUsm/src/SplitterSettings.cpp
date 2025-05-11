@@ -5,7 +5,7 @@
 #include <algorithm>
 
 
-SplitterSettings::Wedge::Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth)
+SplitterSettings::Wedge::Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth, u_int8_t solutionHitsThreshold, u_int8_t linesCrossingsThreshold)
 : id_(id)
 , zAngleMin_(zAngleMin)
 , zAngleMax_(zAngleMax)

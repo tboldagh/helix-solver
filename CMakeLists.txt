@@ -12,7 +12,7 @@ set(CMAKE_CXX_COMPILER_ID "IntelLLVM")
 project(helix-solver)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fsycl -fsycl-targets=nvptx64-nvidia-cuda")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread -fsycl -fsycl-targets=nvptx64-nvidia-cuda")
 
 # Debug options
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wdeprecated -O0 -Rno-debug-disables-optimization")

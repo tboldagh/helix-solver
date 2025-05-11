@@ -16,6 +16,7 @@ public:
     HelixSolver(const Splitter& splitter);
 
     void solve(Task& task);
+    void setSplitter(const Splitter& splitter) { splitter_ = splitter; }
 
 private:
     class RegionSolverData
@@ -30,6 +31,8 @@ private:
         static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;   // TODO: This is max possible number of points in all lists combined. Can be tuned
 
         u_int16_t regionId_;
+        u_int8_t regionSolutionHitsThreshold_;
+        u_int8_t regionLinesCrossingsThreshold_;
         u_int32_t numPoints_;
         u_int32_t indexes_[MaxPointsInRegion];
         float rs_[MaxPointsInRegion];
@@ -60,6 +63,7 @@ private:
     void convertToPolarCoordinates(const Event& event, RegionSolverData& regionSolverData);
     void rotateRegionAndPoints(float& regionPhi0Min, float& regionPhi0Max, RegionSolverData& regionSolverData);
     void processNextAccumulatorRegion(Result& result, RegionSolverData& regionSolverData);
+    bool enoughHitsAndLinesCrossings(const AccumulatorRegion& region, RegionSolverData& regionSolverData);
     void fillNewPointList(AccumulatorRegion& region, const AccumulatorRegion& sourceRegion, RegionSolverData& regionSolverData);
     bool regionHit(const AccumulatorRegion& region, float r, float phi);
     void addSolution(Result& result, const AccumulatorRegion& region, RegionSolverData& regionSolverData);
@@ -71,9 +75,10 @@ private:
     static constexpr float SpaceMinQOverPt = 0.0f;   // TODO: I have no idea what this value should be, tune
     static constexpr float SpaceMaxQOverPt = 0.0005f;    // TODO: I have no idea what this value should be, tune
     static constexpr u_int8_t SolutionHitsThreshold = 8;    // TODO: Tune
+    static constexpr u_int8_t LinesCrossingsThreshold = 3;    // TODO: Tune
     static constexpr float BMagnitude = 2.0f;   // TODO: Tune
 
-    const Splitter splitter_;
+    Splitter splitter_;
 
     FRIEND_TEST(RegionHitTest, AboveRegion);
     FRIEND_TEST(RegionHitTest, TopRightCorner);
