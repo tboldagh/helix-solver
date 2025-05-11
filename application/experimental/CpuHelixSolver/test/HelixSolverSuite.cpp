@@ -377,7 +377,29 @@ TEST_F(FillNewPointListMultiplePointsTest, SourceNotAtBegin)
 class ProcessNextAccumulatorRegionTest : public FillNewPointListTest
 {
 protected:
-    ProcessNextAccumulatorRegionTest() = default;
+    ProcessNextAccumulatorRegionTest()
+    {
+        regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+        regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+
+        // r: {335.897, 428.831, 521.728, 614.58, 707.379, 800.117, 892.785, 985.376, 1077.89, 1170.32};
+        // phi: {0.562799, 0.5721, 0.5814, 0.5907, 0.600001, 0.609301, 0.618601, 0.627901, 0.637201, 0.646501};
+
+        std::vector<float> rs = {0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0};
+        for (u_int32_t i = 0; i < rs.size(); ++i)
+        {
+            regionSolverData_.rs_[i] = rs[i];
+        }
+
+        std::vector<float> phis = {2.0, 2.3, 2.6, 2.9, 3.2, 3.5, 3.8, 4.1, 4.4, 4.7};
+        for (u_int32_t i = 0; i < phis.size(); ++i)
+        {
+            regionSolverData_.phis_[i] = phis[i];
+        }
+
+        const std::vector<u_int32_t> sourcePointList = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        writeRegion(regionSolverData_.pointLists_, sourcePointList);
+    }
     ~ProcessNextAccumulatorRegionTest() override = default;
 
     const u_int16_t regionId_ = 42;

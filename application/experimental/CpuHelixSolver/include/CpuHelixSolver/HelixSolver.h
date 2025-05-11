@@ -99,6 +99,7 @@ private:
     FRIEND_TEST(FillNewPointListMultiplePointsTest, Basic);
     FRIEND_TEST(FillNewPointListMultiplePointsTest, NewListNotJustAfterSource);
     FRIEND_TEST(FillNewPointListMultiplePointsTest, SourceNotAtBegin);
+    friend class ProcessNextAccumulatorRegionTest;
     FRIEND_TEST(ProcessNextAccumulatorRegionTest, DropRegionIfNumberOfPointsIsBelowThreshold);
     FRIEND_TEST(ProcessNextAccumulatorRegionTest, DivideInBothDimensionsIfMaxDivisionLevelsNotReached);
     FRIEND_TEST(ProcessNextAccumulatorRegionTest, DividePhi0IfMaxDivisionLevelsNotReached);
