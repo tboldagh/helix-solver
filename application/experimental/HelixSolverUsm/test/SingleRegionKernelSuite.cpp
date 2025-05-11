@@ -157,9 +157,9 @@ protected:
 
     ~FillNewPointListTest() override = default;
 
-    static constexpr u_int32_t qOverPtDivisionLevel = 21;
-    static constexpr u_int32_t phi0DivisionLevel = 37;
-    SingleRegionKernel::AccumulatorRegion region_{qOverPtMin, qOverPtMax, phi0Min, phi0Max, qOverPtDivisionLevel, phi0DivisionLevel};
+    static constexpr u_int32_t qOverPtDivisionLevel_ = 21;
+    static constexpr u_int32_t phi0DivisionLevel_ = 37;
+    SingleRegionKernel::AccumulatorRegion region_{qOverPtMin, qOverPtMax, phi0Min, phi0Max, qOverPtDivisionLevel_, phi0DivisionLevel_};
     
     float rs_[SingleRegionKernel::MaxPointsInRegion];
     float phis_[SingleRegionKernel::MaxPointsInRegion];
@@ -170,21 +170,21 @@ TEST_F(FillNewPointListTest, SinglePointInRegion)
 {
     constexpr float r = 2.0f / SingleRegionKernel::BMagnitude * 1.0f;
     constexpr float phi = 3.0f;
-    EXPECT_TRUE(SingleRegionKernel::regionHit(region_.qOverPtMin, region_.qOverPtMax, region_.phi0Min, region_.phi0Max, r, phi));
+    EXPECT_TRUE(SingleRegionKernel::regionHit(region_.qOverPtMin_, region_.qOverPtMax_, region_.phi0Min_, region_.phi0Max_, r, phi));
 
     rs_[0] = r;
     phis_[0] = phi;
     pointLists_[0] = 0;
 
     SingleRegionKernel::AccumulatorRegion sourceRegion = region_;
-    sourceRegion.pointListBegin = 0;
-    sourceRegion.pointListEnd = 1;
-    region_.pointListBegin = sourceRegion.pointListEnd;
-    region_.pointListEnd = sourceRegion.pointListEnd;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 1;
+    region_.pointListBegin_ = sourceRegion.pointListEnd_;
+    region_.pointListEnd_ = sourceRegion.pointListEnd_;
 
     SingleRegionKernel::fillNewPointList(region_, sourceRegion, pointLists_, rs_, phis_);
-    EXPECT_EQ(region_.pointListBegin, sourceRegion.pointListEnd);
-    EXPECT_EQ(region_.pointListEnd, 2);
+    EXPECT_EQ(region_.pointListBegin_, sourceRegion.pointListEnd_);
+    EXPECT_EQ(region_.pointListEnd_, 2);
     EXPECT_EQ(pointLists_[1], 0);
 }
 
@@ -192,45 +192,45 @@ TEST_F(FillNewPointListTest, SinglePointNotInRegion)
 {
     constexpr float r = 2.0f / SingleRegionKernel::BMagnitude * 1.0f;
     constexpr float phi = 10.0f;
-    EXPECT_FALSE(SingleRegionKernel::regionHit(region_.qOverPtMin, region_.qOverPtMax, region_.phi0Min, region_.phi0Max, r, phi));
+    EXPECT_FALSE(SingleRegionKernel::regionHit(region_.qOverPtMin_, region_.qOverPtMax_, region_.phi0Min_, region_.phi0Max_, r, phi));
 
     rs_[0] = r;
     phis_[0] = phi;
     pointLists_[0] = 0;
 
     SingleRegionKernel::AccumulatorRegion sourceRegion = region_;
-    sourceRegion.pointListBegin = 0;
-    sourceRegion.pointListEnd = 1;
-    region_.pointListBegin = sourceRegion.pointListEnd;
-    region_.pointListEnd = sourceRegion.pointListEnd;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 1;
+    region_.pointListBegin_ = sourceRegion.pointListEnd_;
+    region_.pointListEnd_ = sourceRegion.pointListEnd_;
     
     SingleRegionKernel::fillNewPointList(region_, sourceRegion, pointLists_, rs_, phis_);
-    EXPECT_EQ(region_.pointListBegin, sourceRegion.pointListEnd);
-    EXPECT_EQ(region_.pointListEnd, 1);
+    EXPECT_EQ(region_.pointListBegin_, sourceRegion.pointListEnd_);
+    EXPECT_EQ(region_.pointListEnd_, 1);
 }
 
 TEST_F(FillNewPointListTest, TwoPointsOneInRegion)
 {
     rs_[0] = 2.0f / SingleRegionKernel::BMagnitude * 1.0f;  
     phis_[0] = 10.0f;
-    EXPECT_FALSE(SingleRegionKernel::regionHit(region_.qOverPtMin, region_.qOverPtMax, region_.phi0Min, region_.phi0Max, rs_[0], phis_[0]));
+    EXPECT_FALSE(SingleRegionKernel::regionHit(region_.qOverPtMin_, region_.qOverPtMax_, region_.phi0Min_, region_.phi0Max_, rs_[0], phis_[0]));
 
     rs_[1] = 2.0f / SingleRegionKernel::BMagnitude * 1.0f;
     phis_[1] = 3.0f;
-    EXPECT_TRUE(SingleRegionKernel::regionHit(region_.qOverPtMin, region_.qOverPtMax, region_.phi0Min, region_.phi0Max, rs_[1], phis_[1]));
+    EXPECT_TRUE(SingleRegionKernel::regionHit(region_.qOverPtMin_, region_.qOverPtMax_, region_.phi0Min_, region_.phi0Max_, rs_[1], phis_[1]));
 
     const std::vector<u_int32_t> sourcePointList = {0, 1};
     writeRegion(pointLists_, sourcePointList);
     
     SingleRegionKernel::AccumulatorRegion sourceRegion = region_;
-    sourceRegion.pointListBegin = 0;
-    sourceRegion.pointListEnd = 2;
-    region_.pointListBegin = sourceRegion.pointListEnd;
-    region_.pointListEnd = sourceRegion.pointListEnd;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 2;
+    region_.pointListBegin_ = sourceRegion.pointListEnd_;
+    region_.pointListEnd_ = sourceRegion.pointListEnd_;
 
     SingleRegionKernel::fillNewPointList(region_, sourceRegion, pointLists_, rs_, phis_);
-    EXPECT_EQ(region_.pointListBegin, sourceRegion.pointListEnd);
-    EXPECT_EQ(region_.pointListEnd, 3);
+    EXPECT_EQ(region_.pointListBegin_, sourceRegion.pointListEnd_);
+    EXPECT_EQ(region_.pointListEnd_, 3);
     assertBeginEq(pointLists_, sourcePointList, 2); // Assert no unwanted changes
     assertRegionEq(pointLists_, {1}, 2, 3);
 }
@@ -242,12 +242,12 @@ protected:
     {
         for (float phi : inRegionPhis_)
         {
-            EXPECT_TRUE(SingleRegionKernel::regionHit(region_.qOverPtMin, region_.qOverPtMax, region_.phi0Min, region_.phi0Max, r_, phi));
+            EXPECT_TRUE(SingleRegionKernel::regionHit(region_.qOverPtMin_, region_.qOverPtMax_, region_.phi0Min_, region_.phi0Max_, r_, phi));
         }
 
         for (float phi : notInRegionPhis_)
         {
-            EXPECT_FALSE(SingleRegionKernel::regionHit(region_.qOverPtMin, region_.qOverPtMax, region_.phi0Min, region_.phi0Max, r_, phi));
+            EXPECT_FALSE(SingleRegionKernel::regionHit(region_.qOverPtMin_, region_.qOverPtMax_, region_.phi0Min_, region_.phi0Max_, r_, phi));
         }
 
         for (unsigned i = 0; i < inRegionIndexes_.size(); ++i)
@@ -279,14 +279,14 @@ TEST_F(FillNewPointListMultiplePointsTest, Basic)
     writeRegion(pointLists_, sourcePointList);
 
     SingleRegionKernel::AccumulatorRegion sourceRegion = region_;
-    sourceRegion.pointListBegin = 0;
-    sourceRegion.pointListEnd = 10;
-    region_.pointListBegin = sourceRegion.pointListEnd;
-    region_.pointListEnd = sourceRegion.pointListEnd;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 10;
+    region_.pointListBegin_ = sourceRegion.pointListEnd_;
+    region_.pointListEnd_ = sourceRegion.pointListEnd_;
 
     SingleRegionKernel::fillNewPointList(region_, sourceRegion, pointLists_, rs_, phis_);
-    EXPECT_EQ(region_.pointListBegin, sourceRegion.pointListEnd);
-    EXPECT_EQ(region_.pointListEnd, 15);
+    EXPECT_EQ(region_.pointListBegin_, sourceRegion.pointListEnd_);
+    EXPECT_EQ(region_.pointListEnd_, 15);
     assertBeginEq(pointLists_, sourcePointList, 10); // Assert no unwanted changes
     assertRegionEq(pointLists_, inRegionIndexes_, 10, 15);
 }
@@ -301,14 +301,14 @@ TEST_F(FillNewPointListMultiplePointsTest, NewListNotJustAfterSource)
     writeRegion(&pointLists_[20], unrelatedPointList);
 
     SingleRegionKernel::AccumulatorRegion sourceRegion = region_;
-    sourceRegion.pointListBegin = 0;
-    sourceRegion.pointListEnd = 10;
-    region_.pointListBegin = 30;    // source + 2 unrelated
-    region_.pointListEnd = 30;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 10;
+    region_.pointListBegin_ = 30;    // source + 2 unrelated
+    region_.pointListEnd_ = 30;
 
     SingleRegionKernel::fillNewPointList(region_, sourceRegion, pointLists_, rs_, phis_);
-    EXPECT_EQ(region_.pointListBegin, 30);
-    EXPECT_EQ(region_.pointListEnd, 35);
+    EXPECT_EQ(region_.pointListBegin_, 30);
+    EXPECT_EQ(region_.pointListEnd_, 35);
     assertRegionEq(pointLists_, sourcePointList, 0, 10);  // Assert no unwanted changes
     assertRegionEq(pointLists_, unrelatedPointList, 10, 20);  // Assert no unwanted changes
     assertRegionEq(pointLists_, unrelatedPointList, 20, 30);  // Assert no unwanted changes
@@ -326,14 +326,14 @@ TEST_F(FillNewPointListMultiplePointsTest, SourceNotAtBegin)
     writeRegion(&pointLists_[20], unrelatedPointList);
 
     SingleRegionKernel::AccumulatorRegion sourceRegion = region_;
-    sourceRegion.pointListBegin = 10;
-    sourceRegion.pointListEnd = 20;
-    region_.pointListBegin = 30;    // unrelated + source + unrelated
-    region_.pointListEnd = 30;
+    sourceRegion.pointListBegin_ = 10;
+    sourceRegion.pointListEnd_ = 20;
+    region_.pointListBegin_ = 30;    // unrelated + source + unrelated
+    region_.pointListEnd_ = 30;
 
     SingleRegionKernel::fillNewPointList(region_, sourceRegion, pointLists_, rs_, phis_);
-    EXPECT_EQ(region_.pointListBegin, 30);
-    EXPECT_EQ(region_.pointListEnd, 35);
+    EXPECT_EQ(region_.pointListBegin_, 30);
+    EXPECT_EQ(region_.pointListEnd_, 35);
     assertRegionEq(pointLists_, unrelatedPointList, 0, 10);  // Assert no unwanted changes
     assertRegionEq(pointLists_, sourcePointList, 10, 20);  // Assert no unwanted changes
     assertRegionEq(pointLists_, unrelatedPointList, 20, 30);  // Assert no unwanted changes
@@ -343,7 +343,27 @@ TEST_F(FillNewPointListMultiplePointsTest, SourceNotAtBegin)
 class ProcessNextAccumulatorRegionTest : public FillNewPointListTest
 {
 protected:
-    ProcessNextAccumulatorRegionTest() = default;
+    ProcessNextAccumulatorRegionTest()
+    {
+        solutionHitsThreshold_ = SingleRegionKernel::SolutionHitsThreshold;
+        linesCrossingsThreshold_ = SingleRegionKernel::LinesCrossingsThreshold;
+
+        std::vector<float> rs = {0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0};
+        for (u_int32_t i = 0; i < rs.size(); ++i)
+        {
+            rs_[i] = rs[i];
+        }
+
+        std::vector<float> phis = {2.0, 2.3, 2.6, 2.9, 3.2, 3.5, 3.8, 4.1, 4.4, 4.7};
+        for (u_int32_t i = 0; i < phis.size(); ++i)
+        {
+            phis_[i] = phis[i];
+        }
+
+        const std::vector<u_int32_t> sourcePointList = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        writeRegion(pointLists_, sourcePointList);
+    }
+
     ~ProcessNextAccumulatorRegionTest() override = default;
 
     const u_int16_t regionId_ = 42;
@@ -354,91 +374,93 @@ protected:
     u_int8_t solutionHitCounts_[ResultUsm::MaxSolutions];
     float solutionRs_[ResultUsm::MaxSolutions];
     float solutionPhis_[ResultUsm::MaxSolutions];
+    u_int8_t solutionHitsThreshold_ = 8;
+    u_int8_t linesCrossingsThreshold_ = 3;
 };
 
 TEST_F(ProcessNextAccumulatorRegionTest, DropRegionIfNumberOfPointsIsBelowThreshold)
 {
-    region_.qOverPtDivisionLevel = SingleRegionKernel::QOverPtMaxDivisionLevel - 1;
-    region_.phi0DivisionLevel = SingleRegionKernel::Phi0MaxDivisionLevel - 1;
-    region_.pointListBegin = 0;
-    region_.pointListEnd = SingleRegionKernel::SolutionHitsThreshold - 1;
+    region_.qOverPtDivisionLevel_ = SingleRegionKernel::QOverPtMaxDivisionLevel - 1;
+    region_.phi0DivisionLevel_ = SingleRegionKernel::Phi0MaxDivisionLevel - 1;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = solutionHitsThreshold_ - 1;
     accumulatorRegions_[0] = region_;
     accumulatorRegionStackSize_ = 1;
 
-    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_);
+    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_, solutionHitsThreshold_, linesCrossingsThreshold_);
     EXPECT_EQ(accumulatorRegionStackSize_, 0);
 }
 
 TEST_F(ProcessNextAccumulatorRegionTest, DivideInBothDimensionsIfMaxDivisionLevelsNotReached)
 {
-    region_.qOverPtDivisionLevel = SingleRegionKernel::QOverPtMaxDivisionLevel - 1;
-    region_.phi0DivisionLevel = SingleRegionKernel::Phi0MaxDivisionLevel - 1;
-    region_.pointListBegin = 0;
-    region_.pointListEnd = SingleRegionKernel::SolutionHitsThreshold;
+    region_.qOverPtDivisionLevel_ = SingleRegionKernel::QOverPtMaxDivisionLevel - 1;
+    region_.phi0DivisionLevel_ = SingleRegionKernel::Phi0MaxDivisionLevel - 1;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = solutionHitsThreshold_;
     accumulatorRegions_[0] = region_;
     accumulatorRegionStackSize_ = 1;
 
-    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_);
+    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_, solutionHitsThreshold_, linesCrossingsThreshold_);
     EXPECT_EQ(accumulatorRegionStackSize_, 4);
 
     std::vector<SingleRegionKernel::AccumulatorRegion> actualRegions(accumulatorRegions_, accumulatorRegions_ + accumulatorRegionStackSize_);
     const float qOverPtMiddle = (qOverPtMin + qOverPtMax) / 2;
     const float phi0Middle = (phi0Min + phi0Max) / 2;
-    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Min, phi0Middle, region_.qOverPtDivisionLevel + 1, region_.phi0DivisionLevel + 1)));
-    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Min, phi0Middle, region_.qOverPtDivisionLevel + 1, region_.phi0DivisionLevel + 1)));
-    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Middle, phi0Max, region_.qOverPtDivisionLevel + 1, region_.phi0DivisionLevel + 1)));
-    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Middle, phi0Max, region_.qOverPtDivisionLevel + 1, region_.phi0DivisionLevel + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Min, phi0Middle, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_ + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Min, phi0Middle, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_ + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Middle, phi0Max, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_ + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Middle, phi0Max, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_ + 1)));
 }
 
 TEST_F(ProcessNextAccumulatorRegionTest, DividePhi0IfMaxDivisionLevelsNotReached)
 {
-    region_.qOverPtDivisionLevel = SingleRegionKernel::QOverPtMaxDivisionLevel;
-    region_.phi0DivisionLevel = SingleRegionKernel::Phi0MaxDivisionLevel - 1;
-    region_.pointListBegin = 0;
-    region_.pointListEnd = SingleRegionKernel::SolutionHitsThreshold;
+    region_.qOverPtDivisionLevel_ = SingleRegionKernel::QOverPtMaxDivisionLevel;
+    region_.phi0DivisionLevel_ = SingleRegionKernel::Phi0MaxDivisionLevel - 1;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = solutionHitsThreshold_;
     accumulatorRegions_[0] = region_;
     accumulatorRegionStackSize_ = 1;
 
-    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_);
+    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_, solutionHitsThreshold_, linesCrossingsThreshold_);
     EXPECT_EQ(accumulatorRegionStackSize_, 2);
 
     std::vector<SingleRegionKernel::AccumulatorRegion> actualRegions(accumulatorRegions_, accumulatorRegions_ + accumulatorRegionStackSize_);
     const float phi0Middle = (phi0Min + phi0Max) / 2;
-    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMax, phi0Min, phi0Middle, region_.qOverPtDivisionLevel, region_.phi0DivisionLevel + 1)));
-    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMax, phi0Middle, phi0Max, region_.qOverPtDivisionLevel, region_.phi0DivisionLevel + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMax, phi0Min, phi0Middle, region_.qOverPtDivisionLevel_, region_.phi0DivisionLevel_ + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMax, phi0Middle, phi0Max, region_.qOverPtDivisionLevel_, region_.phi0DivisionLevel_ + 1)));
 }
 
 TEST_F(ProcessNextAccumulatorRegionTest, DivideQOverPtIfMaxDivisionLevelsNotReached)
 {
-    region_.qOverPtDivisionLevel = SingleRegionKernel::QOverPtMaxDivisionLevel - 1;
-    region_.phi0DivisionLevel = SingleRegionKernel::Phi0MaxDivisionLevel;
-    region_.pointListBegin = 0;
-    region_.pointListEnd = SingleRegionKernel::SolutionHitsThreshold;
+    region_.qOverPtDivisionLevel_ = SingleRegionKernel::QOverPtMaxDivisionLevel - 1;
+    region_.phi0DivisionLevel_ = SingleRegionKernel::Phi0MaxDivisionLevel;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = solutionHitsThreshold_;
     accumulatorRegions_[0] = region_;
     accumulatorRegionStackSize_ = 1;
 
-    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_);
+    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_, solutionHitsThreshold_, linesCrossingsThreshold_);
     EXPECT_EQ(accumulatorRegionStackSize_, 2);
 
     std::vector<SingleRegionKernel::AccumulatorRegion> actualRegions(accumulatorRegions_, accumulatorRegions_ + accumulatorRegionStackSize_);
     const float qOverPtMiddle = (qOverPtMin + qOverPtMax) / 2;
-    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Min, phi0Max, region_.qOverPtDivisionLevel + 1, region_.phi0DivisionLevel)));
-    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Min, phi0Max, region_.qOverPtDivisionLevel + 1, region_.phi0DivisionLevel)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Min, phi0Max, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(SingleRegionKernel::AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Min, phi0Max, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_)));
 }
 
 TEST_F(ProcessNextAccumulatorRegionTest, AddSolutionIfMaxDivisionLevelsReached)
 {
-    region_.qOverPtDivisionLevel = SingleRegionKernel::QOverPtMaxDivisionLevel;
-    region_.phi0DivisionLevel = SingleRegionKernel::Phi0MaxDivisionLevel;
-    region_.pointListBegin = 0;
-    region_.pointListEnd = SingleRegionKernel::SolutionHitsThreshold;
+    region_.qOverPtDivisionLevel_ = SingleRegionKernel::QOverPtMaxDivisionLevel;
+    region_.phi0DivisionLevel_ = SingleRegionKernel::Phi0MaxDivisionLevel;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = solutionHitsThreshold_;
     accumulatorRegions_[0] = region_;
     accumulatorRegionStackSize_ = 1;
 
     const u_int16_t regionIndex = regionId_ - 1;
     const u_int32_t solutionIndex = regionIndex * ResultUsm::MaxSolutionsPerRegion;
 
-    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_);
+    SingleRegionKernel::processNextAccumulatorRegion(regionId_, accumulatorRegions_, accumulatorRegionStackSize_, pointLists_, indexes_, rs_, phis_, regionNumSolutions_, solutionHitCounts_, solutionRs_, solutionPhis_, solutionHitsThreshold_, linesCrossingsThreshold_);
     EXPECT_EQ(accumulatorRegionStackSize_, 0);
     EXPECT_EQ(regionNumSolutions_[regionIndex], 1);
     EXPECT_EQ(solutionHitCounts_[solutionIndex], SingleRegionKernel::SolutionHitsThreshold);
@@ -477,6 +499,11 @@ protected:
         resultMemory_.solutionHitCounts_ = deviceSolutionHitCounts_.get();
         resultMemory_.solutionRs_ = deviceSolutionRs_.get();
         resultMemory_.solutionPhis_ = deviceSolutionPhis_.get();
+        resultMemory_.numSolutions_ = 0;
+        for (u_int32_t i = 0; i < ResultUsm::MaxRegions; ++i)
+        {
+            resultMemory_.regionNumSolutions_[i] = 0;
+        }
 
         // Fake kernel memory
         kernelMemory_.indexes_ = kernelIndexes_.get();
@@ -707,7 +734,7 @@ protected:
     std::unique_ptr<SplitterSettings> deviceSplitterSettings_ = std::make_unique<SplitterSettings>();
 
     // Extracted result
-    u_int32_t regionNumSolutions_; 
+    u_int32_t regionNumSolutions_;
     std::vector<float> rs_;
     std::vector<float> phis_;
     std::vector<u_int8_t> hitCounts_;
@@ -715,18 +742,18 @@ protected:
 };
 const std::string SingleHelixDetectionTest::TestDataDir = "/helix/repo/application/experimental/SplitterUsm/test-data";
 
-TEST_F(SingleHelixDetectionTest, BasicR1050Phi200XAngle04)
+TEST_F(SingleHelixDetectionTest, BasicR2000Phi200XAngle04)
 {
     // Define helix
     constexpr u_int16_t regionIndex = 1;
-    constexpr float r = 1050.0f;
+    constexpr float r = 2000.0f;
     constexpr float phi = 2.0f;
     constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.4f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
-    
-    // saveResult("/tmp/ut_sandbox/result_BasicR1050Phi200XAngle04.csv");
+
+    // saveResult("/tmp/ut_sandbox/result_BasicR2000Phi200XAngle04.csv");
 
     assertSolutionsCorrect(r, phi, numPoints);
 }
@@ -779,18 +806,18 @@ TEST_F(SingleHelixDetectionTest, BasicR10000Phi190XAngle06)
     assertSolutionsCorrect(r, phi, numPoints);
 }
 
-TEST_F(SingleHelixDetectionTest, RotatedR1200Phi160XAngle04)
+TEST_F(SingleHelixDetectionTest, RotatedR2000Phi160XAngle04)
 {
     // Define helix
     constexpr u_int16_t regionIndex = 0;    // Region requiring rotation due to atan2 discontinuity
-    constexpr float r = 1200.0f;
+    constexpr float r = 2000.0f;
     constexpr float phi = 1.6f;
     constexpr u_int8_t numPoints = 12;
     constexpr float xAngle = 0.4f;
 
     createRunAndExtractResult(regionIndex, r, phi, xAngle, numPoints);
     
-    // saveResult("/tmp/ut_sandbox/result_RotatedR1200Phi160XAngle04.csv");
+    // saveResult("/tmp/ut_sandbox/result_RotatedR2000Phi160XAngle04.csv");
 
     assertSolutionsCorrect(r, phi, numPoints);
 }
@@ -904,14 +931,12 @@ TEST_F(MultipleHelixDetectionTest, Basic)
     // Define helixes
     constexpr u_int16_t regionIndex = 1;
     const std::vector<Helix> helixes = {
-        Helix(1200.0f, 2.0f, 0.1f, 10),
-        Helix(1200.0f, 2.1f, 0.4f, 12),
-        Helix(2000.0f, 1.9f, 0.8f, 10),
-        Helix(2000.0f, 2.0f, 0.5f, 12),
-        Helix(2000.0f, 2.1f, 0.2f, 8),
+        Helix(2000.0f, 1.9f, 0.8f, 12),
+        Helix(2000.0f, 2.0f, 0.6f, 12),
+        Helix(2000.0f, 2.1f, 0.5f, 12),
         Helix(5000.0f, 1.9f, 0.8f, 10),
-        Helix(5000.0f, 2.0f, 0.4f, 8),
-        Helix(5000.0f, 2.1f, 0.9f, 10),
+        Helix(5000.0f, 2.0f, 0.4f, 10),
+        Helix(5000.0f, 2.1f, 0.8f, 10),
         Helix(10000.0f, 1.9f, 0.8f, 12),
         Helix(10000.0f, 2.0f, 0.4f, 12),
         Helix(10000.0f, 2.1f, 0.1f, 8),
@@ -937,11 +962,9 @@ TEST_F(MultipleHelixDetectionTest, Rotated)
     // Define helixes
     constexpr u_int16_t regionIndex = 0;
     const std::vector<Helix> helixes = {
-        Helix(1200.0f, 1.5f, 0.1f, 10),
-        Helix(1200.0f, 1.7f, 0.4f, 14),
-        Helix(2000.0f, 1.5f, 0.8f, 10),
+        Helix(2000.0f, 1.5f, 0.8f, 12),
         Helix(2000.0f, 1.6f, 0.5f, 12),
-        Helix(2000.0f, 1.7f, 0.2f, 10),
+        Helix(2000.0f, 1.7f, 0.2f, 12),
         Helix(5000.0f, 1.5f, 0.8f, 10),
         Helix(5000.0f, 1.6f, 0.4f, 8),
         Helix(5000.0f, 1.7f, 0.9f, 10),
@@ -970,6 +993,38 @@ TEST_F(MultipleHelixDetectionTest, FullEvent)
     // This test assumes that full event contains at least one helix candidate for each region.
     // Goal is to assert that the kernel is able to find helixes in all regions. There is no
     // guarantee that the found helixes are correct.
+
+    // Set wedges solution hits threshold and lines crossings threshold based on xAngles
+    for (u_int16_t regionId = 1; regionId <= settings_.wedges_.getSize(); ++regionId)
+    {
+        SplitterSettings::Wedge& region = settings_.wedges_[regionId - 1];
+
+        if (region.xAngleMin_ < 0.2f || region.xAngleMin_ > 2.5f)
+        {
+            region.solutionHitsThreshold_ = 12;
+            region.linesCrossingsThreshold_ = 5;
+        }
+        else if (region.xAngleMin_ < 0.8f || region.xAngleMin_ > 2.0f)
+        {
+            region.solutionHitsThreshold_ = 10;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else if (region.xAngleMin_ < 1.0f || region.xAngleMin_ > 1.8f)
+        {
+            region.solutionHitsThreshold_ = 8;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else if (region.xAngleMin_ < 1.4f || region.xAngleMin_ > 1.6f)
+        {
+            region.solutionHitsThreshold_ = 8;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else
+        {
+            region.solutionHitsThreshold_ = 3;
+        }
+    }
+    splitter_.settings_ = settings_;
 
     const std::string eventPath = TestDataDir + "/event_0.csv";
     constexpr EventUsm::EventId eventId = 42;

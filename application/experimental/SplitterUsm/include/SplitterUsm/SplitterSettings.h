@@ -13,7 +13,7 @@ public:
     {
     public:
         Wedge() {}; // Clang bug: https://stackoverflow.com/questions/43819314/default-member-initializer-needed-within-definition-of-enclosing-class-outside
-        Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth);
+        Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth, u_int8_t solutionHitsThreshold = 0, u_int8_t linesCrossingsThreshold = 0);
         Wedge(const Wedge&) = default;
         Wedge(Wedge&&) = default;
         Wedge& operator=(const Wedge&) = default;
@@ -29,6 +29,9 @@ public:
         float xAngleMin_ = 0;
         float xAngleMax_ = 0;
         float interactionRegionWidth_ = 0;
+
+        u_int8_t solutionHitsThreshold_ = 0;
+        u_int8_t linesCrossingsThreshold_ = 0;
     };
 
     class PoleRegion

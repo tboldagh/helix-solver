@@ -55,7 +55,7 @@ int main()
     constexpr u_int8_t numXRanges = 8;
     constexpr float filterOutCenterR = 150.0;
     constexpr float filterOutCenterZ = 500.0;
-    const SplitterSettings splitterSettings = SplitterSettings(
+    SplitterSettings splitterSettings = SplitterSettings(
         maxAbsXy, maxAbsZ,
         minZAngle, maxZAngle,
         minXAgle, maxXAgle,
@@ -65,6 +65,38 @@ int main()
         numZRanges, numXRanges,
         filterOutCenterR, filterOutCenterZ
     );
+    
+    // Set wedges solution hits threshold and lines crossings threshold based on xAngles
+    for (u_int16_t regionId = 1; regionId <= splitterSettings.wedges_.getSize(); ++regionId)
+    {
+        SplitterSettings::Wedge& region = splitterSettings.wedges_[regionId - 1];
+
+        if (region.xAngleMin_ < 0.2f || region.xAngleMin_ > 2.5f)
+        {
+            region.solutionHitsThreshold_ = 12;
+            region.linesCrossingsThreshold_ = 5;
+        }
+        else if (region.xAngleMin_ < 0.8f || region.xAngleMin_ > 2.0f)
+        {
+            region.solutionHitsThreshold_ = 10;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else if (region.xAngleMin_ < 1.0f || region.xAngleMin_ > 1.8f)
+        {
+            region.solutionHitsThreshold_ = 8;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else if (region.xAngleMin_ < 1.4f || region.xAngleMin_ > 1.6f)
+        {
+            region.solutionHitsThreshold_ = 8;
+            region.linesCrossingsThreshold_ = 3;
+        }
+        else
+        {
+            region.solutionHitsThreshold_ = 3;
+        }
+    }
+
     Splitter splitter(splitterSettings);
 
     // Create queue

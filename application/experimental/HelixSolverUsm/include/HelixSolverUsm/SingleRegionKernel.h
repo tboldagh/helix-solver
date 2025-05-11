@@ -25,74 +25,74 @@ protected:
     public:
         AccumulatorRegion() = default;
         AccumulatorRegion(float qOverPtMin, float qOverPtMax, float phi0Min, float phi0Max, u_int8_t qOverPtDivisionLevel = 0, u_int8_t phi0DivisionLevel = 0)
-            : qOverPtMin(qOverPtMin)
-            , qOverPtMax(qOverPtMax)
-            , phi0Min(phi0Min)
-            , phi0Max(phi0Max)
-            , qOverPtDivisionLevel(qOverPtDivisionLevel)
-            , phi0DivisionLevel(phi0DivisionLevel) {}
+            : qOverPtMin_(qOverPtMin)
+            , qOverPtMax_(qOverPtMax)
+            , phi0Min_(phi0Min)
+            , phi0Max_(phi0Max)
+            , qOverPtDivisionLevel_(qOverPtDivisionLevel)
+            , phi0DivisionLevel_(phi0DivisionLevel) {}
         
 
         bool operator==(const AccumulatorRegion& other) const
         {
             // Note: not comparing pointListBegin and pointListEnd
             constexpr float epsilon = 1e-9f;
-            return std::abs(qOverPtMin - other.qOverPtMin) < epsilon
-                && std::abs(qOverPtMax - other.qOverPtMax) < epsilon
-                && std::abs(phi0Min - other.phi0Min) < epsilon
-                && std::abs(phi0Max - other.phi0Max) < epsilon
-                && qOverPtDivisionLevel == other.qOverPtDivisionLevel
-                && phi0DivisionLevel == other.phi0DivisionLevel;
+            return std::abs(qOverPtMin_ - other.qOverPtMin_) < epsilon
+                && std::abs(qOverPtMax_ - other.qOverPtMax_) < epsilon
+                && std::abs(phi0Min_ - other.phi0Min_) < epsilon
+                && std::abs(phi0Max_ - other.phi0Max_) < epsilon
+                && qOverPtDivisionLevel_ == other.qOverPtDivisionLevel_
+                && phi0DivisionLevel_ == other.phi0DivisionLevel_;
         }
 
         inline AccumulatorRegion subregionQOverPtMinPhi0Min() const
         {
-            return AccumulatorRegion(qOverPtMin, 0.5f * (qOverPtMin + qOverPtMax), phi0Min, 0.5f * (phi0Min + phi0Max), qOverPtDivisionLevel + 1, phi0DivisionLevel + 1);
+            return AccumulatorRegion(qOverPtMin_, 0.5f * (qOverPtMin_ + qOverPtMax_), phi0Min_, 0.5f * (phi0Min_ + phi0Max_), qOverPtDivisionLevel_ + 1, phi0DivisionLevel_ + 1);
         }
 
         inline AccumulatorRegion subregionQOverPtMinPhi0Max() const
         {
-            return AccumulatorRegion(qOverPtMin, 0.5f * (qOverPtMin + qOverPtMax), 0.5f * (phi0Min + phi0Max), phi0Max, qOverPtDivisionLevel + 1, phi0DivisionLevel + 1);
+            return AccumulatorRegion(qOverPtMin_, 0.5f * (qOverPtMin_ + qOverPtMax_), 0.5f * (phi0Min_ + phi0Max_), phi0Max_, qOverPtDivisionLevel_ + 1, phi0DivisionLevel_ + 1);
         }
 
         inline AccumulatorRegion subregionQOverPtMaxPhi0Min() const
         {
-            return AccumulatorRegion(0.5f * (qOverPtMin + qOverPtMax), qOverPtMax, phi0Min, 0.5f * (phi0Min + phi0Max), qOverPtDivisionLevel + 1, phi0DivisionLevel + 1);
+            return AccumulatorRegion(0.5f * (qOverPtMin_ + qOverPtMax_), qOverPtMax_, phi0Min_, 0.5f * (phi0Min_ + phi0Max_), qOverPtDivisionLevel_ + 1, phi0DivisionLevel_ + 1);
         }
 
         inline AccumulatorRegion subregionQOverPtMaxPhi0Max() const
         {
-            return AccumulatorRegion(0.5f * (qOverPtMin + qOverPtMax), qOverPtMax, 0.5f * (phi0Min + phi0Max), phi0Max, qOverPtDivisionLevel + 1, phi0DivisionLevel + 1);
+            return AccumulatorRegion(0.5f * (qOverPtMin_ + qOverPtMax_), qOverPtMax_, 0.5f * (phi0Min_ + phi0Max_), phi0Max_, qOverPtDivisionLevel_ + 1, phi0DivisionLevel_ + 1);
         }
 
         inline AccumulatorRegion subregionQOverPtMin() const
         {
-            return AccumulatorRegion(qOverPtMin, 0.5f * (qOverPtMin + qOverPtMax), phi0Min, phi0Max, qOverPtDivisionLevel + 1, phi0DivisionLevel);
+            return AccumulatorRegion(qOverPtMin_, 0.5f * (qOverPtMin_ + qOverPtMax_), phi0Min_, phi0Max_, qOverPtDivisionLevel_ + 1, phi0DivisionLevel_);
         }
 
         inline AccumulatorRegion subregionQOverPtMax() const
         {
-            return AccumulatorRegion(0.5f * (qOverPtMin + qOverPtMax), qOverPtMax, phi0Min, phi0Max, qOverPtDivisionLevel + 1, phi0DivisionLevel);
+            return AccumulatorRegion(0.5f * (qOverPtMin_ + qOverPtMax_), qOverPtMax_, phi0Min_, phi0Max_, qOverPtDivisionLevel_ + 1, phi0DivisionLevel_);
         }
 
         inline AccumulatorRegion subregionPhi0Min() const
         {
-            return AccumulatorRegion(qOverPtMin, qOverPtMax, phi0Min, 0.5f * (phi0Min + phi0Max), qOverPtDivisionLevel, phi0DivisionLevel + 1);
+            return AccumulatorRegion(qOverPtMin_, qOverPtMax_, phi0Min_, 0.5f * (phi0Min_ + phi0Max_), qOverPtDivisionLevel_, phi0DivisionLevel_ + 1);
         }
 
         inline AccumulatorRegion subregionPhi0Max() const
         {
-            return AccumulatorRegion(qOverPtMin, qOverPtMax, 0.5f * (phi0Min + phi0Max), phi0Max, qOverPtDivisionLevel, phi0DivisionLevel + 1);
+            return AccumulatorRegion(qOverPtMin_, qOverPtMax_, 0.5f * (phi0Min_ + phi0Max_), phi0Max_, qOverPtDivisionLevel_, phi0DivisionLevel_ + 1);
         }
 
-        float qOverPtMin;
-        float qOverPtMax;
-        float phi0Min;
-        float phi0Max;
-        u_int8_t qOverPtDivisionLevel;
-        u_int8_t phi0DivisionLevel;
-        u_int32_t pointListBegin;
-        u_int32_t pointListEnd;
+        float qOverPtMin_;
+        float qOverPtMax_;
+        float phi0Min_;
+        float phi0Max_;
+        u_int8_t qOverPtDivisionLevel_;
+        u_int8_t phi0DivisionLevel_;
+        u_int32_t pointListBegin_;
+        u_int32_t pointListEnd_;
     };
 
     const SplitterSettings* deviceSplitterSettings_;
@@ -132,8 +132,9 @@ protected:
     static constexpr u_int8_t MaxPointListsNum = SingleRegionKernelMemory::MaxPointListsNum;
     static constexpr u_int16_t MaxPointsInRegion = SingleRegionKernelMemory::MaxPointsInRegion;
     static constexpr u_int32_t MaxPointListsPointsNum = SingleRegionKernelMemory::MaxPointListsPointsNum;
-    static constexpr u_int8_t SolutionHitsThreshold = 8;    // TODO: Tune
     static constexpr float BMagnitude = 2.0f;   // TODO: Tune
+    static constexpr u_int8_t SolutionHitsThreshold = 8;    // TODO: Tune
+    static constexpr u_int8_t LinesCrossingsThreshold = 3;   // TODO: Tune
 
     // Auxiliary functions, move somewhere else later
     static float wrapMinusPiToPi(float angle)
@@ -154,7 +155,8 @@ protected:
     SYCL_EXTERNAL void filterPointsInRegion(const Splitter& splitter, u_int16_t regionId, u_int32_t& numPoints, u_int32_t* indexes, float* xs, float* ys, float* zs, EventUsm::LayerNumber* layers) const;
     void convertToPolarCoordinates(float* phis, float* rs, const float* xs, const float* ys, u_int32_t numPoints) const;
     void rotateRegionAndPoints(float& regionPhi0Min, float& regionPhi0Max, float* phis, u_int32_t numPoints) const;
-    static void processNextAccumulatorRegion(u_int16_t regionId, AccumulatorRegion* accumulatorRegions, u_int8_t& accumulatorRegionStackSize, u_int32_t* pointLists, const u_int32_t* indexes, const float* rs, const float* phis, uint32_t* regionNumSolutions, u_int8_t* solutionHitCounts, float* solutionRs, float* solutionPhis);
+    static void processNextAccumulatorRegion(u_int16_t regionId, AccumulatorRegion* accumulatorRegions, u_int8_t& accumulatorRegionStackSize, u_int32_t* pointLists, const u_int32_t* indexes, const float* rs, const float* phis, uint32_t* regionNumSolutions, u_int8_t* solutionHitCounts, float* solutionRs, float* solutionPhis, const uint8_t solutionHitsThreshold, const uint8_t linesCrossingsThreshold);
+    static bool enoughHitsAndLinesCrossings(const AccumulatorRegion& region, const float* rs, const float* phis, const u_int32_t* pointLists, const u_int8_t solutionHitsThreshold, const u_int8_t linesCrossingsThreshold);
     static void fillNewPointList(AccumulatorRegion& region, const AccumulatorRegion& sourceRegion, u_int32_t* pointLists, const float* rs, const float* phis);
     static bool regionHit(float qOverPtMin, float qOverPtMax, float phi0Min, float phi0Max, float r, float phi);
     static void addSolution(u_int16_t regionId, const AccumulatorRegion& region, uint32_t* regionNumSolutions, u_int8_t* solutionHitCounts, float* solutionRs, float* solutionPhis);

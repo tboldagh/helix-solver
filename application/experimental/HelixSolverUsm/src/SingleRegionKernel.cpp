@@ -36,7 +36,7 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
         return;
     }
 
-    // if (regionId > 3)
+    // if (regionId > 1)
     // {
     //     return;
     // }
@@ -49,6 +49,9 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
     EventUsm::LayerNumber* layers = kernelLayers_ + (regionId - 1) * MaxPointsInRegion;
 
     filterPointsInRegion(splitter, regionId, numPoints, indexes, xs, ys, zs, layers);
+
+    const uint8_t solutionHitsThreshold = splitter.settings_.wedges_[regionId - 1].solutionHitsThreshold_ > 0 ? splitter.settings_.wedges_[regionId - 1].solutionHitsThreshold_ : 8;
+    const uint8_t linesCrossingsThreshold = splitter.settings_.wedges_[regionId - 1].linesCrossingsThreshold_ > 0 ? splitter.settings_.wedges_[regionId - 1].linesCrossingsThreshold_ : 3;
 
     float* rs = kernelRs_ + (regionId - 1) * MaxPointsInRegion;
     float* phis = kernelPhis_ + (regionId - 1) * MaxPointsInRegion;
@@ -74,7 +77,7 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
 
     // Add initial region
     accumulatorRegions[0] = AccumulatorRegion(SpaceMinQOverPt, SpaceMaxQOverPt, regionPhi0Min, regionPhi0Max);
-    accumulatorRegions[0].pointListBegin = 0;
+    accumulatorRegions[0].pointListBegin_ = 0;
     accumulatorRegionStackSize = 1;
 
     // Fill point list for initial region
@@ -82,11 +85,11 @@ void SingleRegionKernel::operator()(sycl::id<1> regionIdIdx) const
     {
         pointLists[i] = i;
     }
-    accumulatorRegions[0].pointListEnd = numPoints;
+    accumulatorRegions[0].pointListEnd_ = numPoints;
 
     while (accumulatorRegionStackSize > 0)
     {
-        processNextAccumulatorRegion(regionId, accumulatorRegions, accumulatorRegionStackSize, pointLists, indexes, rs, phis, deviceRegionNumSolutions_, deviceSolutionHitCounts_, deviceSolutionRs_, deviceSolutionPhis_);
+        processNextAccumulatorRegion(regionId, accumulatorRegions, accumulatorRegionStackSize, pointLists, indexes, rs, phis, deviceRegionNumSolutions_, deviceSolutionHitCounts_, deviceSolutionRs_, deviceSolutionPhis_, solutionHitsThreshold, linesCrossingsThreshold);
     }
 
     if (rotateRegion)
@@ -150,70 +153,67 @@ void SingleRegionKernel::rotateRegionAndPoints(float& regionPhi0Min, float& regi
     }
 }
 
-void SingleRegionKernel::processNextAccumulatorRegion(u_int16_t regionId, AccumulatorRegion* accumulatorRegions, u_int8_t& accumulatorRegionStackSize, u_int32_t* pointLists, const u_int32_t* indexes, const float* rs, const float* phis, u_int32_t* regionNumSolutions, u_int8_t* solutionHitCounts, float* solutionRs, float* solutionPhis)
+void SingleRegionKernel::processNextAccumulatorRegion(u_int16_t regionId, AccumulatorRegion* accumulatorRegions, u_int8_t& accumulatorRegionStackSize, u_int32_t* pointLists, const u_int32_t* indexes, const float* rs, const float* phis, u_int32_t* regionNumSolutions, u_int8_t* solutionHitCounts, float* solutionRs, float* solutionPhis, const uint8_t solutionHitsThreshold, const uint8_t linesCrossingsThreshold)
 {
     // Pop region from stack
     accumulatorRegionStackSize--;
     const AccumulatorRegion region = accumulatorRegions[accumulatorRegionStackSize];
-
-    const u_int32_t numHits = region.pointListEnd - region.pointListBegin;
-    if (numHits < SolutionHitsThreshold)
+    if (!enoughHitsAndLinesCrossings(region, rs, phis, pointLists, solutionHitsThreshold, linesCrossingsThreshold))
     {
-        // Too few points to form a helix, no solution in this region
         return;
     }
 
-    if (region.qOverPtDivisionLevel < QOverPtMaxDivisionLevel && region.phi0DivisionLevel < Phi0MaxDivisionLevel)
+    if (region.qOverPtDivisionLevel_ < QOverPtMaxDivisionLevel && region.phi0DivisionLevel_ < Phi0MaxDivisionLevel)
     {
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMinPhi0Min();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = region.pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = region.pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = region.pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = region.pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
     
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMinPhi0Max();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMaxPhi0Min();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMaxPhi0Max();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
     }
-    else if (region.qOverPtDivisionLevel < QOverPtMaxDivisionLevel)
+    else if (region.qOverPtDivisionLevel_ < QOverPtMaxDivisionLevel)
     {
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMin();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = region.pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = region.pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = region.pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = region.pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMax();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
     }
-    else if (region.phi0DivisionLevel < Phi0MaxDivisionLevel)
+    else if (region.phi0DivisionLevel_ < Phi0MaxDivisionLevel)
     {
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionPhi0Min();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = region.pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = region.pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = region.pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = region.pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionPhi0Max();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
     }
@@ -225,14 +225,79 @@ void SingleRegionKernel::processNextAccumulatorRegion(u_int16_t regionId, Accumu
     }
 }
 
+bool SingleRegionKernel::enoughHitsAndLinesCrossings(const AccumulatorRegion& region, const float* rs, const float* phis, const u_int32_t* pointLists, const u_int8_t solutionHitsThreshold, const u_int8_t linesCrossingsThreshold)
+{
+    const u_int32_t numHits = region.pointListEnd_ - region.pointListBegin_;
+    if (numHits < solutionHitsThreshold)
+    {
+        // Too few points to form a helix, no solution in this region
+        return false;
+    }
+
+    if (numHits > 8 * solutionHitsThreshold)
+    {
+        // Too many points in region, assume enough crossings
+        return true;
+    }
+
+    // return numHits > solutionHitsThreshold;
+
+    const float qOverPtMin = region.qOverPtMin_;
+    const float qOverPtMax = region.qOverPtMax_;
+
+    u_int8_t linesWithEnoughCrossings = 0;
+    for (u_int32_t i = region.pointListBegin_; i < region.pointListEnd_; ++i)
+    {
+        const float r = rs[pointLists[i]];
+        const float phi = phis[pointLists[i]];
+        const float phi0Left = - 0.5f * BMagnitude * r * qOverPtMin + phi;
+        const float phi0Right = - 0.5f * BMagnitude * r * qOverPtMax + phi;
+
+        u_int8_t crossings = 0;
+        for (u_int32_t j = region.pointListBegin_; j < region.pointListEnd_; ++j)
+        {
+            if (i == j)
+            {
+                continue;
+            }
+
+            const float rOther = rs[pointLists[j]];
+            const float phiOther = phis[pointLists[j]];
+            const float phi0LeftOther = - 0.5f * BMagnitude * rOther * qOverPtMin + phiOther;
+            const float phi0RightOther = - 0.5f * BMagnitude * rOther * qOverPtMax + phiOther;
+
+            // Check if lines cross within region
+            if ((phi0Left > phi0LeftOther && phi0Right < phi0RightOther) || (phi0Left < phi0LeftOther && phi0Right > phi0RightOther))
+            {
+                crossings++;
+                if (crossings >= linesCrossingsThreshold)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (crossings >= linesCrossingsThreshold)
+        {
+            linesWithEnoughCrossings++;
+            if (linesWithEnoughCrossings >= linesCrossingsThreshold)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void SingleRegionKernel::fillNewPointList(AccumulatorRegion& region, const AccumulatorRegion& sourceRegion, u_int32_t* pointLists, const float* rs, const float* phis)
 {
-    for (u_int32_t i = sourceRegion.pointListBegin; i < sourceRegion.pointListEnd; ++i)
+    for (u_int32_t i = sourceRegion.pointListBegin_; i < sourceRegion.pointListEnd_; ++i)
     {
         const u_int32_t index = pointLists[i];
-        if (regionHit(region.qOverPtMin, region.qOverPtMax, region.phi0Min, region.phi0Max, rs[index], phis[index]))
+        if (regionHit(region.qOverPtMin_, region.qOverPtMax_, region.phi0Min_, region.phi0Max_, rs[index], phis[index]))
         {
-            pointLists[region.pointListEnd++] = index;
+            pointLists[region.pointListEnd_++] = index;
         }
     }
 }
@@ -247,8 +312,8 @@ bool SingleRegionKernel::regionHit(float qOverPtMin, float qOverPtMax, float phi
 
 void SingleRegionKernel::addSolution(u_int16_t regionId, const AccumulatorRegion& region, uint32_t* regionNumSolutions, u_int8_t* solutionHitCounts, float* solutionRs, float* solutionPhis)
 {
-    const float qOverPt = 0.5f * (region.qOverPtMin + region.qOverPtMax);
-    const float phi0 = 0.5f * (region.phi0Min + region.phi0Max);
+    const float qOverPt = 0.5f * (region.qOverPtMin_ + region.qOverPtMax_);
+    const float phi0 = 0.5f * (region.phi0Min_ + region.phi0Max_);
 
     // See thesis p. 24
     const float r = 1 / (qOverPt * BMagnitude);
@@ -256,7 +321,7 @@ void SingleRegionKernel::addSolution(u_int16_t regionId, const AccumulatorRegion
 
     const u_int32_t index = regionId - 1;
     const u_int32_t solutionIndex = index * ResultUsm::MaxSolutionsPerRegion + regionNumSolutions[index];
-    const u_int32_t numHits = region.pointListEnd - region.pointListBegin;
+    const u_int32_t numHits = region.pointListEnd_ - region.pointListBegin_;
     regionNumSolutions[index]++;
     solutionHitCounts[solutionIndex] = numHits > 255 ? 255 : numHits;
     solutionRs[solutionIndex] = r;

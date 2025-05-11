@@ -5,7 +5,7 @@
 #include <algorithm>
 
 
-SplitterSettings::Wedge::Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth)
+SplitterSettings::Wedge::Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth, u_int8_t solutionHitsThreshold, u_int8_t linesCrossingsThreshold)
 : id_(id)
 , zAngleMin_(zAngleMin)
 , zAngleMax_(zAngleMax)
@@ -20,7 +20,9 @@ bool SplitterSettings::Wedge::operator==(const Wedge& other) const
             std::fabs(zAngleMax_ - other.zAngleMax_) < epsilon &&
             std::fabs(xAngleMin_ - other.xAngleMin_) < epsilon &&
             std::fabs(xAngleMax_ - other.xAngleMax_) < epsilon &&
-            std::fabs(interactionRegionWidth_ - other.interactionRegionWidth_) < epsilon;
+            std::fabs(interactionRegionWidth_ - other.interactionRegionWidth_) < epsilon &&
+            solutionHitsThreshold_ == other.solutionHitsThreshold_ &&
+            linesCrossingsThreshold_ == other.linesCrossingsThreshold_;
 }
 
 bool SplitterSettings::Wedge::isValid() const
