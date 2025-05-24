@@ -29,6 +29,7 @@ private:
         static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
         static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
         static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;   // TODO: This is max possible number of points in all lists combined. Can be tuned
+        static constexpr u_int8_t LayerHitThreshold = 4;
 
         u_int16_t regionId_;
         u_int8_t regionSolutionHitsThreshold_;
@@ -37,6 +38,7 @@ private:
         u_int32_t indexes_[MaxPointsInRegion];
         float rs_[MaxPointsInRegion];
         float phis_[MaxPointsInRegion];
+        u_int8_t layers_[MaxPointsInRegion];
         AccumulatorRegion accumulatorRegions_[MaxAccumulatorRegionStackSize];
         u_int8_t accumulatorRegionStackSize_;
         u_int32_t pointLists_[MaxPointListsPointsNum];
@@ -61,11 +63,13 @@ private:
     void solveRegion(Task& task, RegionSolverData& regionSolverData);
     void filterPointsInWedge(u_int16_t regionId, const Event& event, RegionSolverData& regionSolverData);
     void convertToPolarCoordinates(const Event& event, RegionSolverData& regionSolverData);
+    void assignLayers(const Event& event, RegionSolverData& regionSolverData);
     void rotateRegionAndPoints(float& regionPhi0Min, float& regionPhi0Max, RegionSolverData& regionSolverData);
     void processNextAccumulatorRegion(Result& result, RegionSolverData& regionSolverData);
-    bool enoughHitsAndLinesCrossings(const AccumulatorRegion& region, RegionSolverData& regionSolverData);
     void fillNewPointList(AccumulatorRegion& region, const AccumulatorRegion& sourceRegion, RegionSolverData& regionSolverData);
     bool regionHit(const AccumulatorRegion& region, float r, float phi);
+    bool enoughLayerHits(RegionSolverData& regionSolverData);
+    bool enoughHitsAndLinesCrossing(const AccumulatorRegion& region, RegionSolverData& regionSolverData);
     void addSolution(Result& result, const AccumulatorRegion& region, RegionSolverData& regionSolverData);
     void rotateSolutions(Result& result, u_int32_t regionSolutionsBegin);
 

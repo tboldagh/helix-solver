@@ -44,6 +44,8 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
 
     convertToPolarCoordinates(event, regionSolverData);
 
+    assignLayers(event, regionSolverData);
+
     const auto& wedge = splitter_.getSettings().wedges_[regionId - 1];
     float regionPhi0Min = wrapMinusPiToPi(wedge.zAngleMin_) - SpaceMaxPhiPhi0AbsDiff;
     float regionPhi0Max = wrapMinusPiToPi(wedge.zAngleMax_) + SpaceMaxPhiPhi0AbsDiff;
@@ -112,6 +114,65 @@ void HelixSolver::convertToPolarCoordinates(const Event& event, RegionSolverData
     }
 }
 
+void HelixSolver::assignLayers(const Event& event, RegionSolverData& regionSolverData)
+{
+    float* rs = regionSolverData.rs_;
+    float* zs = event.zs_;
+    u_int8_t* layers = regionSolverData.layers_;
+    for (u_int32_t i = 0; i < regionSolverData.numPoints_; ++i)
+    {
+        const float r = rs[i];
+        const float absZ = std::abs(zs[i]);
+
+        if (r < 215)
+        {
+            // Group A or B
+            if (absZ < 550)
+            {
+                // Group A
+                layers[i] = r < 45 ? 0 :
+                            r < 90 ? 1 :
+                            r < 140 ? 2 : 3;
+            }
+            else
+            {
+                // Group B
+                layers[i] = absZ < 670 ? 4 :
+                            absZ < 780 ? 5 :
+                            absZ < 930 ? 6 :
+                            absZ < 1050 ? 7 :
+                            absZ < 1220 ? 8 :
+                            absZ < 1420 ? 9 : 10;
+            }
+        }
+        else
+        {
+            // Group C or D or E
+            if (r > 740)
+            {
+                // Group D
+                layers[i] = absZ < 870 ? 11 : 12;
+            }
+            else if (absZ < 1200)
+            {
+                // Group C
+                layers[i] = r < 310 ? 13 :
+                            r < 430 ? 14 :
+                            r < 580 ? 15 : 16;
+            }
+            else
+            {
+                // Group E
+                layers[i] = absZ < 1440 ? 17 :
+                            absZ < 1700 ? 18 :
+                            absZ < 2030 ? 19 :
+                            absZ < 2370 ? 20 :
+                            absZ < 2730 ? 21 : 22;
+            }
+        }
+    }
+}
+
 void HelixSolver::rotateRegionAndPoints(float& regionPhi0Min, float& regionPhi0Max, RegionSolverData& regionSolverData)
 {
     // Rotate region by -pi
@@ -132,7 +193,7 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
     // Pop region from stack
     accumulatorRegionStackSize--;
     const AccumulatorRegion region = accumulatorRegions[accumulatorRegionStackSize];
-    if (!enoughHitsAndLinesCrossings(region, regionSolverData))
+    if (!enoughHitsAndLinesCrossing(region, regionSolverData))
     {
         return;
     }
@@ -194,11 +255,14 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
     else
     {
         // Max division level reached, add solution
-        addSolution(result, region, regionSolverData);
+        if (enoughLayerHits(regionSolverData))
+        {
+            addSolution(result, region, regionSolverData);
+        }
     }
 }
 
-bool HelixSolver::enoughHitsAndLinesCrossings(const AccumulatorRegion& region, RegionSolverData& regionSolverData)
+bool HelixSolver::enoughHitsAndLinesCrossing(const AccumulatorRegion& region, RegionSolverData& regionSolverData)
 {
     const u_int32_t numHits = region.pointListEnd_ - region.pointListBegin_;
     if (numHits < regionSolverData.regionSolutionHitsThreshold_)
@@ -222,6 +286,7 @@ bool HelixSolver::enoughHitsAndLinesCrossings(const AccumulatorRegion& region, R
     {
         const float r = regionSolverData.rs_[regionSolverData.pointLists_[i]];
         const float phi = regionSolverData.phis_[regionSolverData.pointLists_[i]];
+        const u_int8_t layer = regionSolverData.layers_[regionSolverData.pointLists_[i]];
         const float phi0Left = - 0.5f * BMagnitude * r * qOverPtMin + phi;
         const float phi0Right = - 0.5f * BMagnitude * r * qOverPtMax + phi;
 
@@ -229,6 +294,12 @@ bool HelixSolver::enoughHitsAndLinesCrossings(const AccumulatorRegion& region, R
         for (u_int32_t j = region.pointListBegin_; j < region.pointListEnd_; ++j)
         {
             if (i == j)
+            {
+                continue;
+            }
+
+            const u_int8_t layerOther = regionSolverData.layers_[regionSolverData.pointLists_[j]];
+            if (layer == layerOther)
             {
                 continue;
             }
@@ -285,6 +356,26 @@ bool HelixSolver::regionHit(const AccumulatorRegion& region, float r, float phi)
     const float phi0Left = - 0.5f * BMagnitude * r * qOverPtMin + phi;
     const float phi0Right = - 0.5f * BMagnitude * r * qOverPtMax + phi;
     return phi0Left >= phi0Min && phi0Right <= phi0Max;
+}
+
+bool HelixSolver::enoughLayerHits(RegionSolverData& regionSolverData)
+{
+    u_int32_t layersHit = 0;
+    for (u_int32_t i = 0; i < regionSolverData.numPoints_; ++i)
+    {
+        layersHit |= 1 << regionSolverData.layers_[regionSolverData.pointLists_[i]];
+    }
+
+    uint8_t hitCount = 0;
+    for (u_int32_t i = 0; i < 23; ++i)
+    {
+        if (layersHit & (1 << i))
+        {
+            hitCount++;
+        }
+    }
+
+    return hitCount >= RegionSolverData::LayerHitThreshold;
 }
 
 void HelixSolver::addSolution(Result& result, const AccumulatorRegion& region, RegionSolverData& regionSolverData)
