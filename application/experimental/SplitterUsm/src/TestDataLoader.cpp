@@ -32,8 +32,8 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
         // Splitter properties
         const float minZAngle = json["splitter_properties"]["min_z_angle"];
         const float maxZAngle = json["splitter_properties"]["max_z_angle"];
-        const float minXAgle = json["splitter_properties"]["min_x_angle"];
-        const float maxXAgle = json["splitter_properties"]["max_x_angle"];
+        const float minXAngle = json["splitter_properties"]["min_x_angle"];
+        const float maxXAngle = json["splitter_properties"]["max_x_angle"];
         const float poleRegionAngle = json["splitter_properties"]["pole_region_angle"];
         const float interactionRegionMin = json["splitter_properties"]["interaction_region_min"];
         const float interactionRegionMax = json["splitter_properties"]["interaction_region_max"];
@@ -70,7 +70,7 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
         return SplitterSettings(
             maxAbsXy, maxAbsZ,
             minZAngle, maxZAngle,
-            minXAgle, maxXAgle,
+            minXAngle, maxXAngle,
             poleRegionAngle,
             interactionRegionMin, interactionRegionMax,
             zAngleMargin, xAngleMargin,
@@ -96,8 +96,8 @@ bool TestDataLoader::writeSplitterSettings(const std::string& path, const Splitt
     // Splitter properties
     json["splitter_properties"]["min_z_angle"] = settings.minZAngle_;
     json["splitter_properties"]["max_z_angle"] = settings.maxZAngle_;
-    json["splitter_properties"]["min_x_angle"] = settings.minXAgle_;
-    json["splitter_properties"]["max_x_angle"] = settings.maxXAgle_;
+    json["splitter_properties"]["min_x_angle"] = settings.minXAngle_;
+    json["splitter_properties"]["max_x_angle"] = settings.maxXAngle_;
     json["splitter_properties"]["pole_region_angle"] = settings.poleRegionAngle_;
     json["splitter_properties"]["interaction_region_min"] = settings.interactionRegionMin_;
     json["splitter_properties"]["interaction_region_max"] = settings.interactionRegionMax_;

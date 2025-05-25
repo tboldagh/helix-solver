@@ -38,6 +38,7 @@ public:
     TransferableData::TransferEvents transferToHost() override;
 
     SYCL_EXTERNAL void getRegionIds(float x, float y, float z, RegionIds& regionIds) const;
+    void splitIntoRegions(const float* xs, const float* ys, const float* zs, const u_int32_t numPoints, std::vector<u_int32_t*>& regionIndexes, std::vector<u_int32_t*>& regionNumPoints, const u_int16_t numRegions) const;
     SYCL_EXTERNAL bool isPointInRegion(float x, float y, float z, u_int16_t regionId) const;
     SYCL_EXTERNAL bool isPointInRegionNoFilter(float x, float y, float z, u_int16_t regionId) const;
     SYCL_EXTERNAL u_int16_t getNumRegions() const;
@@ -55,8 +56,8 @@ private:
     bool isPointInWedge(float x, float y, float z, const SplitterSettings::Wedge& wedge) const;
     bool isPointInWedgeZAngle(float x, float y, float z, const SplitterSettings::Wedge& wedge) const;
     bool isPointInWedgeXAngle(float x, float y, float z, const SplitterSettings::Wedge& wedge) const;
+    static float xAngle(const float x, const float y, const float z, const float interactionRegionShift);
 
     static float atan2Wrap2Pi(float y, float x);
     static float wrap2Pi(float angle);
-
 };

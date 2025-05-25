@@ -18,8 +18,8 @@ int main()
     constexpr float maxAbsZ = 3100.0;
     constexpr float minZAngle = 0.0;
     constexpr float maxZAngle = 2.0 * M_PI;
-    constexpr float minXAgle = 1.0 / 16 * M_PI;
-    constexpr float maxXAgle = 15.0 / 16 * M_PI;
+    constexpr float minXAngle = 1.0 / 16 * M_PI;
+    constexpr float maxXAngle = 15.0 / 16 * M_PI;
     constexpr float poleRegionAngle = 1.0 / 16 * M_PI;
     constexpr float interactionRegionMin = -200.0;
     constexpr float interactionRegionMax = 200.0;
@@ -32,7 +32,7 @@ int main()
     SplitterSettings splitterSettings(
         maxAbsXy, maxAbsZ,
         minZAngle, maxZAngle,
-        minXAgle, maxXAgle,
+        minXAngle, maxXAngle,
         poleRegionAngle,
         interactionRegionMin, interactionRegionMax,
         zAngleMargin, xAngleMargin,
@@ -156,6 +156,8 @@ int main()
         LOG_INFO("Tasks created");
 
         LOG_INFO("Solving tasks");
+        std::vector<uint32_t> executionTimes;
+        std::vector<uint32_t> numSolutions;
         for (u_int32_t i = 0; i < tasks.size(); ++i)
         {
             auto& task = *tasks[i];
@@ -165,10 +167,15 @@ int main()
             helixSolver.solve(task);
             
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            executionTimes.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+            numSolutions.push_back(task.getResult().numSolutions_);
             std::stringstream ss;
-            ss << "Task with event id " << task.getEvent().eventId_ << " solved in " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms, num solutions: " << task.getResult().numSolutions_;
+            ss << "Task with event id " << task.getEvent().eventId_ << " solved in " << executionTimes[i] << " ms, num solutions: " << numSolutions[i];
             LOG_INFO(ss.str());
         }
+        std::stringstream ss;
+        ss << "Average execution time: " << std::accumulate(executionTimes.begin(), executionTimes.end(), 0) / executionTimes.size() << " ms, average number of solutions: " << std::accumulate(numSolutions.begin(), numSolutions.end(), 0) / numSolutions.size();
+        LOG_INFO(ss.str());
         LOG_INFO("Tasks solved");
 
         LOG_INFO("Heavy events test done");

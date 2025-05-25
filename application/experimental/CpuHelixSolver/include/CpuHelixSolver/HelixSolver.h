@@ -22,7 +22,7 @@ private:
     class RegionSolverData
     {
     public:
-        static constexpr u_int16_t MaxPointsInRegion = 5000;  // TODO: Tune
+        static constexpr u_int16_t MaxPointsInRegion = 2000;  // TODO: Tune
         static constexpr u_int8_t Phi0MaxDivisionLevel = 8;   // TODO: Tune
         static constexpr u_int8_t QOverPtMaxDivisionLevel = 8;   // TODO: Tune
         static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
@@ -83,6 +83,7 @@ private:
     static constexpr float BMagnitude = 2.0f;   // TODO: Tune
 
     Splitter splitter_;
+    std::vector<RegionSolverData> regionSolverData_;
 
     FRIEND_TEST(RegionHitTest, AboveRegion);
     FRIEND_TEST(RegionHitTest, TopRightCorner);

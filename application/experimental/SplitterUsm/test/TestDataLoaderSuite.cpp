@@ -18,8 +18,8 @@ protected:
         constexpr float maxAbsZ = 3100.0;
         constexpr float minZAngle = 0.0;
         constexpr float maxZAngle = 2.0 * M_PI;
-        constexpr float minXAgle = 1.0 / 16 * M_PI;
-        constexpr float maxXAgle = 15.0 / 16 * M_PI;
+        constexpr float minXAngle = 1.0 / 16 * M_PI;
+        constexpr float maxXAngle = 15.0 / 16 * M_PI;
         constexpr float poleRegionAngle = 1.0 / 16 * M_PI;
         constexpr float interactionRegionMin = -400.0;
         constexpr float interactionRegionMax = 400.0;
@@ -32,7 +32,7 @@ protected:
         return SplitterSettings(
             maxAbsXy, maxAbsZ,
             minZAngle, maxZAngle,
-            minXAgle, maxXAgle,
+            minXAngle, maxXAngle,
             poleRegionAngle,
             interactionRegionMin, interactionRegionMax,
             zAngleMargin, xAngleMargin,

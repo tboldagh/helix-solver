@@ -3,20 +3,36 @@
 HelixSolver::HelixSolver(const Splitter& splitter)
     : splitter_(splitter)
 {
+    const u_int16_t numWedges = splitter_.getNumRegions() - 2;
+    regionSolverData_.reserve(numWedges);
+    for (u_int16_t i = 0; i < numWedges; ++i)
+    {
+        regionSolverData_.emplace_back();
+    }
 }
 
 void HelixSolver::solve(Task& task)
 {
-    RegionSolverData regionSolverData;
+    const u_int16_t numWedges = splitter_.getNumRegions() - 2;
+    std::vector<u_int32_t*> regionIndexes;
+    regionIndexes.reserve(numWedges);
+    std::vector<u_int32_t*> regionNumPoints;
+    regionNumPoints.reserve(numWedges);
+    for (u_int16_t i = 0; i < numWedges; ++i)
+    {
+        regionIndexes.emplace_back(regionSolverData_[i].indexes_);
+        regionNumPoints.emplace_back(&regionSolverData_[i].numPoints_);
+    }
+    splitter_.splitIntoRegions(task.getEvent().xs_, task.getEvent().ys_, task.getEvent().zs_, task.getEvent().numPoints_, regionIndexes, regionNumPoints, numWedges);
 
     // Reset number of solutions
     task.getResult().numSolutions_ = 0;
 
-    // 0 is reserved for invalid region
-    for (u_int16_t regionId = 1; regionId < splitter_.getNumRegions() - 1; ++regionId)
+    // Not sure if we need to care about pole regions, maybe implement later, skip for now
+    for (u_int16_t regionIndex = 0; regionIndex < numWedges; ++regionIndex)
     {
-        regionSolverData.regionId_ = regionId;
-        solveRegion(task, regionSolverData);
+        regionSolverData_[regionIndex].regionId_ = regionIndex + 1;
+        solveRegion(task, regionSolverData_[regionIndex]);
     }
 }
 
@@ -24,23 +40,12 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
 {
     const Event& event = task.getEvent();
     Result& result = task.getResult();
-
     const u_int16_t regionId = regionSolverData.regionId_;
-    if (regionId > splitter_.getNumRegions() - 2)   // Pole
-    {
-        // Not sure if we need to care about pole regions, maybe implement later, skip for now
-        return;
-    }
 
     regionSolverData.regionSolutionHitsThreshold_ = splitter_.getSettings().wedges_[regionId - 1].solutionHitsThreshold_;
     regionSolverData.regionSolutionHitsThreshold_ = regionSolverData.regionSolutionHitsThreshold_ > 0 ? regionSolverData.regionSolutionHitsThreshold_ : 8;
     regionSolverData.regionLinesCrossingsThreshold_ = splitter_.getSettings().wedges_[regionId - 1].linesCrossingsThreshold_;
     regionSolverData.regionLinesCrossingsThreshold_ = regionSolverData.regionLinesCrossingsThreshold_ > 0 ? regionSolverData.regionLinesCrossingsThreshold_ : 3;
-
-    // Reset necessary fields in regionSolverData
-    regionSolverData.numPoints_ = 0;
-
-    filterPointsInWedge(regionId, event, regionSolverData);
 
     convertToPolarCoordinates(event, regionSolverData);
 

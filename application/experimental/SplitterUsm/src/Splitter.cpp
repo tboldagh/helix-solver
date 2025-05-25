@@ -94,6 +94,67 @@ void Splitter::getRegionIds(float x, float y, float z, RegionIds& regionIds) con
     getRegionIdsNaive(x, y, z, regionIds);
 }
 
+void Splitter::splitIntoRegions(const float* xs, const float* ys, const float* zs, const u_int32_t numPoints, std::vector<u_int32_t*>& regionIndexes, std::vector<u_int32_t*>& regionNumPoints, const u_int16_t numRegions) const
+{
+    for (u_int16_t i = 0; i < numRegions; ++i)
+    {
+        *regionNumPoints[i] = 0;
+    }
+
+    for (u_int32_t i = 0; i < numPoints; ++i)
+    {
+        const float x = xs[i];
+        const float y = ys[i];
+        const float z = zs[i];
+
+        if (sycl::sqrt(x*x + y*y) < settings_.filterOutCenterR_ && sycl::fabs(z) < settings_.filterOutCenterZ_)
+        {
+            continue;
+        }
+
+        const float zAngle = atan2Wrap2Pi(y, x);
+        const u_int16_t zRangeIndex = zAngle / (2.0 * M_PI / settings_.numZRanges_);
+
+        // Check wedges with zRangeIndex and its neighbors
+        // For isPointInWedgeZAngle, xRangeIndex does not matter, assume 0
+        const u_int16_t zRangeIndexMin = zRangeIndex == 0 ? u_int16_t(settings_.numZRanges_ - 1) : u_int16_t(zRangeIndex - 1);
+        const u_int16_t zRangeIndexMax = zRangeIndex == u_int16_t(settings_.numZRanges_ - 1)? u_int16_t(0) : u_int16_t(zRangeIndex + 1);
+        if (isPointInWedgeZAngle(x, y, z, settings_.wedges_[zRangeIndexMin]))
+        {
+            for (u_int16_t xRangeIndex = 0; xRangeIndex < settings_.numXRanges_; ++xRangeIndex)
+            {
+                const u_int16_t regionIndex = xRangeIndex * settings_.numZRanges_ + zRangeIndexMin;
+                if (isPointInWedgeXAngle(x, y, z, settings_.wedges_[regionIndex]))
+                {
+                    regionIndexes[regionIndex][(*regionNumPoints[regionIndex])++] = i;
+                }
+            }
+        }
+        if (isPointInWedgeZAngle(x, y, z, settings_.wedges_[zRangeIndex]))
+        {
+            for (u_int16_t xRangeIndex = 0; xRangeIndex < settings_.numXRanges_; ++xRangeIndex)
+            {
+                const u_int16_t regionIndex = xRangeIndex * settings_.numZRanges_ + zRangeIndex;
+                if (isPointInWedgeXAngle(x, y, z, settings_.wedges_[regionIndex]))
+                {
+                    regionIndexes[regionIndex][(*regionNumPoints[regionIndex])++] = i;
+                }
+            }
+        }
+        if (isPointInWedgeZAngle(x, y, z, settings_.wedges_[zRangeIndexMax]))
+        {
+            for (u_int16_t xRangeIndex = 0; xRangeIndex < settings_.numXRanges_; ++xRangeIndex)
+            {
+                const u_int16_t regionIndex = xRangeIndex * settings_.numZRanges_ + zRangeIndexMax;
+                if (isPointInWedgeXAngle(x, y, z, settings_.wedges_[regionIndex]))
+                {
+                    regionIndexes[regionIndex][(*regionNumPoints[regionIndex])++] = i;
+                }
+            }
+        }
+    }
+}
+
 u_int16_t Splitter::getNumRegions() const
 {
     return settings_.numZRanges_ * settings_.numXRanges_ + 2;   // + 2 for poles
@@ -195,13 +256,18 @@ bool Splitter::isPointInWedge(float x, float y, float z, const SplitterSettings:
 bool Splitter::isPointInWedgeZAngle(float x, float y, float z, const SplitterSettings::Wedge& wedge) const
 {
     const float zAngle = atan2Wrap2Pi(y, x);
-    if (wedge.zAngleMin_ < wedge.zAngleMax_) {
-        if (zAngle < wedge.zAngleMin_ || zAngle > wedge.zAngleMax_) {
+    if (wedge.zAngleMin_ < wedge.zAngleMax_)
+    {
+        if (zAngle < wedge.zAngleMin_ || zAngle > wedge.zAngleMax_)
+        {
             return false;
         }
-    } else {
+    }
+    else
+    {
         // Wedge crosses zAngle = 0
-        if ((zAngle <= M_PI && zAngle > wedge.zAngleMax_) || (zAngle > M_PI && zAngle < wedge.zAngleMin_)) {
+        if ((zAngle <= M_PI && zAngle > wedge.zAngleMax_) || (zAngle > M_PI && zAngle < wedge.zAngleMin_))
+        {
             return false;
         }
     }
@@ -210,46 +276,58 @@ bool Splitter::isPointInWedgeZAngle(float x, float y, float z, const SplitterSet
 
 bool Splitter::isPointInWedgeXAngle(float x, float y, float z, const SplitterSettings::Wedge& wedge) const
 {
+    // Check boundary condition for xAngleMin
+    {
+        const float interactionRegionShift = wedge.interactionRegionWidth_ / 2.0f;
 
-    const auto outermostPoint = [this, &wedge](float xAngle) -> std::tuple<float, float, float> {
-        const float xPlaneDirectionZ = sycl::cos(xAngle);
-        const float xPlaneDirectionY = sycl::sin(xAngle);
+        const float xPlaneDirectionZ = sycl::cos(wedge.xAngleMin_);
+        const float xPlaneDirectionY = sycl::sin(wedge.xAngleMin_);
 
         const float xPlaneScaleToZLimit = sycl::fabs(xPlaneDirectionZ) / settings_.maxAbsZ_;
         const float xPlaneScaleToYLimit = sycl::fabs(xPlaneDirectionY) / settings_.maxAbsXy_;
         const float scale = 1.0f / sycl::max(xPlaneScaleToZLimit, xPlaneScaleToYLimit);
 
-        const float x = xPlaneDirectionY * sycl::cos(wedge.zAngleMin_) * scale;
-        const float y = xPlaneDirectionY * sycl::sin(wedge.zAngleMin_) * scale;
-        const float z = xPlaneDirectionZ * scale;
+        const float outermostX = xPlaneDirectionY * sycl::cos(wedge.zAngleMin_) * scale;
+        const float outermostY = xPlaneDirectionY * sycl::sin(wedge.zAngleMin_) * scale;
+        const float outermostZ = xPlaneDirectionZ * scale;
 
-        return { x, y, z };
-    };
-
-    const auto toZAngle = [](float x, float y, float z, float interactionRegionShift) -> float {
-        const float distanceToZ = sycl::sqrt(x * x + y * y);
-        return sycl::atan2(distanceToZ, z - interactionRegionShift);
-    };
-
-    // Check boundary condition for xAngleMin
-    float interactionRegionShift = wedge.interactionRegionWidth_ / 2.0f;
-    auto [outermostX, outermostY, outermostZ] = outermostPoint(wedge.xAngleMin_);
-    float boundaryToZAngle = toZAngle(outermostX, outermostY, outermostZ, interactionRegionShift);
-    float pointToZAngle = toZAngle(x, y, z, interactionRegionShift);
-    if (pointToZAngle < boundaryToZAngle) {
-        return false;
+        const float boundaryToXAngle = xAngle(outermostX, outermostY, outermostZ, interactionRegionShift);
+        const float pointToXAngle = xAngle(x, y, z, interactionRegionShift);
+        if (pointToXAngle < boundaryToXAngle)
+        {
+            return false;
+        }
     }
 
     // Check boundary condition for xAngleMax
-    interactionRegionShift = -wedge.interactionRegionWidth_ / 2.0f;
-    std::tie(outermostX, outermostY, outermostZ) = outermostPoint(wedge.xAngleMax_);
-    boundaryToZAngle = toZAngle(outermostX, outermostY, outermostZ, interactionRegionShift);
-    pointToZAngle = toZAngle(x, y, z, interactionRegionShift);
-    if (pointToZAngle > boundaryToZAngle) {
-        return false;
+    {
+        const float interactionRegionShift = -wedge.interactionRegionWidth_ / 2.0f;
+        
+        const float xPlaneDirectionZ = sycl::cos(wedge.xAngleMax_);
+        const float xPlaneDirectionY = sycl::sin(wedge.xAngleMax_);
+
+        const float xPlaneScaleToZLimit = sycl::fabs(xPlaneDirectionZ) / settings_.maxAbsZ_;
+        const float xPlaneScaleToYLimit = sycl::fabs(xPlaneDirectionY) / settings_.maxAbsXy_;
+        const float scale = 1.0f / sycl::max(xPlaneScaleToZLimit, xPlaneScaleToYLimit);
+
+        const float outermostX = xPlaneDirectionY * sycl::cos(wedge.zAngleMin_) * scale;
+        const float outermostY = xPlaneDirectionY * sycl::sin(wedge.zAngleMin_) * scale;
+        const float outermostZ = xPlaneDirectionZ * scale;
+
+        const float boundaryToXAngle = xAngle(outermostX, outermostY, outermostZ, interactionRegionShift);
+        const float pointToXAngle = xAngle(x, y, z, interactionRegionShift);
+        if (pointToXAngle > boundaryToXAngle)
+        {
+            return false;
+        }
     }
 
     return true;
+}
+
+float Splitter::xAngle(const float x, const float y, const float z, const float interactionRegionShift)
+{
+    return sycl::atan2(sycl::sqrt(x * x + y * y), z - interactionRegionShift);
 }
 
 float Splitter::atan2Wrap2Pi(float y, float x)
