@@ -1,4 +1,8 @@
 #include "CpuHelixSolver/HelixSolver.h"
+#include "Logger/Logger.h"
+
+#include <chrono>
+#include <sstream>
 
 HelixSolver::HelixSolver(const Splitter& splitter)
     : splitter_(splitter)
@@ -70,11 +74,16 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
     regionSolverData.accumulatorRegionStackSize_ = 1;
 
     // Fill point list for initial region
+    const AccumulatorRegion& initialRegion = regionSolverData.accumulatorRegions_[0];
+    u_int32_t pointListsEnd = 0;
     for (u_int32_t i = 0; i < regionSolverData.numPoints_; ++i)
     {
-        regionSolverData.pointLists_[i] = i;
+        if (regionHit(initialRegion, regionSolverData.rs_[i], regionSolverData.phis_[i]))
+        {
+            regionSolverData.pointLists_[pointListsEnd++] = i;
+        }
     }
-    regionSolverData.accumulatorRegions_[0].pointListEnd_ = regionSolverData.numPoints_;
+    regionSolverData.accumulatorRegions_[0].pointListEnd_ = pointListsEnd;
 
     while (regionSolverData.accumulatorRegionStackSize_ > 0)
     {
@@ -202,7 +211,7 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
     {
         return;
     }
-    
+
     if (region.qOverPtDivisionLevel_ < RegionSolverData::QOverPtMaxDivisionLevel && region.phi0DivisionLevel_ < RegionSolverData::Phi0MaxDivisionLevel)
     {
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMinPhi0Min();
@@ -218,14 +227,14 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMaxPhi0Min();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 2].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 2].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, regionSolverData);
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMaxPhi0Max();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 3].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 3].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, regionSolverData);
         accumulatorRegionStackSize++;
     }
@@ -262,12 +271,12 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
         // Max division level reached, add solution
         if (enoughLayerHits(regionSolverData))
         {
-            addSolution(result, region, regionSolverData);
+            addSolution(result, region);
         }
     }
 }
 
-bool HelixSolver::enoughHitsAndLinesCrossing(const AccumulatorRegion& region, RegionSolverData& regionSolverData)
+bool HelixSolver::enoughHitsAndLinesCrossing(const AccumulatorRegion& region, const RegionSolverData& regionSolverData)
 {
     const u_int32_t numHits = region.pointListEnd_ - region.pointListBegin_;
     if (numHits < regionSolverData.regionSolutionHitsThreshold_)
@@ -350,7 +359,7 @@ void HelixSolver::fillNewPointList(AccumulatorRegion& region, const AccumulatorR
     }
 }
 
-bool HelixSolver::regionHit(const AccumulatorRegion& region, float r, float phi)
+bool HelixSolver::regionHit(const AccumulatorRegion& region, const float r, const float phi)
 {
     const float qOverPtMin = region.qOverPtMin_;
     const float qOverPtMax = region.qOverPtMax_;
@@ -363,7 +372,7 @@ bool HelixSolver::regionHit(const AccumulatorRegion& region, float r, float phi)
     return phi0Left >= phi0Min && phi0Right <= phi0Max;
 }
 
-bool HelixSolver::enoughLayerHits(RegionSolverData& regionSolverData)
+bool HelixSolver::enoughLayerHits(const RegionSolverData& regionSolverData)
 {
     u_int32_t layersHit = 0;
     for (u_int32_t i = 0; i < regionSolverData.numPoints_; ++i)
@@ -383,7 +392,7 @@ bool HelixSolver::enoughLayerHits(RegionSolverData& regionSolverData)
     return hitCount >= RegionSolverData::LayerHitThreshold;
 }
 
-void HelixSolver::addSolution(Result& result, const AccumulatorRegion& region, RegionSolverData& regionSolverData)
+void HelixSolver::addSolution(Result& result, const AccumulatorRegion& region)
 {
     const float qOverPt = 0.5f * (region.qOverPtMin_ + region.qOverPtMax_);
     const float phi0 = 0.5f * (region.phi0Min_ + region.phi0Max_);
@@ -399,7 +408,7 @@ void HelixSolver::addSolution(Result& result, const AccumulatorRegion& region, R
     result.solutionPhis_[index] = phi;
 }
 
-void HelixSolver::rotateSolutions(Result& result, u_int32_t regionSolutionsBegin)
+void HelixSolver::rotateSolutions(Result& result, const u_int32_t regionSolutionsBegin)
 {
     // Rotate solutions by pi
     const u_int32_t numSolutions = result.numSolutions_;

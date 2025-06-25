@@ -29,6 +29,8 @@ private:
         static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
         static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
         static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;   // TODO: This is max possible number of points in all lists combined. Can be tuned
+                                                                                                    // < 6k for 10 smaple events
+            
         static constexpr u_int8_t LayerHitThreshold = 4;
 
         u_int16_t regionId_;
@@ -67,11 +69,11 @@ private:
     void rotateRegionAndPoints(float& regionPhi0Min, float& regionPhi0Max, RegionSolverData& regionSolverData);
     void processNextAccumulatorRegion(Result& result, RegionSolverData& regionSolverData);
     void fillNewPointList(AccumulatorRegion& region, const AccumulatorRegion& sourceRegion, RegionSolverData& regionSolverData);
-    bool regionHit(const AccumulatorRegion& region, float r, float phi);
-    bool enoughLayerHits(RegionSolverData& regionSolverData);
-    bool enoughHitsAndLinesCrossing(const AccumulatorRegion& region, RegionSolverData& regionSolverData);
-    void addSolution(Result& result, const AccumulatorRegion& region, RegionSolverData& regionSolverData);
-    void rotateSolutions(Result& result, u_int32_t regionSolutionsBegin);
+    bool regionHit(const AccumulatorRegion& region, const float r, const float phi);
+    bool enoughLayerHits(const RegionSolverData& regionSolverData);
+    bool enoughHitsAndLinesCrossing(const AccumulatorRegion& region, const RegionSolverData& regionSolverData);
+    void addSolution(Result& result, const AccumulatorRegion& region);
+    void rotateSolutions(Result& result, const u_int32_t regionSolutionsBegin);
 
     // Based on thesis p. 22 Phi_0 is in range dependent on region
     // Phi_min and Phi_max are region dependent
