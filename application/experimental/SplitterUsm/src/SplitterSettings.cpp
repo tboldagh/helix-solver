@@ -5,13 +5,16 @@
 #include <algorithm>
 
 
-SplitterSettings::Wedge::Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth, u_int8_t solutionHitsThreshold, u_int8_t linesCrossingsThreshold)
+SplitterSettings::Wedge::Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth, u_int8_t solutionHitsThreshold, u_int8_t linesCrossingsThreshold, u_int8_t skipCrossingsCheckThreshold)
 : id_(id)
 , zAngleMin_(zAngleMin)
 , zAngleMax_(zAngleMax)
 , xAngleMin_(xAngleMin)
 , xAngleMax_(xAngleMax)
-, interactionRegionWidth_(interactionRegionWidth) {}
+, interactionRegionWidth_(interactionRegionWidth)
+, solutionHitsThreshold_(solutionHitsThreshold)
+, linesCrossingsThreshold_(linesCrossingsThreshold)
+, skipCrossingsCheckThreshold_(skipCrossingsCheckThreshold) {}
 
 bool SplitterSettings::Wedge::operator==(const Wedge& other) const
 {

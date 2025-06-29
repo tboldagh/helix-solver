@@ -18,34 +18,6 @@ public:
     void solve(Task& task);
     void setSplitter(const Splitter& splitter) { splitter_ = splitter; }
 
-private:
-    class RegionSolverData
-    {
-    public:
-        static constexpr u_int16_t MaxPointsInRegion = 2000;  // TODO: Tune
-        static constexpr u_int8_t Phi0MaxDivisionLevel = 8;   // TODO: Tune
-        static constexpr u_int8_t QOverPtMaxDivisionLevel = 8;   // TODO: Tune
-        static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
-        static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
-        static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
-        static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;   // TODO: This is max possible number of points in all lists combined. Can be tuned
-                                                                                                    // < 6k for 10 smaple events
-            
-        static constexpr u_int8_t LayerHitThreshold = 4;
-
-        u_int16_t regionId_;
-        u_int8_t regionSolutionHitsThreshold_;
-        u_int8_t regionLinesCrossingsThreshold_;
-        u_int32_t numPoints_;
-        u_int32_t indexes_[MaxPointsInRegion];
-        float rs_[MaxPointsInRegion];
-        float phis_[MaxPointsInRegion];
-        u_int8_t layers_[MaxPointsInRegion];
-        AccumulatorRegion accumulatorRegions_[MaxAccumulatorRegionStackSize];
-        u_int8_t accumulatorRegionStackSize_;
-        u_int32_t pointLists_[MaxPointListsPointsNum];
-    };
-
     // Auxiliary functions, move somewhere else later
     static float wrapMinusPiToPi(float angle)
     {
@@ -62,6 +34,34 @@ private:
         return angleWrap2Pi(std::atan2(y, x));
     }
 
+private:
+    class RegionSolverData
+    {
+    public:
+        static constexpr u_int16_t MaxPointsInRegion = 2000;  // TODO: Tune
+        static constexpr u_int8_t Phi0MaxDivisionLevel = 8;   // TODO: Tune
+        static constexpr u_int8_t QOverPtMaxDivisionLevel = 8;   // TODO: Tune
+        static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
+        static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
+        static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
+        static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;   // TODO: This is max possible number of points in all lists combined. Can be tuned
+                                                                                                    // < 6k for 10 smaple events
+        static constexpr u_int8_t LayerHitThreshold = 2;
+
+        u_int16_t regionId_;
+        u_int8_t regionSolutionHitsThreshold_;
+        u_int8_t regionLinesCrossingsThreshold_;
+        u_int8_t regionSkipCrossingsCheckThreshold_;
+        u_int32_t numPoints_;
+        u_int32_t indexes_[MaxPointsInRegion];
+        float rs_[MaxPointsInRegion];
+        float phis_[MaxPointsInRegion];
+        u_int8_t layers_[MaxPointsInRegion];
+        AccumulatorRegion accumulatorRegions_[MaxAccumulatorRegionStackSize];
+        u_int8_t accumulatorRegionStackSize_;
+        u_int32_t pointLists_[MaxPointListsPointsNum];
+    };
+
     void solveRegion(Task& task, RegionSolverData& regionSolverData);
     void filterPointsInWedge(u_int16_t regionId, const Event& event, RegionSolverData& regionSolverData);
     void convertToPolarCoordinates(const Event& event, RegionSolverData& regionSolverData);
@@ -70,7 +70,7 @@ private:
     void processNextAccumulatorRegion(Result& result, RegionSolverData& regionSolverData);
     void fillNewPointList(AccumulatorRegion& region, const AccumulatorRegion& sourceRegion, RegionSolverData& regionSolverData);
     bool regionHit(const AccumulatorRegion& region, const float r, const float phi);
-    bool enoughLayerHits(const RegionSolverData& regionSolverData);
+    bool enoughLayerHits(const AccumulatorRegion& region, const RegionSolverData& regionSolverData);
     bool enoughHitsAndLinesCrossing(const AccumulatorRegion& region, const RegionSolverData& regionSolverData);
     void addSolution(Result& result, const AccumulatorRegion& region);
     void rotateSolutions(Result& result, const u_int32_t regionSolutionsBegin);
@@ -82,6 +82,7 @@ private:
     static constexpr float SpaceMaxQOverPt = 0.0005f;    // TODO: I have no idea what this value should be, tune
     static constexpr u_int8_t SolutionHitsThreshold = 8;    // TODO: Tune
     static constexpr u_int8_t LinesCrossingsThreshold = 3;    // TODO: Tune
+    static constexpr u_int8_t SkipCrossingsCheckThreshold = 8 * SolutionHitsThreshold;    // TODO: Tune
     static constexpr float BMagnitude = 2.0f;   // TODO: Tune
 
     Splitter splitter_;
@@ -113,6 +114,10 @@ private:
     FRIEND_TEST(ProcessNextAccumulatorRegionTest, DivideQOverPtIfMaxDivisionLevelsNotReached);
     FRIEND_TEST(ProcessNextAccumulatorRegionTest, AddSolutionIfMaxDivisionLevelsReached);
     friend class SingleHelixDetectionTest;
+    FRIEND_TEST(SingleHelixDetectionTest, BasicWedge);
+    FRIEND_TEST(SingleHelixDetectionTest, RotatedWedge);
+    FRIEND_TEST(SingleCounterClockwiseHelixInCenterOfWedgeTest, CounterClockwise);
+    FRIEND_TEST(SingleClockwiseHelixInCenterOfWedgeTest, Clockwise);
     friend class MultipleHelixDetectionTest;
     FRIEND_TEST(MultipleHelixDetectionTest, FullEvent);
 };

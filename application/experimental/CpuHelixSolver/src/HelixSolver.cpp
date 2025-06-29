@@ -50,7 +50,9 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
     regionSolverData.regionSolutionHitsThreshold_ = regionSolverData.regionSolutionHitsThreshold_ > 0 ? regionSolverData.regionSolutionHitsThreshold_ : 8;
     regionSolverData.regionLinesCrossingsThreshold_ = splitter_.getSettings().wedges_[regionId - 1].linesCrossingsThreshold_;
     regionSolverData.regionLinesCrossingsThreshold_ = regionSolverData.regionLinesCrossingsThreshold_ > 0 ? regionSolverData.regionLinesCrossingsThreshold_ : 3;
-
+    regionSolverData.regionSkipCrossingsCheckThreshold_ = splitter_.getSettings().wedges_[regionId - 1].skipCrossingsCheckThreshold_;
+    regionSolverData.regionSkipCrossingsCheckThreshold_ = regionSolverData.regionSkipCrossingsCheckThreshold_ > 0 ? regionSolverData.regionSkipCrossingsCheckThreshold_ : HelixSolver::SkipCrossingsCheckThreshold;
+    
     convertToPolarCoordinates(event, regionSolverData);
 
     assignLayers(event, regionSolverData);
@@ -269,7 +271,7 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
     else
     {
         // Max division level reached, add solution
-        if (enoughLayerHits(regionSolverData))
+        if (enoughLayerHits(region, regionSolverData))
         {
             addSolution(result, region);
         }
@@ -285,7 +287,7 @@ bool HelixSolver::enoughHitsAndLinesCrossing(const AccumulatorRegion& region, co
         return false;
     }
 
-    if (numHits > 8 * regionSolverData.regionSolutionHitsThreshold_)
+    if (numHits > regionSolverData.regionSkipCrossingsCheckThreshold_)
     {
         // Too many points in region, assume enough crossings
         return true;
@@ -372,10 +374,10 @@ bool HelixSolver::regionHit(const AccumulatorRegion& region, const float r, cons
     return phi0Left >= phi0Min && phi0Right <= phi0Max;
 }
 
-bool HelixSolver::enoughLayerHits(const RegionSolverData& regionSolverData)
+bool HelixSolver::enoughLayerHits(const AccumulatorRegion& region, const RegionSolverData& regionSolverData)
 {
     u_int32_t layersHit = 0;
-    for (u_int32_t i = 0; i < regionSolverData.numPoints_; ++i)
+    for (u_int32_t i = region.pointListBegin_; i < region.pointListEnd_; ++i)
     {
         layersHit |= 1 << regionSolverData.layers_[regionSolverData.pointLists_[i]];
     }
