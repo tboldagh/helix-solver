@@ -4,7 +4,7 @@ from MathFunctions import *
 import math
 
 
-def generate_spacepoints(x_angle=None, z_angle=None, interaction_z=None, r=None, particle_initial=None, counter_clockwise=True, num_points=10, max_abs_z=3100, max_abs_xy=1100):
+def generate_spacepoints(x_angle=None, z_angle=None, interaction_z=None, r=None, particle_initial=None, counter_clockwise=None, num_points=10, max_abs_z=3100, max_abs_xy=1100):
     def direction_to_angles(dir_x, dir_y, dir_z):
         x_angle = math.atan2(math.sqrt(dir_y ** 2 + dir_x ** 2), dir_z)
         z_angle = math.atan2(dir_y, dir_x)
@@ -13,6 +13,7 @@ def generate_spacepoints(x_angle=None, z_angle=None, interaction_z=None, r=None,
     if x_angle is None:
         x_angle, z_angle = direction_to_angles(particle_initial.direction_x, particle_initial.direction_y, particle_initial.direction_z)
         interaction_z = particle_initial.vz
+        counter_clockwise = counter_clockwise if counter_clockwise is not None else particle_initial.direction_x < 0
         
     phi = z_angle + 0.5 * math.pi
     bend_direction = 1 if counter_clockwise else -1
