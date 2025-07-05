@@ -10,7 +10,7 @@
 SpacepointsGenerator::SpacepointsGenerator(float maxAbsZ, float maxAbsXy)
 : maxAbsZ_(maxAbsZ), maxAbsXy_(maxAbsXy) {}
 
-void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const float xAngle, const float zAngle, const float interactionZ, const float r, const bool counterClockwise, const uint8_t numPoints)
+void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const float xAngle, const float zAngle, const float interactionZ, const float r, const bool counterClockwise, const uint8_t numPoints) const
 {
     float phi = zAngle + 0.5f * M_PI;
     float bendDirection = counterClockwise ? 1.0f : -1.0f;
@@ -42,14 +42,14 @@ void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, 
     }
 }
 
-std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const float xAngle, const float zAngle, const float interactionZ, const float r, const bool counterClockwise, const uint8_t numPoints)
+std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const float xAngle, const float zAngle, const float interactionZ, const float r, const bool counterClockwise, const uint8_t numPoints) const
 {
     std::vector<DataTypes::Spacepoint> output;
     generate(output, xAngle, zAngle, interactionZ, r, counterClockwise, numPoints);
     return output;
 }
 
-void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints)
+void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints) const
 {
     output.reserve(output.size() + sumVector(numPoints));
     for (uint8_t i = 0; i < xAngles.size(); ++i)
@@ -58,40 +58,40 @@ void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, 
     }
 }
 
-std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints)
+std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints) const
 {
     std::vector<DataTypes::Spacepoint> output;
     generate(output, xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
     return output;
 }
 
-void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const DataTypes::ParticleInitial& particleInitial, const float r, const bool counterClockwise, const uint8_t numPoints)
+void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const DataTypes::ParticleInitial& particleInitial, const float r, const bool counterClockwise, const uint8_t numPoints) const
 {
     const auto [xAngle, zAngle] = directionToAngles(particleInitial.directionX_, particleInitial.directionY_, particleInitial.directionZ_);
     generate(output, xAngle, zAngle, particleInitial.vz_, r, counterClockwise, numPoints);
 }
 
-void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const DataTypes::ParticleInitial& particleInitial, const float r, const uint8_t numPoints)
+void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const DataTypes::ParticleInitial& particleInitial, const float r, const uint8_t numPoints) const
 {
     const bool counterClockwise = particleInitial.directionX_ < 0;
     generate(output, particleInitial, r, counterClockwise, numPoints);
 }
 
-std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const DataTypes::ParticleInitial& particleInitial, const float r, const bool counterClockwise, const uint8_t numPoints)
+std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const DataTypes::ParticleInitial& particleInitial, const float r, const bool counterClockwise, const uint8_t numPoints) const
 {
     std::vector<DataTypes::Spacepoint> output;
     generate(output, particleInitial, r, counterClockwise, numPoints);
     return output;
 }
 
-std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const DataTypes::ParticleInitial& particleInitial, const float r, const uint8_t numPoints)
+std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const DataTypes::ParticleInitial& particleInitial, const float r, const uint8_t numPoints) const
 {
     std::vector<DataTypes::Spacepoint> output;
     generate(output, particleInitial, r, numPoints);
     return output;
 }
 
-void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwises, const std::vector<uint8_t>& numPoints)
+void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwises, const std::vector<uint8_t>& numPoints) const
 {
     output.reserve(output.size() + sumVector(numPoints));
     for (uint8_t i = 0; i < particleInitials.size(); ++i)
@@ -100,14 +100,14 @@ void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, 
     }
 }
 
-std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwises, const std::vector<uint8_t>& numPoints)
+std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwises, const std::vector<uint8_t>& numPoints) const
 {
     std::vector<DataTypes::Spacepoint> output;
     generate(output, particleInitials, rs, counterClockwises, numPoints);
     return output;
 }
 
-void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<uint8_t>& numPoints)
+void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<uint8_t>& numPoints) const
 {
     output.reserve(output.size() + sumVector(numPoints));
     for (uint8_t i = 0; i < particleInitials.size(); ++i)
@@ -116,7 +116,7 @@ void SpacepointsGenerator::generate(std::vector<DataTypes::Spacepoint>& output, 
     }
 }
 
-std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<uint8_t>& numPoints)
+std::vector<DataTypes::Spacepoint> SpacepointsGenerator::generate(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<uint8_t>& numPoints) const
 {
     std::vector<DataTypes::Spacepoint> output;
     generate(output, particleInitials, rs, numPoints);

@@ -29,4 +29,6 @@ PRIVATE
     CpuHelixSolver
     Logger
     RootEventLoader
+    DataTypes
+    SpacepointsGenerator
 )

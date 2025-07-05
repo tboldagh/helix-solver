@@ -6,6 +6,9 @@
 #include "Logger/OstreamLogger.h"
 #include "Logger/Logger.h"
 #include "RootEventLoader/RootEventLoader.h"
+#include "SpacepointsGenerator/SpacepointsGenerator.h"
+#include "DataTypes/Spacepoint.h"
+#include "DataTypes/ParticleInitial.h"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -511,22 +514,6 @@ TEST_F(ProcessNextAccumulatorRegionTest, AddSolutionIfMaxDivisionLevelsReached)
 class SingleHelixDetectionTest : public FillNewPointListTest
 {
 protected:
-    class Particle
-    {
-    public:
-        Particle(float xAngle, float zAngle, float interactionZ, float r, bool counterClockwise, uint8_t numPoints, float maxAbsXY, float maxAbsZ)
-        : xAngle_(xAngle), zAngle_(zAngle), interactionZ_(interactionZ), r_(r), counterClockwise_(counterClockwise), numPoints_(numPoints), maxAbsXY_(maxAbsXY), maxAbsZ_(maxAbsZ) {}
-
-        const float xAngle_;
-        const float zAngle_;
-        const float interactionZ_;
-        const float r_;
-        const bool counterClockwise_;
-        const uint8_t numPoints_;
-        const float maxAbsXY_;
-        const float maxAbsZ_;
-    };
-
     SingleHelixDetectionTest()
     : logger_(std::cout)
     {
@@ -541,58 +528,36 @@ protected:
         return minValue + t * (maxValue - minValue);
     }
 
-    void generateParticles(const std::vector<Particle>& particles)
+    void generateSpacepoints(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints)
     {
-        for (const auto& particle : particles)
+        constexpr float maxAbsXy = 1100.0f;
+        constexpr float maxAbsZ = 3100.0f;
+        SpacepointsGenerator spacepointsGenerator_(maxAbsZ, maxAbsXy);
+        std::vector<DataTypes::Spacepoint> spacepoints = spacepointsGenerator_.generate(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
+    
+        for (const auto& spacepoint : spacepoints)
         {
-            LOG_DEBUG("Particle: xAngle: " + std::to_string(particle.xAngle_) + ", zAngle: " + std::to_string(particle.zAngle_));
-            const float bendDirection = particle.counterClockwise_ ? 1.0f : -1.0f;
-            const float phi = particle.zAngle_ + 0.5f * M_PI;
-
-            const float directionZ = std::cos(particle.xAngle_);
-            const float directionXY = std::sin(particle.xAngle_);
-
-            const float scale = std::min(std::abs(particle.maxAbsXY_ / std::max(directionXY, 1e-6f)), std::abs((particle.maxAbsZ_ - particle.interactionZ_) / std::max(directionZ, 1e-6f)));
-            const float farZ = directionZ * scale + particle.interactionZ_;
-            const float farXY = directionXY * scale;
-            const float farAlpha = farXY / particle.r_ * bendDirection;
-
-            const float centerX = particle.r_ * std::cos(phi) * bendDirection;
-            const float centerY = particle.r_ * std::sin(phi) * bendDirection;
-
-            for (u_int8_t i = 0; i < particle.numPoints_; ++i)
-            {
-                const float t = static_cast<float>(i + 1) / particle.numPoints_;
-
-                const float alpha = lerp(0, farAlpha, t);
-                const float z = lerp(particle.interactionZ_, farZ, t);
-
-                const float x = (-centerX * std::cos(alpha) - (-centerY * std::sin(alpha))) + centerX;
-                const float y = -centerY * std::cos(alpha) + (-centerX * std::sin(alpha)) + centerY;
-
-                const u_int32_t index = event_.numPoints_;
-                event_.xs_[index] = x;
-                event_.ys_[index] = y;
-                event_.zs_[index] = z;
-                event_.numPoints_++;
-            }
+            event_.xs_[event_.numPoints_] = spacepoint.x_;
+            event_.ys_[event_.numPoints_] = spacepoint.y_;
+            event_.zs_[event_.numPoints_] = spacepoint.z_;
+            event_.numPoints_++;
         }
     }
 
-    void generateParticlesAndSolve(const std::vector<Particle>& particles, u_int16_t regionId)
+    void generateSpacepointsAndSolve(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints, u_int16_t regionId)
     {
-        generateParticles(particles);
+        generateSpacepoints(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
 
-        const u_int32_t numPoints = event_.numPoints_;
+        const u_int32_t eventNumPoints = event_.numPoints_;
 
-        // for (u_int32_t i = 0; i < numPoints; ++i)
+        // for (u_int32_t i = 0; i < eventNumPoints; ++i)
         // {
         //     LOG_DEBUG("(" + std::to_string(event_.xs_[i]) + ", " + std::to_string(event_.ys_[i]) + ", " + std::to_string(event_.zs_[i]) + ")");
         // }
 
         regionSolverData_.regionId_ = regionId;
-        regionSolverData_.numPoints_ = numPoints;
-        for (u_int32_t i = 0; i < event_.numPoints_; ++i)
+        regionSolverData_.numPoints_ = eventNumPoints;
+        for (u_int32_t i = 0; i < eventNumPoints; ++i)
         {
             regionSolverData_.indexes_[i] = i;
         }
@@ -684,23 +649,20 @@ protected:
 
 TEST_F(SingleHelixDetectionTest, BasicWedge)
 {
-    const SplitterSettings& settings_ = getSplitterSettings();
-    const SplitterSettings::Wedge wedge = settings_.wedges_[1];
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[1];
     const float xAngle = (wedge.xAngleMin_ + wedge.xAngleMax_) / 2;
     const float zAngle = (wedge.zAngleMin_ + wedge.zAngleMax_) / 2;
     const float interactionZ = 0.0f;
     const float r = 10000.0f;
     const bool counterClockwise = true;
-    const uint8_t numPoints = 2 * HelixSolver::SolutionHitsThreshold;
-    const float maxAbsXY = settings_.maxAbsXy_;
-    const float maxAbsZ = settings_.maxAbsZ_;
+    const uint8_t numPoints = 10;
 
     regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
     regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
     regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
 
-    std::vector<Particle> particles = {{xAngle, zAngle, interactionZ, r, counterClockwise, numPoints, maxAbsXY, maxAbsZ}};
-    generateParticlesAndSolve(particles, wedge.id_);
+    generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
 
     const float expectedPhi = zAngle + 0.5f * M_PI;
     EXPECT_TRUE(matchingSolutionExists(r, expectedPhi));
@@ -709,23 +671,20 @@ TEST_F(SingleHelixDetectionTest, BasicWedge)
 
 TEST_F(SingleHelixDetectionTest, RotatedWedge)
 {
-    const SplitterSettings& settings_ = getSplitterSettings();
-    const SplitterSettings::Wedge wedge = settings_.wedges_[0];
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[0];
     const float xAngle = (wedge.xAngleMin_ + wedge.xAngleMax_) / 2;
     const float zAngle = (2 * M_PI - wedge.zAngleMin_ + wedge.zAngleMax_) / 2;
     const float interactionZ = 0.0f;
     const float r = 10000.0f;
     const bool counterClockwise = true;
-    const uint8_t numPoints = 2 * HelixSolver::SolutionHitsThreshold;
-    const float maxAbsXY = settings_.maxAbsXy_;
-    const float maxAbsZ = settings_.maxAbsZ_;
+    const uint8_t numPoints = 10;
 
     regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
     regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
     regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
 
-    std::vector<Particle> particles = {{xAngle, zAngle, interactionZ, r, counterClockwise, numPoints, maxAbsXY, maxAbsZ}};
-    generateParticlesAndSolve(particles, wedge.id_);
+    generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
 
     const float expectedPhi = zAngle + 0.5f * M_PI;
     EXPECT_TRUE(matchingSolutionExists(r, expectedPhi));
@@ -735,23 +694,20 @@ TEST_F(SingleHelixDetectionTest, RotatedWedge)
 class SingleCounterClockwiseHelixInCenterOfWedgeTest : public SingleHelixDetectionTest, public ::testing::WithParamInterface<int> {};
 TEST_P(SingleCounterClockwiseHelixInCenterOfWedgeTest, CounterClockwise)
 {
-    const SplitterSettings& settings_ = getSplitterSettings();
-    const SplitterSettings::Wedge wedge = settings_.wedges_[GetParam()];
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[GetParam()];
     const float xAngle = (wedge.xAngleMin_ + wedge.xAngleMax_) / 2;
     const float zAngle = wedge.zAngleMin_ < wedge.zAngleMax_ ? (wedge.zAngleMin_ + wedge.zAngleMax_) / 2 : (2 * M_PI - wedge.zAngleMin_ + wedge.zAngleMax_) / 2;
     const float interactionZ = 0.0f;
     const float r = 10000.0f;
     const bool counterClockwise = true;
-    const uint8_t numPoints = 2 * HelixSolver::SolutionHitsThreshold;
-    const float maxAbsXY = settings_.maxAbsXy_;
-    const float maxAbsZ = settings_.maxAbsZ_;
+    const uint8_t numPoints = 10;
 
     regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
     regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
     regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
 
-    std::vector<Particle> particles = {{xAngle, zAngle, interactionZ, r, counterClockwise, numPoints, maxAbsXY, maxAbsZ}};
-    generateParticlesAndSolve(particles, wedge.id_);
+    generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
 
     const float expectedPhi = zAngle + 0.5f * M_PI;
     EXPECT_TRUE(matchingSolutionExists(r, expectedPhi));
@@ -762,23 +718,20 @@ INSTANTIATE_TEST_SUITE_P(CounterClockwiseParticle, SingleCounterClockwiseHelixIn
 // class SingleClockwiseHelixInCenterOfWedgeTest : public SingleHelixDetectionTest, public ::testing::WithParamInterface<int> {};
 // TEST_P(SingleClockwiseHelixInCenterOfWedgeTest, Clockwise)
 // {
-//     const SplitterSettings& settings_ = getSplitterSettings();
-//     const SplitterSettings::Wedge wedge = settings_.wedges_[GetParam()];
+//     const SplitterSettings& settings = getSplitterSettings();
+//     const SplitterSettings::Wedge wedge = settings.wedges_[GetParam()];
 //     const float xAngle = (wedge.xAngleMin_ + wedge.xAngleMax_) / 2;
 //     const float zAngle = wedge.zAngleMin_ < wedge.zAngleMax_ ? (wedge.zAngleMin_ + wedge.zAngleMax_) / 2 : (2 * M_PI - wedge.zAngleMin_ + wedge.zAngleMax_) / 2;
 //     const float interactionZ = 0.0f;
 //     const float r = 10000.0f;
 //     const bool counterClockwise = false;
 //     const uint8_t numPoints = 2 * HelixSolver::SolutionHitsThreshold;
-//     const float maxAbsXY = settings_.maxAbsXy_;
-//     const float maxAbsZ = settings_.maxAbsZ_;
 
 //     regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
 //     regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
 //     regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
 
-//     std::vector<Particle> particles = {{xAngle, zAngle, interactionZ, r, counterClockwise, numPoints, maxAbsXY, maxAbsZ}};
-//     generateParticlesAndSolve(particles, wedge.id_);
+//     generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
 
 //     const float expectedPhi = zAngle + 0.5f * M_PI;
 //     EXPECT_TRUE(matchingSolutionExists(r, expectedPhi));

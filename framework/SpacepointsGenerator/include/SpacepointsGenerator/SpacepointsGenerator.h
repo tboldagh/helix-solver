@@ -12,21 +12,21 @@ class SpacepointsGenerator
 public:
     SpacepointsGenerator(float maxAbsZ, float maxAbsXy);
 
-    void generate(std::vector<DataTypes::Spacepoint>& output, const float xAngle, const float zAngle, const float interactionZ, const float r, const bool counterClockwise, const uint8_t numPoints);
-    std::vector<DataTypes::Spacepoint> generate(const float xAngle, const float zAngle, const float interactionZ, const float r, const bool counterClockwise, const uint8_t numPoints);
+    void generate(std::vector<DataTypes::Spacepoint>& output, const float xAngle, const float zAngle, const float interactionZ, const float r, const bool counterClockwise, const uint8_t numPoints) const;
+    std::vector<DataTypes::Spacepoint> generate(const float xAngle, const float zAngle, const float interactionZ, const float r, const bool counterClockwise, const uint8_t numPoints) const;
     
-    void generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints);
-    std::vector<DataTypes::Spacepoint> generate(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints);
+    void generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints) const;
+    std::vector<DataTypes::Spacepoint> generate(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints) const;
 
-    void generate(std::vector<DataTypes::Spacepoint>& output, const DataTypes::ParticleInitial& particleInitial, const float r, const bool counterClockwise, const uint8_t numPoints);
-    void generate(std::vector<DataTypes::Spacepoint>& output, const DataTypes::ParticleInitial& particleInitial, const float r, const uint8_t numPoints);
-    std::vector<DataTypes::Spacepoint> generate(const DataTypes::ParticleInitial& particleInitial, const float r, const bool counterClockwise, const uint8_t numPoints);
-    std::vector<DataTypes::Spacepoint> generate(const DataTypes::ParticleInitial& particleInitial, const float r, const uint8_t numPoints);
+    void generate(std::vector<DataTypes::Spacepoint>& output, const DataTypes::ParticleInitial& particleInitial, const float r, const bool counterClockwise, const uint8_t numPoints) const;
+    void generate(std::vector<DataTypes::Spacepoint>& output, const DataTypes::ParticleInitial& particleInitial, const float r, const uint8_t numPoints) const;
+    std::vector<DataTypes::Spacepoint> generate(const DataTypes::ParticleInitial& particleInitial, const float r, const bool counterClockwise, const uint8_t numPoints) const;
+    std::vector<DataTypes::Spacepoint> generate(const DataTypes::ParticleInitial& particleInitial, const float r, const uint8_t numPoints) const;
 
-    void generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwises, const std::vector<uint8_t>& numPoints);
-    void generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<uint8_t>& numPoints);
-    std::vector<DataTypes::Spacepoint> generate(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwises, const std::vector<uint8_t>& numPoints);
-    std::vector<DataTypes::Spacepoint> generate(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<uint8_t>& numPoints);
+    void generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwises, const std::vector<uint8_t>& numPoints) const;
+    void generate(std::vector<DataTypes::Spacepoint>& output, const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<uint8_t>& numPoints) const;
+    std::vector<DataTypes::Spacepoint> generate(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwises, const std::vector<uint8_t>& numPoints) const;
+    std::vector<DataTypes::Spacepoint> generate(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<uint8_t>& numPoints) const;
 
 private:
     float maxAbsZ_;
