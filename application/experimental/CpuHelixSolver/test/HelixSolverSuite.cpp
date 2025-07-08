@@ -511,17 +511,17 @@ TEST_F(ProcessNextAccumulatorRegionTest, AddSolutionIfMaxDivisionLevelsReached)
 }
 
 
-class SingleHelixDetectionTest : public FillNewPointListTest
+class HelixDetectionTest : public FillNewPointListTest
 {
 protected:
-    SingleHelixDetectionTest()
+    HelixDetectionTest()
     : logger_(std::cout)
     {
         logger_.setMinSeverity(Logger::LogMessage::Severity::Debug);
         Logger::ILogger::setGlobalInstance(&logger_);
     }
     
-    ~SingleHelixDetectionTest() override = default;
+    ~HelixDetectionTest() override = default;
 
     static float lerp(float minValue, float maxValue, float t)
     {
@@ -641,13 +641,30 @@ protected:
         EXPECT_TRUE(matchingSolutionExists(expectedR, expectedPhi));
     }
 
+    u_int32_t nextRandomInt(uint32_t minValue, uint32_t maxValue)
+    {
+        randomGeneratorValue = (randomGeneratorValue * randomGeneratorA + randomGeneratorC) % randomGeneratorM;
+        return minValue + (randomGeneratorValue % (maxValue - minValue));
+    }
+
+    float nextRandomFloat(float minValue, float maxValue)
+    {
+        return minValue + static_cast<float>(nextRandomInt(0, 10000)) / 10000.0f * (maxValue - minValue);
+    }
+
     Logger::OstreamLogger logger_;
 
     static constexpr u_int32_t eventId = 42;
     static constexpr u_int32_t resultId = 42;
+
+    // linear congruential generator
+    static constexpr u_int32_t randomGeneratorA = 1103515245;
+    static constexpr u_int32_t randomGeneratorC = 12345;
+    static constexpr u_int32_t randomGeneratorM = 2147483648;
+    u_int32_t randomGeneratorValue = 42;
 };
 
-TEST_F(SingleHelixDetectionTest, BasicWedge)
+TEST_F(HelixDetectionTest, SingleHelixBasicWedge)
 {
     const SplitterSettings& settings = getSplitterSettings();
     const SplitterSettings::Wedge wedge = settings.wedges_[1];
@@ -669,7 +686,7 @@ TEST_F(SingleHelixDetectionTest, BasicWedge)
     EXPECT_TRUE(solutionsDoNotRepeat());
 }
 
-TEST_F(SingleHelixDetectionTest, RotatedWedge)
+TEST_F(HelixDetectionTest, SingleHelixRotatedWedge)
 {
     const SplitterSettings& settings = getSplitterSettings();
     const SplitterSettings::Wedge wedge = settings.wedges_[0];
@@ -691,7 +708,7 @@ TEST_F(SingleHelixDetectionTest, RotatedWedge)
     EXPECT_TRUE(solutionsDoNotRepeat());
 }
 
-class SingleCounterClockwiseHelixInCenterOfWedgeTest : public SingleHelixDetectionTest, public ::testing::WithParamInterface<int> {};
+class SingleCounterClockwiseHelixInCenterOfWedgeTest : public HelixDetectionTest, public ::testing::WithParamInterface<int> {};
 TEST_P(SingleCounterClockwiseHelixInCenterOfWedgeTest, CounterClockwise)
 {
     const SplitterSettings& settings = getSplitterSettings();
@@ -739,108 +756,187 @@ INSTANTIATE_TEST_SUITE_P(CounterClockwiseParticle, SingleCounterClockwiseHelixIn
 // }
 // INSTANTIATE_TEST_SUITE_P(ClockwiseParticle, SingleClockwiseHelixInCenterOfWedgeTest, ::testing::Range(0, 256));
 
-class MultipleHelixDetectionTest : public SingleHelixDetectionTest
+TEST_F(HelixDetectionTest, MultipleHelixesBasicWedge)
 {
-protected:
-    MultipleHelixDetectionTest() = default;
-    ~MultipleHelixDetectionTest() override = default;
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[1];
 
-    // class Helix
-    // {
-    // public:
-    //     Helix(float r, float phi, float xAngle, u_int8_t numPoints)
-    //     : r_(r), phi_(phi), xAngle_(xAngle), numPoints_(numPoints) {}
+    std::vector<float> xAngles;
+    std::vector<float> zAngles;
+    std::vector<float> interactionZs;
+    std::vector<float> rs;
+    std::vector<bool> counterClockwise;
+    std::vector<uint8_t> numPoints;
+    constexpr u_int32_t numHelixes = 20;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
+        zAngles.push_back(nextRandomFloat(wedge.zAngleMin_, wedge.zAngleMax_));
+        interactionZs.push_back(nextRandomFloat(settings.interactionRegionMin_, settings.interactionRegionMax_));
+        rs.push_back(nextRandomFloat(2000.0f, 10000.0f));
+        counterClockwise.push_back(true);
+        numPoints.push_back(8);
+    }
 
-    //     float r_;
-    //     float phi_;
-    //     float xAngle_;
-    //     u_int8_t numPoints_;
-    // };
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;    
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
 
-    // void createHelixPoints(const std::vector<Helix>& helixes)
-    // {
-    //     for (const Helix& helix : helixes)
-    //     {
-    //         SingleHelixDetectionTest::createHelixPoints(helix.r_, helix.phi_, helix.xAngle_, helix.numPoints_);
-    //     }
-    // }
-
-    // void createRunAndExtractResult(u_int16_t regionIndex, const std::vector<Helix>& helixes)
-    // {
-    //     // Create event
-    //     createHelixPoints(helixes);
-
-    //     // for (u_int32_t i = 0; i < numPoints; ++i)
-    //     // {
-    //     //     std::cout << "\t(" << event_.xs_[i] << ", " << event_.ys_[i] << ", " << event_.zs_[i] << ")," << std::endl;
-    //     // }
-
-    //     regionSolverData_.regionId_ = regionIndex + 1;
-    //     helixSolver_.solveRegion(task_, regionSolverData_);
-    // }
-};
-
-// TEST_F(MultipleHelixDetectionTest, Basic)
-// {
-//     constexpr u_int16_t regionIndex = 1;
-//     const std::vector<Helix> helixes = {
-//         Helix(2000.0f, 1.9f, 0.8f, 12),
-//         Helix(2000.0f, 2.0f, 0.6f, 12),
-//         Helix(2000.0f, 2.1f, 0.5f, 12),
-//         Helix(5000.0f, 1.9f, 0.8f, 10),
-//         Helix(5000.0f, 2.0f, 0.4f, 10),
-//         Helix(5000.0f, 2.1f, 0.8f, 10),
-//         Helix(10000.0f, 1.9f, 0.8f, 12),
-//         Helix(10000.0f, 2.0f, 0.4f, 12),
-//         Helix(10000.0f, 2.1f, 0.1f, 8),
-//         Helix(20000.0f, 2.0f, 0.2f, 10),
-//         Helix(20000.0f, 2.1f, 0.7f, 10),
-//         Helix(20000.0f, 2.2f, 0.8f, 10)
-//     };
-
-//     createRunAndExtractResult(regionIndex, helixes);
+    generateSpacepointsAndSolve(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints, wedge.id_);
     
-//     // saveResult("/tmp/ut_sandbox/result_MultipleHelixDetectionTest_Basic.csv");
+    std::vector<float> expectedPhis;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        expectedPhis.push_back(zAngles[i] + 0.5f * M_PI);
+    }
 
-//     bool allHelixesFound = true;
-//     for (const Helix& helix : helixes)
-//     {
-//         allHelixesFound &= matchingSolutionExists(helix.r_, helix.phi_);
-//     }
-//     EXPECT_TRUE(allHelixesFound);
-// }
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        EXPECT_TRUE(matchingSolutionExists(rs[i], expectedPhis[i]));
+    }
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
 
-// TEST_F(MultipleHelixDetectionTest, Rotated)
-// {
-//     constexpr u_int16_t regionIndex = 0;
-//     const std::vector<Helix> helixes = {
-//         Helix(2000.0f, 1.5f, 0.8f, 12),
-//         Helix(2000.0f, 1.6f, 0.5f, 12),
-//         Helix(2000.0f, 1.7f, 0.2f, 12),
-//         Helix(5000.0f, 1.5f, 0.8f, 10),
-//         Helix(5000.0f, 1.6f, 0.4f, 8),
-//         Helix(5000.0f, 1.7f, 0.9f, 10),
-//         Helix(10000.0f, 1.6f, 0.8f, 12),
-//         Helix(10000.0f, 1.6f, 0.4f, 12),
-//         Helix(10000.0f, 1.7f, 0.1f, 8),
-//         Helix(20000.0f, 1.6f, 0.2f, 10),
-//         Helix(20000.0f, 1.7f, 0.7f, 10),
-//         Helix(20000.0f, 1.8f, 0.8f, 12)
-//     };
+TEST_F(HelixDetectionTest, MultipleHelixesRotatedWedge)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[0];
 
-//     createRunAndExtractResult(regionIndex, helixes);
+    std::vector<float> xAngles;
+    std::vector<float> zAngles;
+    std::vector<float> interactionZs;
+    std::vector<float> rs;
+    std::vector<bool> counterClockwise;
+    std::vector<uint8_t> numPoints;
+    constexpr u_int32_t numHelixes = 20;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        const float zAngleMin = wedge.zAngleMin_ < wedge.zAngleMax_ ? wedge.zAngleMax_ : 2 * M_PI - wedge.zAngleMin_;
+        float zAngle = nextRandomFloat(zAngleMin, wedge.zAngleMax_);
+        zAngle = zAngle >= 0 ? zAngle : 2 * M_PI - zAngle;
+
+        xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
+        zAngles.push_back(zAngle);
+        interactionZs.push_back(nextRandomFloat(settings.interactionRegionMin_, settings.interactionRegionMax_));
+        rs.push_back(nextRandomFloat(2000.0f, 10000.0f));
+        counterClockwise.push_back(true);
+        numPoints.push_back(8);
+    }
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;    
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints, wedge.id_);
     
-//     // saveResult("/tmp/ut_sandbox/result_MultipleHelixDetectionTest_Rotated.csv");
+    std::vector<float> expectedPhis;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        expectedPhis.push_back(zAngles[i] + 0.5f * M_PI);
+    }
 
-//     bool allHelixesFound = true;
-//     for (const Helix& helix : helixes)
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        EXPECT_TRUE(matchingSolutionExists(rs[i], expectedPhis[i]));
+    }
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+
+class MultipleCounterClockwiseHelixInCenterOfWedgeTest : public HelixDetectionTest, public ::testing::WithParamInterface<int> {};
+TEST_P(MultipleCounterClockwiseHelixInCenterOfWedgeTest, CounterClockwise)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[GetParam()];
+
+    std::vector<float> xAngles;
+    std::vector<float> zAngles;
+    std::vector<float> interactionZs;
+    std::vector<float> rs;
+    std::vector<bool> counterClockwise;
+    std::vector<uint8_t> numPoints;
+    constexpr u_int32_t numHelixes = 20;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        const float zAngleMin = wedge.zAngleMin_ < wedge.zAngleMax_ ? wedge.zAngleMax_ : 2 * M_PI - wedge.zAngleMin_;
+        float zAngle = nextRandomFloat(zAngleMin, wedge.zAngleMax_);
+        zAngle = zAngle >= 0 ? zAngle : 2 * M_PI - zAngle;
+
+        xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
+        zAngles.push_back(zAngle);
+        interactionZs.push_back(nextRandomFloat(settings.interactionRegionMin_, settings.interactionRegionMax_));
+        rs.push_back(nextRandomFloat(2000.0f, 10000.0f));
+        counterClockwise.push_back(true);
+        numPoints.push_back(8);
+    }
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints, wedge.id_);
+
+    std::vector<float> expectedPhis;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        expectedPhis.push_back(zAngles[i] + 0.5f * M_PI);
+    }
+
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        EXPECT_TRUE(matchingSolutionExists(rs[i], expectedPhis[i]));
+    }
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+INSTANTIATE_TEST_SUITE_P(CounterClockwiseParticle, MultipleCounterClockwiseHelixInCenterOfWedgeTest, ::testing::Range(0, 256));
+
+// class MultipleClockwiseHelixInCenterOfWedgeTest : public HelixDetectionTest, public ::testing::WithParamInterface<int> {};
+// TEST_P(MultipleClockwiseHelixInCenterOfWedgeTest, Clockwise)
+// {
+//     const SplitterSettings& settings = getSplitterSettings();
+//     const SplitterSettings::Wedge wedge = settings.wedges_[GetParam()];
+
+//     std::vector<float> xAngles;
+//     std::vector<float> zAngles;
+//     std::vector<float> interactionZs;
+//     std::vector<float> rs;
+//     std::vector<bool> counterClockwise;
+//     std::vector<uint8_t> numPoints;
+//     constexpr u_int32_t numHelixes = 20;
+//     for (u_int32_t i = 0; i < numHelixes; ++i)
 //     {
-//         allHelixesFound &= matchingSolutionExists(helix.r_, helix.phi_);
-//     }
-//     EXPECT_TRUE(allHelixesFound);
-// }
+//         const float zAngleMin = wedge.zAngleMin_ < wedge.zAngleMax_ ? wedge.zAngleMax_ : 2 * M_PI - wedge.zAngleMin_;
+//         float zAngle = nextRandomFloat(zAngleMin, wedge.zAngleMax_);
+//         zAngle = zAngle >= 0 ? zAngle : 2 * M_PI - zAngle;
 
-TEST_F(MultipleHelixDetectionTest, FullEvent)
+//         xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
+//         zAngles.push_back(zAngle);
+//         interactionZs.push_back(nextRandomFloat(settings.interactionRegionMin_, settings.interactionRegionMax_));
+//         rs.push_back(nextRandomFloat(2000.0f, 10000.0f));
+//         counterClockwise.push_back(false);
+//         numPoints.push_back(8);
+//     }
+
+//     regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+//     regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+//     regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+//     generateSpacepointsAndSolve(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints, wedge.id_);
+
+//     std::vector<float> expectedPhis;
+//     for (u_int32_t i = 0; i < numHelixes; ++i)
+//     {
+//         expectedPhis.push_back(zAngles[i] + 0.5f * M_PI);
+//     }
+
+//     for (u_int32_t i = 0; i < numHelixes; ++i)
+//     {
+//         EXPECT_TRUE(matchingSolutionExists(rs[i], expectedPhis[i]));
+//     }
+//     EXPECT_TRUE(solutionsDoNotRepeat());
+// }
+// INSTANTIATE_TEST_SUITE_P(ClockwiseParticle, MultipleClockwiseHelixInCenterOfWedgeTest, ::testing::Range(0, 256));
+
+TEST_F(HelixDetectionTest, FullEvent)
 {
     // This test assumes that full event contains at least one helix candidate for each region.
     // Goal is to assert that the kernel is able to find helixes in all regions. There is no
@@ -856,31 +952,32 @@ TEST_F(MultipleHelixDetectionTest, FullEvent)
         if (region.xAngleMin_ < 0.2f || region.xAngleMin_ > 2.5f)
         {
             region.solutionHitsThreshold_ = 12;
-            region.linesCrossingsThreshold_ = 5;
-            region.skipCrossingsCheckThreshold_ = 8 * region.solutionHitsThreshold_;
+            region.linesCrossingsThreshold_ = 4;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
         else if (region.xAngleMin_ < 0.8f || region.xAngleMin_ > 2.0f)
         {
-            region.solutionHitsThreshold_ = 10;
+            region.solutionHitsThreshold_ = 8;
             region.linesCrossingsThreshold_ = 3;
-            region.skipCrossingsCheckThreshold_ = 8 * region.solutionHitsThreshold_;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
         else if (region.xAngleMin_ < 1.0f || region.xAngleMin_ > 1.8f)
         {
-            region.solutionHitsThreshold_ = 8;
+            region.solutionHitsThreshold_ = 7;
             region.linesCrossingsThreshold_ = 3;
-            region.skipCrossingsCheckThreshold_ = 8 * region.solutionHitsThreshold_;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
         else if (region.xAngleMin_ < 1.4f || region.xAngleMin_ > 1.6f)
         {
-            region.solutionHitsThreshold_ = 8;
+            region.solutionHitsThreshold_ = 7;
             region.linesCrossingsThreshold_ = 3;
-            region.skipCrossingsCheckThreshold_ = 8 * region.solutionHitsThreshold_;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
         else
         {
-            region.solutionHitsThreshold_ = 3;
-            region.skipCrossingsCheckThreshold_ = 8 * region.solutionHitsThreshold_;
+            region.solutionHitsThreshold_ = 7;
+            region.linesCrossingsThreshold_ = 3;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
     }
     helixSolver_.setSplitter(splitter_);
