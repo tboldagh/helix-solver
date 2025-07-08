@@ -229,14 +229,14 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMaxPhi0Min();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 2].pointListEnd_;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 2].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, regionSolverData);
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMaxPhi0Max();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 3].pointListEnd_;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 3].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd_ = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd_;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, regionSolverData);
         accumulatorRegionStackSize++;
     }

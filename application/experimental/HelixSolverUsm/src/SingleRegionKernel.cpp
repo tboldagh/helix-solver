@@ -178,14 +178,14 @@ void SingleRegionKernel::processNextAccumulatorRegion(u_int16_t regionId, Accumu
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMaxPhi0Min();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 2].pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 2].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
 
         accumulatorRegions[accumulatorRegionStackSize] = region.subregionQOverPtMaxPhi0Max();
-        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 3].pointListEnd;
-        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 3].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListBegin = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
+        accumulatorRegions[accumulatorRegionStackSize].pointListEnd = accumulatorRegions[accumulatorRegionStackSize - 1].pointListEnd;
         fillNewPointList(accumulatorRegions[accumulatorRegionStackSize], region, pointLists, rs, phis);
         accumulatorRegionStackSize++;
     }
