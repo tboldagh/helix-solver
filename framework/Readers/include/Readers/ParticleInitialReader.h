@@ -13,6 +13,7 @@ class ParticleInitialReader
 public:
     ParticleInitialReader(const std::string& path);
 
+    void readRootAll(std::vector<DataTypes::ParticleInitial>& particlesInitial);
     std::vector<DataTypes::ParticleInitial> readRootAll();
 
 private:

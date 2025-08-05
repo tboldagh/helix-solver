@@ -131,7 +131,7 @@ float SpacepointsGenerator::lerp(const float minValue, const float maxValue, con
 std::pair<float, float> SpacepointsGenerator::directionToAngles(const float directionX, const float directionY, const float directionZ)
 {
     float xAngle = std::atan2(std::sqrt(directionY * directionY + directionX * directionX), directionZ);
-    float zAngle = std::atan2(directionY, directionX);
+    float zAngle = angleWrap2Pi(std::atan2(directionY, directionX));
     return std::make_pair(xAngle, zAngle);
 }
 
@@ -143,4 +143,9 @@ uint32_t SpacepointsGenerator::sumVector(const std::vector<uint8_t>& vector)
         sum += value;
     }
     return sum;
+}
+
+float SpacepointsGenerator::angleWrap2Pi(const float angle)
+{
+    return angle - 2.0f * M_PI * std::floor(angle / (2.0f * M_PI));
 }

@@ -8,11 +8,11 @@ namespace DataTypes
 class ParticleInitial
 {
 public:
-    ParticleInitial(uint32_t eventId, uint32_t particleId, uint32_t particleType, uint32_t process, float vx, float vy, float vz, float vt, float px, float py, float pz, float m, float q, float eta, float phi, float pt, float p, uint32_t vertexPrimaryId, uint32_t vertexSecondaryId, uint32_t particles, uint32_t generation, uint32_t subParticleId);
+    ParticleInitial(uint32_t eventId, uint64_t particleId, uint32_t particleType, uint32_t process, float vx, float vy, float vz, float vt, float px, float py, float pz, float m, float q, float eta, float phi, float pt, float p, uint32_t vertexPrimaryId, uint32_t vertexSecondaryId, uint32_t particles, uint32_t generation, uint32_t subParticleId);
     ParticleInitial(float vx, float vy, float vz, float px, float py, float pz, float p);
 
     uint32_t eventId_;
-    uint32_t particleId_;
+    uint64_t particleId_;
     uint32_t particleType_;
     uint32_t process_;
     float vx_;

@@ -18,6 +18,11 @@ std::vector<DataTypes::Spacepoint> SpacepointsReader::readRootAll()
     LOG_DEBUG("Reading spacepoints from file: " + path_);
 
     TFile file(path_.c_str());
+    if (!file.IsOpen())
+    {
+        LOG_ERROR("Failed to read spacepoints from file: " + path_ + ", file not found");
+        return {};
+    }
 
     TTreeReader reader("spacepoints", &file);
     if (!reader.GetTree())

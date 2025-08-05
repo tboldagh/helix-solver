@@ -16,14 +16,27 @@ ParticleInitialReader::ParticleInitialReader(const std::string& path)
 
 std::vector<DataTypes::ParticleInitial> ParticleInitialReader::readRootAll()
 {
+    std::vector<DataTypes::ParticleInitial> particlesInitial;
+    readRootAll(particlesInitial);
+    return particlesInitial;
+}
+
+void ParticleInitialReader::readRootAll(std::vector<DataTypes::ParticleInitial>& particlesInitial)
+{
     LOG_DEBUG("Reading particles initial from file: " + path_);
 
     TFile file(path_.c_str());
+    if (!file.IsOpen())
+    {
+        LOG_ERROR("Failed to read particles initial from file: " + path_ + ", file not found");
+        return;
+    }
+
     TTreeReader reader("particles", &file);
     if (!reader.GetTree())
     {
         LOG_ERROR("Failed to read particles initial from file: " + path_ + ", no particles tree found");
-        return {};
+        return;
     }
 
     TTreeReaderValue<unsigned> eventIdReader(reader, "event_id");
@@ -50,7 +63,7 @@ std::vector<DataTypes::ParticleInitial> ParticleInitialReader::readRootAll()
     TTreeReaderArray<unsigned> subParticleReader(reader, "sub_particle");
 
     std::vector<uint32_t> eventIds;
-    std::vector<uint32_t> particleIds;
+    std::vector<uint64_t> particleIds;
     std::vector<int> particleTypes;
     std::vector<uint32_t> processes;
     std::vector<float> vxs;
@@ -102,7 +115,6 @@ std::vector<DataTypes::ParticleInitial> ParticleInitialReader::readRootAll()
         }
     }
 
-    std::vector<DataTypes::ParticleInitial> particlesInitial;
     particlesInitial.reserve(eventIds.size());
     for (size_t i = 0; i < eventIds.size(); ++i)
     {
@@ -110,7 +122,5 @@ std::vector<DataTypes::ParticleInitial> ParticleInitialReader::readRootAll()
     }
 
     LOG_DEBUG("Read " + std::to_string(particlesInitial.size()) + " particles initial");
-
-    return particlesInitial;
 }
 }   // namespace Readers
