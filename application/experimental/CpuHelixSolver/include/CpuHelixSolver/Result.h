@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <chrono>
 
 class Result
 {
@@ -20,4 +21,10 @@ public:
     uint8_t* solutionHitCounts_ = nullptr;
     float* solutionRs_ = nullptr;
     float* solutionPhis_ = nullptr;
+    float* xAngleMins_ = nullptr;
+    float* xAngleMaxs_ = nullptr;
+
+    std::chrono::steady_clock::duration totalExecutionTime_;
+    std::chrono::steady_clock::duration splitterExecutionTime_;
+    std::chrono::steady_clock::duration solverExecutionTime_;
 };

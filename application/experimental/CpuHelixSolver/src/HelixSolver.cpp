@@ -17,6 +17,8 @@ HelixSolver::HelixSolver(const Splitter& splitter)
 
 void HelixSolver::solve(Task& task)
 {
+    auto executionStartTime = std::chrono::steady_clock::now();
+
     const u_int16_t numWedges = splitter_.getNumRegions() - 2;
     std::vector<u_int32_t*> regionIndexes;
     regionIndexes.reserve(numWedges);
@@ -29,6 +31,8 @@ void HelixSolver::solve(Task& task)
     }
     splitter_.splitIntoRegions(task.getEvent().xs_, task.getEvent().ys_, task.getEvent().zs_, task.getEvent().numPoints_, regionIndexes, regionNumPoints, numWedges);
 
+    auto splitterExecutionEndTime = std::chrono::steady_clock::now();
+
     // Reset number of solutions
     task.getResult().numSolutions_ = 0;
 
@@ -38,6 +42,11 @@ void HelixSolver::solve(Task& task)
         regionSolverData_[regionIndex].regionId_ = regionIndex + 1;
         solveRegion(task, regionSolverData_[regionIndex]);
     }
+
+    auto executionEndTime = std::chrono::steady_clock::now();
+    task.getResult().totalExecutionTime_ = executionEndTime - executionStartTime;
+    task.getResult().splitterExecutionTime_ = splitterExecutionEndTime - executionStartTime;
+    task.getResult().solverExecutionTime_ = executionEndTime - splitterExecutionEndTime;
 }
 
 void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
@@ -46,18 +55,20 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
     Result& result = task.getResult();
     const u_int16_t regionId = regionSolverData.regionId_;
 
-    regionSolverData.regionSolutionHitsThreshold_ = splitter_.getSettings().wedges_[regionId - 1].solutionHitsThreshold_;
-    regionSolverData.regionSolutionHitsThreshold_ = regionSolverData.regionSolutionHitsThreshold_ > 0 ? regionSolverData.regionSolutionHitsThreshold_ : 8;
-    regionSolverData.regionLinesCrossingsThreshold_ = splitter_.getSettings().wedges_[regionId - 1].linesCrossingsThreshold_;
-    regionSolverData.regionLinesCrossingsThreshold_ = regionSolverData.regionLinesCrossingsThreshold_ > 0 ? regionSolverData.regionLinesCrossingsThreshold_ : 3;
-    regionSolverData.regionSkipCrossingsCheckThreshold_ = splitter_.getSettings().wedges_[regionId - 1].skipCrossingsCheckThreshold_;
+    const auto& wedge = splitter_.getSettings().wedges_[regionId - 1];
+    regionSolverData.xAngleMin_ = wedge.xAngleMin_;
+    regionSolverData.xAngleMax_ = wedge.xAngleMax_;
+    regionSolverData.regionSolutionHitsThreshold_ = wedge.solutionHitsThreshold_;
+    regionSolverData.regionSolutionHitsThreshold_ = regionSolverData.regionSolutionHitsThreshold_ > 0 ? regionSolverData.regionSolutionHitsThreshold_ : HelixSolver::SolutionHitsThreshold;
+    regionSolverData.regionLinesCrossingsThreshold_ = wedge.linesCrossingsThreshold_;
+    regionSolverData.regionLinesCrossingsThreshold_ = regionSolverData.regionLinesCrossingsThreshold_ > 0 ? regionSolverData.regionLinesCrossingsThreshold_ : HelixSolver::LinesCrossingsThreshold;
+    regionSolverData.regionSkipCrossingsCheckThreshold_ = wedge.skipCrossingsCheckThreshold_;
     regionSolverData.regionSkipCrossingsCheckThreshold_ = regionSolverData.regionSkipCrossingsCheckThreshold_ > 0 ? regionSolverData.regionSkipCrossingsCheckThreshold_ : HelixSolver::SkipCrossingsCheckThreshold;
-    
+
     convertToPolarCoordinates(event, regionSolverData);
 
     assignLayers(event, regionSolverData);
 
-    const auto& wedge = splitter_.getSettings().wedges_[regionId - 1];
     float regionPhi0Min = wrapMinusPiToPi(wedge.zAngleMin_) - SpaceMaxPhiPhi0AbsDiff;
     float regionPhi0Max = wrapMinusPiToPi(wedge.zAngleMax_) + SpaceMaxPhiPhi0AbsDiff;
 
@@ -273,7 +284,7 @@ void HelixSolver::processNextAccumulatorRegion(Result& result, RegionSolverData&
         // Max division level reached, add solution
         if (enoughLayerHits(region, regionSolverData))
         {
-            addSolution(result, region);
+            addSolution(result, region, regionSolverData);
         }
     }
 }
@@ -287,15 +298,23 @@ bool HelixSolver::enoughHitsAndLinesCrossing(const AccumulatorRegion& region, co
         return false;
     }
 
+    if (!enoughLayerHits(region, regionSolverData))
+    {
+        return false;
+    }
+
     if (numHits > regionSolverData.regionSkipCrossingsCheckThreshold_)
     {
         // Too many points in region, assume enough crossings
         return true;
     }
 
-    const float qOverPtMin = region.qOverPtMin_;
-    const float qOverPtMax = region.qOverPtMax_;
     const u_int8_t linesCrossingsThreshold = regionSolverData.regionLinesCrossingsThreshold_;
+
+    // Small inaccuracies and deviations from the ideal helix can cause lines to not cross exactly within the region.
+    const float widthExpansion = (region.qOverPtMax_ - region.qOverPtMin_) * 0.5f * std::max(0, region.qOverPtDivisionLevel_ - 6);
+    const float qOverPtMin = region.qOverPtMin_ - widthExpansion;
+    const float qOverPtMax = region.qOverPtMax_ + widthExpansion;
 
     u_int8_t linesWithEnoughCrossings = 0;
     for (u_int32_t i = region.pointListBegin_; i < region.pointListEnd_; ++i)
@@ -394,7 +413,7 @@ bool HelixSolver::enoughLayerHits(const AccumulatorRegion& region, const RegionS
     return hitCount >= RegionSolverData::LayerHitThreshold;
 }
 
-void HelixSolver::addSolution(Result& result, const AccumulatorRegion& region)
+void HelixSolver::addSolution(Result& result, const AccumulatorRegion& region, const RegionSolverData& regionSolverData)
 {
     const float qOverPt = 0.5f * (region.qOverPtMin_ + region.qOverPtMax_);
     const float phi0 = 0.5f * (region.phi0Min_ + region.phi0Max_);
@@ -408,6 +427,8 @@ void HelixSolver::addSolution(Result& result, const AccumulatorRegion& region)
     result.solutionHitCounts_[index] = numHits > 255 ? 255 : numHits;
     result.solutionRs_[index] = r;
     result.solutionPhis_[index] = phi;
+    result.xAngleMins_[index] = regionSolverData.xAngleMin_;
+    result.xAngleMaxs_[index] = regionSolverData.xAngleMax_;
 }
 
 void HelixSolver::rotateSolutions(Result& result, const u_int32_t regionSolutionsBegin)

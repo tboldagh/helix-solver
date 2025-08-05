@@ -38,17 +38,18 @@ private:
     class RegionSolverData
     {
     public:
-        static constexpr u_int16_t MaxPointsInRegion = 2000;  // TODO: Tune
-        static constexpr u_int8_t Phi0MaxDivisionLevel = 8;   // TODO: Tune
-        static constexpr u_int8_t QOverPtMaxDivisionLevel = 8;   // TODO: Tune
+        static constexpr u_int16_t MaxPointsInRegion = 10000;  // TODO: Tune
+        static constexpr u_int8_t Phi0MaxDivisionLevel = 11;
+        static constexpr u_int8_t QOverPtMaxDivisionLevel = 8;
         static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
         static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
         static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
         static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;   // TODO: This is max possible number of points in all lists combined. Can be tuned
-                                                                                                    // < 6k for 10 smaple events
-        static constexpr u_int8_t LayerHitThreshold = 2;
+        static constexpr u_int8_t LayerHitThreshold = 3;
 
         u_int16_t regionId_;
+        float xAngleMin_;
+        float xAngleMax_;
         u_int8_t regionSolutionHitsThreshold_;
         u_int8_t regionLinesCrossingsThreshold_;
         u_int8_t regionSkipCrossingsCheckThreshold_;
@@ -72,18 +73,18 @@ private:
     bool regionHit(const AccumulatorRegion& region, const float r, const float phi);
     bool enoughLayerHits(const AccumulatorRegion& region, const RegionSolverData& regionSolverData);
     bool enoughHitsAndLinesCrossing(const AccumulatorRegion& region, const RegionSolverData& regionSolverData);
-    void addSolution(Result& result, const AccumulatorRegion& region);
+    void addSolution(Result& result, const AccumulatorRegion& region, const RegionSolverData& regionSolverData);
     void rotateSolutions(Result& result, const u_int32_t regionSolutionsBegin);
 
     // Based on thesis p. 22 Phi_0 is in range dependent on region
     // Phi_min and Phi_max are region dependent
-    static constexpr float SpaceMaxPhiPhi0AbsDiff = 0.42f;  // TODO: Tune
-    static constexpr float SpaceMinQOverPt = 0.0f;   // TODO: I have no idea what this value should be, tune
-    static constexpr float SpaceMaxQOverPt = 0.0005f;    // TODO: I have no idea what this value should be, tune
-    static constexpr u_int8_t SolutionHitsThreshold = 8;    // TODO: Tune
-    static constexpr u_int8_t LinesCrossingsThreshold = 3;    // TODO: Tune
-    static constexpr u_int8_t SkipCrossingsCheckThreshold = 8 * SolutionHitsThreshold;    // TODO: Tune
-    static constexpr float BMagnitude = 2.0f;   // TODO: Tune
+    static constexpr float SpaceMaxPhiPhi0AbsDiff = M_PI / 4;
+    static constexpr float SpaceMinQOverPt = 0.0f;
+    static constexpr float SpaceMaxQOverPt = 0.00031f;
+    static constexpr u_int8_t SolutionHitsThreshold = 7;
+    static constexpr u_int8_t LinesCrossingsThreshold = 3;
+    static constexpr u_int8_t SkipCrossingsCheckThreshold = 20;    // TODO: Tune
+    static constexpr float BMagnitude = 2.0f;
 
     Splitter splitter_;
     std::vector<RegionSolverData> regionSolverData_;
