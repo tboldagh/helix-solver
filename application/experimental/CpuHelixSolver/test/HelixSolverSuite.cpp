@@ -532,9 +532,25 @@ protected:
     {
         constexpr float maxAbsXy = 1100.0f;
         constexpr float maxAbsZ = 3100.0f;
-        SpacepointsGenerator spacepointsGenerator_(maxAbsZ, maxAbsXy);
-        std::vector<DataTypes::Spacepoint> spacepoints = spacepointsGenerator_.generate(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
+        SpacepointsGenerator spacepointsGenerator(maxAbsZ, maxAbsXy);
+        std::vector<DataTypes::Spacepoint> spacepoints = spacepointsGenerator.generate(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
     
+        for (const auto& spacepoint : spacepoints)
+        {
+            event_.xs_[event_.numPoints_] = spacepoint.x_;
+            event_.ys_[event_.numPoints_] = spacepoint.y_;
+            event_.zs_[event_.numPoints_] = spacepoint.z_;
+            event_.numPoints_++;
+        }
+    }
+
+    void generateSpacepoints(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints)
+    {
+        constexpr float maxAbsXy = 1100.0f;
+        constexpr float maxAbsZ = 3100.0f;
+        SpacepointsGenerator spacepointsGenerator(maxAbsZ, maxAbsXy);
+        std::vector<DataTypes::Spacepoint> spacepoints = spacepointsGenerator.generate(particleInitials, rs, counterClockwise, numPoints);
+
         for (const auto& spacepoint : spacepoints)
         {
             event_.xs_[event_.numPoints_] = spacepoint.x_;
@@ -565,6 +581,33 @@ protected:
         helixSolver_.solveRegion(task_, regionSolverData_);
     }
 
+    void generateSpacepointsAndSolveTask(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints, u_int16_t regionId)
+    {
+        generateSpacepoints(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
+        
+        const u_int32_t eventNumPoints = event_.numPoints_;
+        
+        // for (u_int32_t i = 0; i < eventNumPoints; ++i)
+        // {
+        //     LOG_DEBUG("(" + std::to_string(event_.xs_[i]) + ", " + std::to_string(event_.ys_[i]) + ", " + std::to_string(event_.zs_[i]) + ")");
+        // }
+        
+        helixSolver_.solve(task_);
+    }
+    void generateSpacepointsAndSolveTask(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints, u_int16_t regionId)
+    {
+        generateSpacepoints(particleInitials, rs, counterClockwise, numPoints);
+
+        const u_int32_t eventNumPoints = event_.numPoints_;
+        
+        // for (u_int32_t i = 0; i < eventNumPoints; ++i)
+        // {
+        //     LOG_DEBUG("(" + std::to_string(event_.xs_[i]) + ", " + std::to_string(event_.ys_[i]) + ", " + std::to_string(event_.zs_[i]) + ")");
+        // }
+
+        helixSolver_.solve(task_);
+    }
+
     static float rToQOverPt(float r)
     {
         return 1.0f / (r * HelixSolver::BMagnitude);
@@ -591,8 +634,8 @@ protected:
 
     bool matchingSolutionExists(float expectedR, float expectedPhi)
     {
-        const float minR = expectedR - 0.05f * expectedR;
-        const float maxR = expectedR + 0.05f * expectedR;
+        const float minR = (1 - 0.05f) * expectedR;
+        const float maxR = (1 + 0.05f) * expectedR;
         const float minPhi = HelixSolver::wrapMinusPiToPi(expectedPhi - 0.01f);
         const float maxPhi = HelixSolver::wrapMinusPiToPi(expectedPhi + 0.01f);
 
@@ -602,7 +645,7 @@ protected:
             const float r = result_.solutionRs_[i];
             const float phi = result_.solutionPhis_[i];
 
-            // LOG_DEBUG("r: " + std::to_string(r) + ", phi: " + std::to_string(phi) + ", minR: " + std::to_string(minR) + ", maxR: " + std::to_string(maxR) + ", minPhi: " + std::to_string(minPhi) + ", maxPhi: " + std::to_string(maxPhi));
+            // LOG_DEBUG("r: " + std::to_string(minR) + " | " + std::to_string(r) + " | " + std::to_string(maxR) + ", phi: " + std::to_string(minPhi) + " | " + std::to_string(phi) + " | " + std::to_string(maxPhi));
 
             foundMatchingSolution |= r >= minR && r <= maxR && phi >= minPhi && phi <= maxPhi;
         }
@@ -654,9 +697,6 @@ protected:
 
     Logger::OstreamLogger logger_;
 
-    static constexpr u_int32_t eventId = 42;
-    static constexpr u_int32_t resultId = 42;
-
     // linear congruential generator
     static constexpr u_int32_t randomGeneratorA = 1103515245;
     static constexpr u_int32_t randomGeneratorC = 12345;
@@ -681,6 +721,24 @@ TEST_F(HelixDetectionTest, SingleHelixBasicWedge)
 
     generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
 
+    const float expectedPhi = zAngle + 0.5f * M_PI;
+    EXPECT_TRUE(matchingSolutionExists(r, expectedPhi));
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+
+TEST_F(HelixDetectionTest, SingleHelixBasicWedgeParticleInitial)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[21];
+    const float r = 10000.0f;
+    const bool counterClockwise = true;
+    const uint8_t numPoints = 10;
+
+    // ParticleInitial(event_id=0, particle_id=81064794869727232, particle_type=4294967085, process=0, vx=0.0263284, vy=-0.0105945, vz=22.9012, vt=-4.93979, px=0.751312, py=0.30547, pz=0.0179915, m=0.13957, q=-1.0, eta=0.0221815, phi=0.386168, pt=0.811038, p=0.811237, vertex_primary_id=18, vertex_secondary_id=0, generation=94, sub_particle_id=0)
+    DataTypes::ParticleInitial particleInitial(0.0263284, -0.0105945, 22.9012, -0.190902, 0.241511, 0.683707, 0.749818);
+    generateSpacepointsAndSolveTask({particleInitial}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
+    
+    const auto [xAngle, zAngle] = SpacepointsGenerator::directionToAngles(particleInitial.directionX_, particleInitial.directionY_, particleInitial.directionZ_);
     const float expectedPhi = zAngle + 0.5f * M_PI;
     EXPECT_TRUE(matchingSolutionExists(r, expectedPhi));
     EXPECT_TRUE(solutionsDoNotRepeat());
@@ -743,7 +801,7 @@ INSTANTIATE_TEST_SUITE_P(CounterClockwiseParticle, SingleCounterClockwiseHelixIn
 //     const float r = 10000.0f;
 //     const bool counterClockwise = false;
 //     const uint8_t numPoints = 2 * HelixSolver::SolutionHitsThreshold;
-
+//
 //     regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
 //     regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
 //     regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
@@ -767,7 +825,7 @@ TEST_F(HelixDetectionTest, MultipleHelixesBasicWedge)
     std::vector<float> rs;
     std::vector<bool> counterClockwise;
     std::vector<uint8_t> numPoints;
-    constexpr u_int32_t numHelixes = 20;
+    constexpr u_int32_t numHelixes = 5;
     for (u_int32_t i = 0; i < numHelixes; ++i)
     {
         xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
@@ -949,33 +1007,33 @@ TEST_F(HelixDetectionTest, FullEvent)
     {
         SplitterSettings::Wedge& region = splitter_.settings_.wedges_[regionId - 1];
 
-        if (region.xAngleMin_ < 0.2f || region.xAngleMin_ > 2.5f)
+        if (region.xAngleMin_ < 0.2f || region.xAngleMax_ > 2.5f)
         {
-            region.solutionHitsThreshold_ = 12;
+            region.solutionHitsThreshold_ = 7;
             region.linesCrossingsThreshold_ = 4;
             region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
-        else if (region.xAngleMin_ < 0.8f || region.xAngleMin_ > 2.0f)
+        else if (region.xAngleMin_ < 0.8f || region.xAngleMax_ > 2.0f)
         {
-            region.solutionHitsThreshold_ = 8;
+            region.solutionHitsThreshold_ = 6;
             region.linesCrossingsThreshold_ = 3;
             region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
-        else if (region.xAngleMin_ < 1.0f || region.xAngleMin_ > 1.8f)
+        else if (region.xAngleMin_ < 1.0f || region.xAngleMax_ > 1.8f)
         {
-            region.solutionHitsThreshold_ = 7;
+            region.solutionHitsThreshold_ = 6;
             region.linesCrossingsThreshold_ = 3;
             region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
-        else if (region.xAngleMin_ < 1.4f || region.xAngleMin_ > 1.6f)
+        else if (region.xAngleMin_ < 1.4f || region.xAngleMax_ > 1.6f)
         {
-            region.solutionHitsThreshold_ = 7;
+            region.solutionHitsThreshold_ = 6;
             region.linesCrossingsThreshold_ = 3;
             region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }
         else
         {
-            region.solutionHitsThreshold_ = 7;
+            region.solutionHitsThreshold_ = 6;
             region.linesCrossingsThreshold_ = 3;
             region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
         }

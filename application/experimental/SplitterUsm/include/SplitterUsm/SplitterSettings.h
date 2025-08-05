@@ -54,8 +54,8 @@ public:
         float interactionRegionWidth_ = 0;
     };
 
-    static constexpr u_int8_t MaxRegionsPerPoint = 32;
-    static constexpr u_int16_t MaxWedgesNum = 1024;
+    static constexpr u_int8_t MaxRegionsPerPoint = 128;
+    static constexpr u_int16_t MaxWedgesNum = 16384;
     using Range = std::pair<float, float>;
 
     SplitterSettings() {}; // Clang bug: https://stackoverflow.com/questions/43819314/default-member-initializer-needed-within-definition-of-enclosing-class-outside
