@@ -15,6 +15,12 @@ Documetnation is placed in `docs` directory.
 * Obtain `spacepoints.root` file (e.g. scp it).
 * Edit `/code/config.json` to point to it and run the code: `./build/application/HelixSolver/HelixSolver config.json`.
 
+# Current state of the project (October 2025)
+* Helix solver implementation for CPU is implemented, working and tested. Quality and performance test results can be found in "Exploitations of Adaptive Hough Transform algorithm for
+ATLAS experiment inner tracker data for high luminosity
+running".
+* Helix solver implementation for GPU is broken. It's state is close to the one for CPU though so it can be fixed in relatively short time and in a way that results are identical to the ones for CPU. However, perfomance on GPU and overall experience suggests that GPU implementation using OneAPI/SYCL is a dead end.
+
 ## Troubleshooting
 ### SYCL_FEATURE_TEST_EXTRACT Function invoked with incorrect arguments
 ```
