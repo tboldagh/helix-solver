@@ -4,6 +4,8 @@
 #include <chrono>
 #include <sstream>
 
+#define LINE_FUNCTION(r, qOverPt, phi) phi - 0.5f * BMagnitude * qOverPt * r
+
 HelixSolver::HelixSolver(const Splitter& splitter)
     : splitter_(splitter)
 {
@@ -65,12 +67,12 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
     regionSolverData.regionSkipCrossingsCheckThreshold_ = wedge.skipCrossingsCheckThreshold_;
     regionSolverData.regionSkipCrossingsCheckThreshold_ = regionSolverData.regionSkipCrossingsCheckThreshold_ > 0 ? regionSolverData.regionSkipCrossingsCheckThreshold_ : HelixSolver::SkipCrossingsCheckThreshold;
 
+    float regionPhi0Min = wrapMinusPiToPi(wedge.zAngleMin_) - SpaceMaxPhiPhi0AbsDiff;
+    float regionPhi0Max = wrapMinusPiToPi(wedge.zAngleMax_) + SpaceMaxPhiPhi0AbsDiff;
+
     convertToPolarCoordinates(event, regionSolverData);
 
     assignLayers(event, regionSolverData);
-
-    float regionPhi0Min = wrapMinusPiToPi(wedge.zAngleMin_) - SpaceMaxPhiPhi0AbsDiff;
-    float regionPhi0Max = wrapMinusPiToPi(wedge.zAngleMax_) + SpaceMaxPhiPhi0AbsDiff;
 
     // Due to atan2 discontinuity close to 0 in the negative x plane, we need to rotate the region and points
     // to make sure helixes crossing y=0 are correctly detected. Then we have to rotate the results back.
@@ -93,7 +95,10 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
     {
         if (regionHit(initialRegion, regionSolverData.rs_[i], regionSolverData.phis_[i]))
         {
-            regionSolverData.pointLists_[pointListsEnd++] = i;
+            regionSolverData.pointListsRs_[pointListsEnd] = regionSolverData.rs_[i];
+            regionSolverData.pointListsPhis_[pointListsEnd] = regionSolverData.phis_[i];
+            regionSolverData.pointListsLayers_[pointListsEnd] = regionSolverData.layers_[i];
+            pointListsEnd++;
         }
     }
     regionSolverData.accumulatorRegions_[0].pointListEnd_ = pointListsEnd;
@@ -110,21 +115,6 @@ void HelixSolver::solveRegion(Task& task, RegionSolverData& regionSolverData)
     }
 }
 
-void HelixSolver::filterPointsInWedge(u_int16_t regionId, const Event& event, RegionSolverData& regionSolverData)
-{
-    float* xs = event.xs_;
-    float* ys = event.ys_;
-    float* zs = event.zs_;
-    u_int32_t* indexes = regionSolverData.indexes_;
-    for (u_int32_t i = 0; i < event.numPoints_; ++i)
-    {
-        if (splitter_.isPointInRegion(xs[i], ys[i], zs[i], regionId))
-        {
-            indexes[regionSolverData.numPoints_++] = i;
-        }
-    }
-}
-
 void HelixSolver::convertToPolarCoordinates(const Event& event, RegionSolverData& regionSolverData)
 {
     float* xs = event.xs_;
@@ -136,7 +126,7 @@ void HelixSolver::convertToPolarCoordinates(const Event& event, RegionSolverData
         const u_int32_t index = regionSolverData.indexes_[i];
         const float x = xs[index];
         const float y = ys[index];
-        rs[i] = std::sqrt(x * x + y * y);
+        rs[i] = std::sqrt(x * x + y * y) * 0.001;
         phis[i] = std::atan2(y, x);
     }
 }
@@ -151,31 +141,31 @@ void HelixSolver::assignLayers(const Event& event, RegionSolverData& regionSolve
         const float r = rs[i];
         const float absZ = std::abs(zs[i]);
 
-        if (r < 215)
+        if (r < 0.215)
         {
             // Group A or B
             if (absZ < 550)
             {
                 // Group A
-                layers[i] = r < 45 ? 0 :
-                            r < 90 ? 1 :
-                            r < 140 ? 2 : 3;
+                layers[i] = r < 0.045 ? 1 :
+                            r < 0.090 ? 2 :
+                            r < 0.140 ? 3 : 4;
             }
             else
             {
                 // Group B
-                layers[i] = absZ < 670 ? 4 :
-                            absZ < 780 ? 5 :
-                            absZ < 930 ? 6 :
-                            absZ < 1050 ? 7 :
-                            absZ < 1220 ? 8 :
-                            absZ < 1420 ? 9 : 10;
+                layers[i] = absZ < 670 ? 5 :
+                            absZ < 780 ? 6 :
+                            absZ < 930 ? 7 :
+                            absZ < 1050 ? 8 :
+                            absZ < 1220 ? 9 :
+                            absZ < 1420 ? 10 : 11;
             }
         }
         else
         {
             // Group C or D or E
-            if (r > 740)
+            if (r > 0.740)
             {
                 // Group D
                 layers[i] = absZ < 870 ? 11 : 12;
@@ -183,9 +173,9 @@ void HelixSolver::assignLayers(const Event& event, RegionSolverData& regionSolve
             else if (absZ < 1200)
             {
                 // Group C
-                layers[i] = r < 310 ? 13 :
-                            r < 430 ? 14 :
-                            r < 580 ? 15 : 16;
+                layers[i] = r < 0.310 ? 13 :
+                            r < 0.430 ? 14 :
+                            r < 0.580 ? 15 : 16;
             }
             else
             {
@@ -319,30 +309,25 @@ bool HelixSolver::enoughHitsAndLinesCrossing(const AccumulatorRegion& region, co
     u_int8_t linesWithEnoughCrossings = 0;
     for (u_int32_t i = region.pointListBegin_; i < region.pointListEnd_; ++i)
     {
-        const float r = regionSolverData.rs_[regionSolverData.pointLists_[i]];
-        const float phi = regionSolverData.phis_[regionSolverData.pointLists_[i]];
-        const u_int8_t layer = regionSolverData.layers_[regionSolverData.pointLists_[i]];
-        const float phi0Left = - 0.5f * BMagnitude * r * qOverPtMin + phi;
-        const float phi0Right = - 0.5f * BMagnitude * r * qOverPtMax + phi;
+        const float r = regionSolverData.pointListsRs_[i];
+        const float phi = regionSolverData.pointListsPhis_[i];
+        const u_int8_t layer = regionSolverData.pointListsLayers_[i];
+        const float phi0Left = LINE_FUNCTION(r, qOverPtMin, phi);
+        const float phi0Right = LINE_FUNCTION(r, qOverPtMax, phi);
 
         u_int8_t crossings = 0;
         for (u_int32_t j = region.pointListBegin_; j < region.pointListEnd_; ++j)
         {
-            if (i == j)
-            {
-                continue;
-            }
-
-            const u_int8_t layerOther = regionSolverData.layers_[regionSolverData.pointLists_[j]];
+            const u_int8_t layerOther = regionSolverData.pointListsLayers_[j];
             if (layer == layerOther)
             {
                 continue;
             }
 
-            const float rOther = regionSolverData.rs_[regionSolverData.pointLists_[j]];
-            const float phiOther = regionSolverData.phis_[regionSolverData.pointLists_[j]];
-            const float phi0LeftOther = - 0.5f * BMagnitude * rOther * qOverPtMin + phiOther;
-            const float phi0RightOther = - 0.5f * BMagnitude * rOther * qOverPtMax + phiOther;
+            const float rOther = regionSolverData.pointListsRs_[j];
+            const float phiOther = regionSolverData.pointListsPhis_[j];
+            const float phi0LeftOther = LINE_FUNCTION(rOther, qOverPtMin, phiOther);
+            const float phi0RightOther = LINE_FUNCTION(rOther, qOverPtMax, phiOther);
 
             // Check if lines cross within region
             if ((phi0Left > phi0LeftOther && phi0Right < phi0RightOther) || (phi0Left < phi0LeftOther && phi0Right > phi0RightOther))
@@ -372,10 +357,12 @@ void HelixSolver::fillNewPointList(AccumulatorRegion& region, const AccumulatorR
 {
     for (u_int32_t i = sourceRegion.pointListBegin_; i < sourceRegion.pointListEnd_; ++i)
     {
-        const u_int32_t index = regionSolverData.pointLists_[i];
-        if (regionHit(region, regionSolverData.rs_[index], regionSolverData.phis_[index]))
+        if (regionHit(region, regionSolverData.pointListsRs_[i], regionSolverData.pointListsPhis_[i]))
         {
-            regionSolverData.pointLists_[region.pointListEnd_++] = index;
+            regionSolverData.pointListsRs_[region.pointListEnd_] = regionSolverData.pointListsRs_[i];
+            regionSolverData.pointListsPhis_[region.pointListEnd_] = regionSolverData.pointListsPhis_[i];
+            regionSolverData.pointListsLayers_[region.pointListEnd_] = regionSolverData.pointListsLayers_[i];
+            region.pointListEnd_++;
         }
     }
 }
@@ -388,9 +375,9 @@ bool HelixSolver::regionHit(const AccumulatorRegion& region, const float r, cons
     const float phi0Max = region.phi0Max_;
 
     // See thesis p. 56
-    const float phi0Left = - 0.5f * BMagnitude * r * qOverPtMin + phi;
-    const float phi0Right = - 0.5f * BMagnitude * r * qOverPtMax + phi;
-    return phi0Left >= phi0Min && phi0Right <= phi0Max;
+    const float phi0Left = LINE_FUNCTION(r, qOverPtMin, phi);
+    const float phi0Right = LINE_FUNCTION(r, qOverPtMax, phi);
+    return (phi0Left >= phi0Min && phi0Right <= phi0Max) || (phi0Left <= phi0Max && phi0Right >= phi0Min);
 }
 
 bool HelixSolver::enoughLayerHits(const AccumulatorRegion& region, const RegionSolverData& regionSolverData)
@@ -398,7 +385,7 @@ bool HelixSolver::enoughLayerHits(const AccumulatorRegion& region, const RegionS
     u_int32_t layersHit = 0;
     for (u_int32_t i = region.pointListBegin_; i < region.pointListEnd_; ++i)
     {
-        layersHit |= 1 << regionSolverData.layers_[regionSolverData.pointLists_[i]];
+        layersHit |= 1 << regionSolverData.pointListsLayers_[i];
     }
 
     uint8_t hitCount = 0;
@@ -419,12 +406,14 @@ void HelixSolver::addSolution(Result& result, const AccumulatorRegion& region, c
     const float phi0 = 0.5f * (region.phi0Min_ + region.phi0Max_);
 
     // See thesis p. 24
-    const float r = 1 / (qOverPt * BMagnitude);
+    const float q = qOverPt > 0 ? -1.0f : 1.0f;
+    const float r = -q * 1000.0 / (qOverPt * BMagnitude);
     const float phi = wrapMinusPiToPi(phi0 + 0.5f * M_PI);
 
     const u_int32_t index = result.numSolutions_++;
     const u_int32_t numHits = region.pointListEnd_ - region.pointListBegin_;
     result.solutionHitCounts_[index] = numHits > 255 ? 255 : numHits;
+    result.solutionQs_[index] = q;
     result.solutionRs_[index] = r;
     result.solutionPhis_[index] = phi;
     result.xAngleMins_[index] = regionSolverData.xAngleMin_;

@@ -127,10 +127,11 @@ int main()
 
             for (u_int32_t j = 0; j < task.getResult().numSolutions_; ++j)
             {
+                const float q = task.getResult().solutionQs_[j];
                 const float r = task.getResult().solutionRs_[j];
                 const float phi = task.getResult().solutionPhis_[j];
                 std::stringstream ss;
-                ss << "Solution " << j << ": " << r << " " << phi;
+                ss << "Solution " << j << ": " << q << " " << r << " " << phi;
                 LOG_INFO(ss.str());
             }
         }

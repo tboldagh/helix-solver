@@ -6,6 +6,7 @@ Result::Result(uint32_t resultId)
 : resultId_(resultId)
 {
     solutionHitCounts_ = new uint8_t[MaxSolutions];
+    solutionQs_ = new float[MaxSolutions];
     solutionRs_ = new float[MaxSolutions];
     solutionPhis_ = new float[MaxSolutions];
     xAngleMins_ = new float[MaxSolutions];
@@ -15,6 +16,7 @@ Result::Result(uint32_t resultId)
 Result::Result(Result&& other)
 : resultId_(other.resultId_)
 , solutionHitCounts_(std::exchange(other.solutionHitCounts_, nullptr))
+, solutionQs_(std::exchange(other.solutionQs_, nullptr))
 , solutionRs_(std::exchange(other.solutionRs_, nullptr))
 , solutionPhis_(std::exchange(other.solutionPhis_, nullptr))
 , xAngleMins_(std::exchange(other.xAngleMins_, nullptr))
@@ -28,6 +30,7 @@ Result::~Result()
     }
 
     delete[] solutionHitCounts_;
+    delete[] solutionQs_;
     delete[] solutionRs_;
     delete[] solutionPhis_;
     delete[] xAngleMins_;
@@ -43,6 +46,7 @@ Result& Result::operator=(Result&& other)
 
     resultId_ = other.resultId_;
     solutionHitCounts_ = std::exchange(other.solutionHitCounts_, nullptr);
+    solutionQs_ = std::exchange(other.solutionQs_, nullptr);
     solutionRs_ = std::exchange(other.solutionRs_, nullptr);
     solutionPhis_ = std::exchange(other.solutionPhis_, nullptr);
     xAngleMins_ = std::exchange(other.xAngleMins_, nullptr);

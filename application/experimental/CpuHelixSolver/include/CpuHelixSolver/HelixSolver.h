@@ -40,11 +40,11 @@ private:
     public:
         static constexpr u_int16_t MaxPointsInRegion = 10000;  // TODO: Tune
         static constexpr u_int8_t Phi0MaxDivisionLevel = 11;
-        static constexpr u_int8_t QOverPtMaxDivisionLevel = 8;
+        static constexpr u_int8_t QOverPtMaxDivisionLevel = 9;
         static constexpr u_int8_t MaxDivisionLevel = std::max(Phi0MaxDivisionLevel, QOverPtMaxDivisionLevel);
         static constexpr u_int8_t MaxAccumulatorRegionStackSize = MaxDivisionLevel * 4;
         static constexpr u_int8_t MaxPointListsNum = MaxDivisionLevel + 2;
-        static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum;   // TODO: This is max possible number of points in all lists combined. Can be tuned
+        static constexpr u_int32_t MaxPointListsPointsNum = MaxPointsInRegion * MaxPointListsNum / 4;   // TODO: This is max possible number of points in all lists combined. Can be tuned
         static constexpr u_int8_t LayerHitThreshold = 3;
 
         u_int16_t regionId_;
@@ -60,11 +60,12 @@ private:
         u_int8_t layers_[MaxPointsInRegion];
         AccumulatorRegion accumulatorRegions_[MaxAccumulatorRegionStackSize];
         u_int8_t accumulatorRegionStackSize_;
-        u_int32_t pointLists_[MaxPointListsPointsNum];
+        float pointListsRs_[MaxPointListsPointsNum];
+        float pointListsPhis_[MaxPointListsPointsNum];
+        u_int8_t pointListsLayers_[MaxPointListsPointsNum];
     };
 
     void solveRegion(Task& task, RegionSolverData& regionSolverData);
-    void filterPointsInWedge(u_int16_t regionId, const Event& event, RegionSolverData& regionSolverData);
     void convertToPolarCoordinates(const Event& event, RegionSolverData& regionSolverData);
     void assignLayers(const Event& event, RegionSolverData& regionSolverData);
     void rotateRegionAndPoints(float& regionPhi0Min, float& regionPhi0Max, RegionSolverData& regionSolverData);
@@ -79,8 +80,8 @@ private:
     // Based on thesis p. 22 Phi_0 is in range dependent on region
     // Phi_min and Phi_max are region dependent
     static constexpr float SpaceMaxPhiPhi0AbsDiff = M_PI / 4;
-    static constexpr float SpaceMinQOverPt = 0.0f;
-    static constexpr float SpaceMaxQOverPt = 0.00031f;
+    static constexpr float SpaceMinQOverPt = -0.31f;
+    static constexpr float SpaceMaxQOverPt = 0.31f;
     static constexpr u_int8_t SolutionHitsThreshold = 7;
     static constexpr u_int8_t LinesCrossingsThreshold = 3;
     static constexpr u_int8_t SkipCrossingsCheckThreshold = 20;    // TODO: Tune

@@ -19,6 +19,7 @@ public:
     uint32_t resultId_;
     uint32_t numSolutions_ = 0;
     uint8_t* solutionHitCounts_ = nullptr;
+    float* solutionQs_ = nullptr;
     float* solutionRs_ = nullptr;
     float* solutionPhis_ = nullptr;
     float* xAngleMins_ = nullptr;
