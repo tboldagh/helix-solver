@@ -5,13 +5,16 @@
 #include <algorithm>
 
 
-SplitterSettings::Wedge::Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth)
+SplitterSettings::Wedge::Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth, u_int8_t solutionHitsThreshold, u_int8_t linesCrossingsThreshold, u_int8_t skipCrossingsCheckThreshold)
 : id_(id)
 , zAngleMin_(zAngleMin)
 , zAngleMax_(zAngleMax)
 , xAngleMin_(xAngleMin)
 , xAngleMax_(xAngleMax)
-, interactionRegionWidth_(interactionRegionWidth) {}
+, interactionRegionWidth_(interactionRegionWidth)
+, solutionHitsThreshold_(solutionHitsThreshold)
+, linesCrossingsThreshold_(linesCrossingsThreshold)
+, skipCrossingsCheckThreshold_(skipCrossingsCheckThreshold) {}
 
 bool SplitterSettings::Wedge::operator==(const Wedge& other) const
 {
@@ -58,13 +61,13 @@ bool SplitterSettings::PoleRegion::isValid() const
             interactionRegionWidth_ > 0.0;
 }
 
-SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAgle, float maxXAgle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges, ConstSizeVector<PoleRegion, 2>&& poleRegions)
+SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAngle, float maxXAngle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, float filterOutCenterR, float filterOutCenterZ, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges, ConstSizeVector<PoleRegion, 2>&& poleRegions)
 : maxAbsXy_(maxAbsXy)
 , maxAbsZ_(maxAbsZ)
 , minZAngle_(minZAngle)
 , maxZAngle_(maxZAngle)
-, minXAgle_(minXAgle)
-, maxXAgle_(maxXAgle)
+, minXAngle_(minXAngle)
+, maxXAngle_(maxXAngle)
 , poleRegionAngle_(poleRegionAngle)
 , interactionRegionMin_(interactionRegionMin)
 , interactionRegionMax_(interactionRegionMax)
@@ -72,6 +75,8 @@ SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngl
 , xAngleMargin_(xAngleMargin)
 , numZRanges_(numZRanges)
 , numXRanges_(numXRanges)
+, filterOutCenterR_(filterOutCenterR)
+, filterOutCenterZ_(filterOutCenterZ)
 , wedges_(std::move(wedges))
 , poleRegions_(std::move(poleRegions))
 {
@@ -79,7 +84,7 @@ SplitterSettings::SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngl
     {
         u_int16_t regionId = 0;
         std::vector<Range> zRanges = angleWrapPi(uniformRangeSplit(numZRanges, 0.0, 2.0 * M_PI, zAngleMargin));
-        std::vector<Range> xRanges = uniformRangeSplit(numXRanges, minXAgle, M_PI - minXAgle, xAngleMargin);
+        std::vector<Range> xRanges = uniformRangeSplit(numXRanges, minXAngle, M_PI - minXAngle, xAngleMargin);
         const float interactionRegionWidth = interactionRegionMax - interactionRegionMin;
         for(auto& xRange : xRanges)
         {
@@ -109,8 +114,8 @@ bool SplitterSettings::operator==(const SplitterSettings& other) const
             std::fabs(maxAbsZ_ - other.maxAbsZ_) < epsilon &&
             std::fabs(minZAngle_ - other.minZAngle_) < epsilon &&
             std::fabs(maxZAngle_ - other.maxZAngle_) < epsilon &&
-            std::fabs(minXAgle_ - other.minXAgle_) < epsilon &&
-            std::fabs(maxXAgle_ - other.maxXAgle_) < epsilon &&
+            std::fabs(minXAngle_ - other.minXAngle_) < epsilon &&
+            std::fabs(maxXAngle_ - other.maxXAngle_) < epsilon &&
             std::fabs(poleRegionAngle_ - other.poleRegionAngle_) < epsilon &&
             std::fabs(interactionRegionMin_ - other.interactionRegionMin_) < epsilon &&
             std::fabs(interactionRegionMax_ - other.interactionRegionMax_) < epsilon &&
@@ -118,6 +123,8 @@ bool SplitterSettings::operator==(const SplitterSettings& other) const
             std::fabs(xAngleMargin_ - other.xAngleMargin_) < epsilon &&
             numZRanges_ == other.numZRanges_ &&
             numXRanges_ == other.numXRanges_ &&
+            filterOutCenterR_ == other.filterOutCenterR_ &&
+            filterOutCenterZ_ == other.filterOutCenterZ_ &&
             wedges_ == other.wedges_ &&
             poleRegions_ == other.poleRegions_;
 }
@@ -142,13 +149,14 @@ bool SplitterSettings::isValid() const
             minZAngle_ >= 0.0 && minZAngle_ < 2.0 * M_PI + epsilon &&
             maxZAngle_ >= 0.0 && maxZAngle_ < 2.0 * M_PI + epsilon &&
             minZAngle_ < maxZAngle_ &&
-            minXAgle_ > 0.0 && minXAgle_ < M_PI &&
-            maxXAgle_ > 0.0 && maxXAgle_ < M_PI &&
-            minXAgle_ < maxXAgle_ &&
+            minXAngle_ > 0.0 && minXAngle_ < M_PI &&
+            maxXAngle_ > 0.0 && maxXAngle_ < M_PI &&
+            minXAngle_ < maxXAngle_ &&
             zAngleMargin_ > 0.0 && xAngleMargin_ > 0.0 &&
             poleRegionAngle_ > 0.0 && poleRegionAngle_ < M_PI &&
             interactionRegionMin_ < 0.0 && interactionRegionMax_ > 0.0 &&
             numZRanges_ > 0 && numXRanges_ > 0 &&
+            filterOutCenterR_ > 0.0 && filterOutCenterZ_ > 0.0 &&
             wedgesValid &&
             poleRegionsValid;
 }

@@ -10,15 +10,12 @@ public:
     IQueueMock() = default;
     ~IQueueMock() override = default;
 
-    MOCK_METHOD(Capacity, getEventResourcesCapacity, (), (const, override));
-    MOCK_METHOD(Capacity, getEventResourcesLoad, (), (const, override));
-    MOCK_METHOD((std::pair<DeviceResourceGroupId, const DeviceResourceGroup&>), getEventResourceGroup, (), (override));
-    MOCK_METHOD(void, returnEventResourceGroup, (DeviceResourceGroupId resourceGroupId), (override));
+    MOCK_METHOD(bool, createResources, (const CreateResourceGroupFunction& createResourceGroupFunction), (override));
 
-    MOCK_METHOD(Capacity, getResultResourcesCapacity, (), (const, override));
-    MOCK_METHOD(Capacity, getResultResourcesLoad, (), (const, override));
-    MOCK_METHOD((std::pair<DeviceResourceGroupId, const DeviceResourceGroup&>), getResultResourceGroup, (), (override));
-    MOCK_METHOD(void, returnResultResourceGroup, (DeviceResourceGroupId resourceGroupId), (override));
+    MOCK_METHOD(Capacity, getResourcesCapacity, (), (const, override));
+    MOCK_METHOD(Capacity, getResourcesLoad, (), (const, override));
+    MOCK_METHOD((std::pair<DeviceResourceGroupId, const DeviceResourceGroup&>), getResources, (), (override));
+    MOCK_METHOD(void, returnResources, (DeviceResourceGroupId resourceGroupId), (override));
 
     MOCK_METHOD(Capacity, getWorkCapacity, (), (const, override));
     MOCK_METHOD(Capacity, getWorkLoad, (), (const, override));
@@ -28,4 +25,6 @@ public:
     MOCK_METHOD(sycl::queue&, checkoutQueue, (), (override));
     MOCK_METHOD(void, checkinQueue, (), (override));
     MOCK_METHOD(const sycl::queue&, getQueue, (), (const, override));
+
+    MOCK_METHOD(void, forEachResourceGroup, (const ForEachResourceGroupFunction& callback), (override));
 };

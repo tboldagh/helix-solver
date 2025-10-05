@@ -1,6 +1,6 @@
 #pragma once
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 
 template <uint64_t Iterations>
@@ -27,7 +27,7 @@ void ComputationHeavyKernel<Iterations>::operator()(sycl::id<1> idx) const
     float result = 0;
     for (u_int64_t i = 0; i < Iterations; ++i)
     {
-        result += input[index] * std::sin(static_cast<float>(index * i));
+        result += input[index] * sycl::sin(static_cast<float>(index * i));
     }
     output[index] = result;
 }

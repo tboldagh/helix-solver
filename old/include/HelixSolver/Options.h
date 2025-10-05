@@ -24,7 +24,7 @@ namespace HelixSolver {
 }
 
 #ifdef USE_SYCL
-    #include <CL/sycl.hpp>
+    #include <sycl/sycl.hpp>
     using OptionsBuffer=sycl::buffer<HelixSolver::Options, 1>;
 #else
     #include <vector>

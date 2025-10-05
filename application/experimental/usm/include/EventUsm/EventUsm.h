@@ -1,18 +1,35 @@
 #pragma once
 
-#include "EventUsm/DataUsm.h"
+#include "EventUsm/TransferableData.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <memory>
 
 
-class EventUsm : public DataUsm
+class EventUsm : public TransferableData
 {
 public:
     using EventId = u_int32_t;
     using LayerNumber = u_int8_t;
 
-    static constexpr u_int32_t MaxPoints = 1e5;
+    class EventKernelMemory : public KernelMemory
+    {
+    public:
+        EventKernelMemory(sycl::queue& queue);
+        ~EventKernelMemory() override = default;
+
+        EventKernelMemory(const EventKernelMemory&) = delete;
+
+        u_int32_t* numPoints_ = nullptr;
+        float* xs_ = nullptr;
+        float* ys_ = nullptr;
+        float* zs_ = nullptr;
+        LayerNumber* layers_ = nullptr;
+
+    protected:
+        void allocateInternal() override;
+        void deallocateInternal() override;
+    };
 
     EventUsm(EventId eventId);
     EventUsm(const EventUsm&) = delete;
@@ -20,32 +37,21 @@ public:
 
     void operator=(const EventUsm&) = delete;
 
-    bool allocateOnDevice(sycl::queue& queue) override;
-    bool deallocateOnDevice(sycl::queue& queue) override;
-    DataUsm::TransferEvents transferToDevice(sycl::queue& queue) override;
-    DataUsm::TransferEvents transferToHost(sycl::queue& queue) override;
+    TransferableData::TransferEvents transferToDevice() override;
+    TransferableData::TransferEvents transferToHost() override;
 
-    bool takeResourceGroup(const DeviceResourceGroup& resourceGroup, const sycl::queue& queue) override;
-    std::pair<std::unique_ptr<DeviceResourceGroup>, const sycl::queue*> releaseResourceGroup() override;
+    static void copyHostData(const EventUsm& source, EventUsm& destination);
 
-    // Allocates resources on device without host data.
-    static std::unique_ptr<DeviceResourceGroup> allocateDeviceResources(sycl::queue& queue);
-    // Deallocates resources on device without host data.
-    static void deallocateDeviceResources(const DeviceResourceGroup& resourceGroup, sycl::queue& queue);
+    static constexpr u_int32_t MaxPoints = 1e5;
 
-    // Direct access to frequently accessed data for performance reasons.
-    // Manipulate data under the pointers but don't manage memory directly.
     EventId eventId_;
-
     u_int32_t hostNumPoints_ = 0;
-    float hostXs_[MaxPoints];
-    float hostYs_[MaxPoints];
-    float hostZs_[MaxPoints];
-    LayerNumber hostLayers_[MaxPoints];
+    float* hostXs_;
+    float* hostYs_;
+    float* hostZs_;
+    LayerNumber* hostLayers_;
+    EventKernelMemory* kernelMemory_;
 
-    u_int32_t* deviceNumPoints_ = nullptr;
-    float* deviceXs_ = nullptr;
-    float* deviceYs_ = nullptr;
-    float* deviceZs_ = nullptr;
-    LayerNumber* deviceLayers_ = nullptr;
+protected:
+    void setKernelMemoryInternal(KernelMemory* kernelMemory) override;
 };

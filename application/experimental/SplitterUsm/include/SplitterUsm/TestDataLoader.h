@@ -30,5 +30,6 @@ public:
 
     static std::optional<SplitterSettings> readSplitterSettings(const std::string& path);
     static bool writeSplitterSettings(const std::string& path, const SplitterSettings& settings);
+    static std::optional<std::unique_ptr<EventUsm>> readEvent(const std::string& path, EventUsm::EventId eventId);
     static std::optional<PointsWithRegionIds> readPointsWithRegionIds(const std::string& path, EventUsm::EventId eventId);
 };

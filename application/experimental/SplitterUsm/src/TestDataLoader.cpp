@@ -32,8 +32,8 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
         // Splitter properties
         const float minZAngle = json["splitter_properties"]["min_z_angle"];
         const float maxZAngle = json["splitter_properties"]["max_z_angle"];
-        const float minXAgle = json["splitter_properties"]["min_x_angle"];
-        const float maxXAgle = json["splitter_properties"]["max_x_angle"];
+        const float minXAngle = json["splitter_properties"]["min_x_angle"];
+        const float maxXAngle = json["splitter_properties"]["max_x_angle"];
         const float poleRegionAngle = json["splitter_properties"]["pole_region_angle"];
         const float interactionRegionMin = json["splitter_properties"]["interaction_region_min"];
         const float interactionRegionMax = json["splitter_properties"]["interaction_region_max"];
@@ -41,6 +41,8 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
         const float xAngleMargin = json["splitter_properties"]["x_angle_margin"];
         const u_int8_t numZRanges = json["splitter_properties"]["num_z_ranges"];
         const u_int8_t numXRanges = json["splitter_properties"]["num_x_ranges"];
+        const float filterOutCenterR = json["splitter_properties"]["filter_out_center_r"];
+        const float filterOutCenterZ = json["splitter_properties"]["filter_out_center_z"];
 
         // Wedges
         ConstSizeVector<SplitterSettings::Wedge, SplitterSettings::MaxWedgesNum> wedges;
@@ -68,11 +70,12 @@ std::optional<SplitterSettings> TestDataLoader::readSplitterSettings(const std::
         return SplitterSettings(
             maxAbsXy, maxAbsZ,
             minZAngle, maxZAngle,
-            minXAgle, maxXAgle,
+            minXAngle, maxXAngle,
             poleRegionAngle,
             interactionRegionMin, interactionRegionMax,
             zAngleMargin, xAngleMargin,
             numZRanges, numXRanges,
+            filterOutCenterR, filterOutCenterZ,
             std::move(wedges),
             std::move(poleRegions)
         );
@@ -93,8 +96,8 @@ bool TestDataLoader::writeSplitterSettings(const std::string& path, const Splitt
     // Splitter properties
     json["splitter_properties"]["min_z_angle"] = settings.minZAngle_;
     json["splitter_properties"]["max_z_angle"] = settings.maxZAngle_;
-    json["splitter_properties"]["min_x_angle"] = settings.minXAgle_;
-    json["splitter_properties"]["max_x_angle"] = settings.maxXAgle_;
+    json["splitter_properties"]["min_x_angle"] = settings.minXAngle_;
+    json["splitter_properties"]["max_x_angle"] = settings.maxXAngle_;
     json["splitter_properties"]["pole_region_angle"] = settings.poleRegionAngle_;
     json["splitter_properties"]["interaction_region_min"] = settings.interactionRegionMin_;
     json["splitter_properties"]["interaction_region_max"] = settings.interactionRegionMax_;
@@ -102,6 +105,8 @@ bool TestDataLoader::writeSplitterSettings(const std::string& path, const Splitt
     json["splitter_properties"]["x_angle_margin"] = settings.xAngleMargin_;
     json["splitter_properties"]["num_z_ranges"] = settings.numZRanges_;
     json["splitter_properties"]["num_x_ranges"] = settings.numXRanges_;
+    json["splitter_properties"]["filter_out_center_r"] = settings.filterOutCenterR_;
+    json["splitter_properties"]["filter_out_center_z"] = settings.filterOutCenterZ_;
 
     // Wedges
     for (auto i = 0; i < settings.wedges_.getSize(); ++i)
@@ -138,6 +143,53 @@ bool TestDataLoader::writeSplitterSettings(const std::string& path, const Splitt
 
     return true;
 }
+
+std::optional<std::unique_ptr<EventUsm>> TestDataLoader::readEvent(const std::string& path, EventUsm::EventId eventId)
+{
+    try
+    {
+        std::ifstream file(path);
+        if (!file.is_open())
+        {
+            return std::nullopt;
+        }
+
+        // Column names
+        std::string columnNames;
+        std::getline(file, columnNames);
+        static_cast<void>(columnNames);
+
+        auto event = std::make_unique<EventUsm>(eventId);
+
+        // Read the points
+        std::string line;
+        while (std::getline(file, line) && line.find(",") != std::string::npos)
+        {
+            std::istringstream iss(line);
+            std::string valueStr;
+
+            // Skip measurement_id and geometry_id
+            std::getline(iss, valueStr, ',');
+            std::getline(iss, valueStr, ',');
+
+            std::getline(iss, valueStr, ',');
+            event->hostXs_[event->hostNumPoints_] = std::stof(valueStr);
+            std::getline(iss, valueStr, ',');
+            event->hostYs_[event->hostNumPoints_] = std::stof(valueStr);
+            std::getline(iss, valueStr, ',');
+            event->hostZs_[event->hostNumPoints_] = std::stof(valueStr);
+
+            event->hostNumPoints_++;
+        }
+
+        return std::optional<std::unique_ptr<EventUsm>>(std::move(event));
+    }
+    catch (const std::exception&)
+    {
+        return std::nullopt;
+    }
+}
+
 
 std::optional<TestDataLoader::PointsWithRegionIds> TestDataLoader::readPointsWithRegionIds(const std::string& path, EventUsm::EventId eventId)
 {

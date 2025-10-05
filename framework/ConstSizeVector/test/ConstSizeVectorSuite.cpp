@@ -2,7 +2,7 @@
 #include "UtSyclHelpers/UtSyclHelpers.h"
 
 #include "gtest/gtest.h"
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 class ConstSizeVectorTestSuite : public testing::Test
 {

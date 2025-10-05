@@ -19,8 +19,8 @@ std::string ITask::stateToString(State state)
         return "WaitingForExecution";
     case State::Executed:
         return "Executed";
-    case State::WaitingForResultTransfer:
-        return "WaitingForResultTransfer";
+    // case State::WaitingForResultTransfer:
+    //     return "WaitingForResultTransfer";
     case State::ResultTransferred:
         return "ResultTransferred";
     case State::Completed:

@@ -9,11 +9,13 @@ INCLUDE
 
 SRC
     src/EventUsm.cpp
+    src/KernelMemory.cpp
     src/ResultUsm.cpp
     src/ITask.cpp
     src/QueueUsm.cpp
     src/TaskUsm.cpp
     src/WorkerUsm.cpp
+    src/TransferableData.cpp
 
 PUBLIC
     Logger
@@ -28,6 +30,21 @@ LOCATION
 
 SRC
     test/EventUsmSuite.cpp
+
+PRIVATE
+    EventUsm
+    ILoggerMock
+)
+
+helix_solver_add_library(ResultUsmSuite
+UNIT_TEST
+SYCL
+
+LOCATION
+    application/experimental/usm
+
+SRC
+    test/ResultUsmSuite.cpp
 
 PRIVATE
     EventUsm

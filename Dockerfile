@@ -1,12 +1,16 @@
-FROM docker.io/intel/oneapi-basekit:2023.2.1-devel-ubuntu20.04
+FROM docker.io/intel/oneapi-basekit:2025.0.2-0-devel-ubuntu22.04
 
 WORKDIR /helix
 
 RUN wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
 RUN echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneAPI.list
 
+RUN wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.0g-2ubuntu4_amd64.deb
+RUN dpkg -i libssl1.1_1.1.0g-2ubuntu4_amd64.deb
+RUN rm libssl1.1_1.1.0g-2ubuntu4_amd64.deb
+
 RUN apt-get update
-RUN apt-get -y install cmake libgtest-dev libgmock-dev nano build-essential nlohmann-json3-dev dpkg-dev g++ gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev python libssl-dev valgrind
+RUN apt-get -y install cmake libgtest-dev libgmock-dev nano build-essential nlohmann-json3-dev dpkg-dev g++ g++-9 gcc binutils libx11-dev libxpm-dev libxft-dev libxext-dev python3 libssl-dev valgrind
 
 RUN mkdir /helix/lib
 WORKDIR /helix/lib

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <numeric>
 #include <random>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <cmath>
 #include <stdexcept>
 

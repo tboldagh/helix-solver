@@ -2,7 +2,7 @@
 
 #include "ConstSizeVector/ConstSizeVector.h"
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <vector>
 
 
@@ -13,7 +13,7 @@ public:
     {
     public:
         Wedge() {}; // Clang bug: https://stackoverflow.com/questions/43819314/default-member-initializer-needed-within-definition-of-enclosing-class-outside
-        Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth);
+        Wedge(u_int16_t id, float zAngleMin, float zAngleMax, float xAngleMin, float xAngleMax, float interactionRegionWidth, u_int8_t solutionHitsThreshold = 0, u_int8_t linesCrossingsThreshold = 0, u_int8_t skipCrossingsCheckThreshold = 0);
         Wedge(const Wedge&) = default;
         Wedge(Wedge&&) = default;
         Wedge& operator=(const Wedge&) = default;
@@ -23,12 +23,16 @@ public:
         bool operator!=(const Wedge& other) const { return !(*this == other); }
         bool isValid() const;   // See SplitterNotebook.ipynb notes
 
-        u_int16_t id_ = 0;
+        u_int16_t id_ = 0;  // 0 is reserved for invalid region
         float zAngleMin_ = 0;
         float zAngleMax_ = 0;
         float xAngleMin_ = 0;
         float xAngleMax_ = 0;
         float interactionRegionWidth_ = 0;
+
+        u_int8_t solutionHitsThreshold_ = 0;
+        u_int8_t linesCrossingsThreshold_ = 0;
+        u_int8_t skipCrossingsCheckThreshold_ = 0;
     };
 
     class PoleRegion
@@ -45,17 +49,17 @@ public:
         bool operator!=(const PoleRegion& other) const { return !(*this == other); }
         bool isValid() const;   // See SplitterNotebook.ipynb notes
 
-        u_int16_t id_ = 0;
+        u_int16_t id_ = 0;  // 0 is reserved for invalid region
         float xAngle_ = 0;
         float interactionRegionWidth_ = 0;
     };
 
-    static constexpr u_int8_t MaxRegionsPerPoint = 32;
-    static constexpr u_int16_t MaxWedgesNum = 1024;
+    static constexpr u_int8_t MaxRegionsPerPoint = 128;
+    static constexpr u_int16_t MaxWedgesNum = 16384;
     using Range = std::pair<float, float>;
 
     SplitterSettings() {}; // Clang bug: https://stackoverflow.com/questions/43819314/default-member-initializer-needed-within-definition-of-enclosing-class-outside
-    SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAgle, float maxXAgle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges = {}, ConstSizeVector<PoleRegion, 2>&& poleRegions = {});
+    SplitterSettings(float maxAbsXy, float maxAbsZ, float minZAngle, float maxZAngle, float minXAngle, float maxXAngle, float poleRegionAngle, float interactionRegionMin, float interactionRegionMax, float zAngleMargin, float xAngleMargin, u_int8_t numZRanges, u_int8_t numXRanges, float filterOutCenterR, float filterOutCenterZ, ConstSizeVector<Wedge, MaxWedgesNum>&& wedges = {}, ConstSizeVector<PoleRegion, 2>&& poleRegions = {});
     SplitterSettings(const SplitterSettings&) = default;
     SplitterSettings(SplitterSettings&&) = default;
     SplitterSettings& operator=(const SplitterSettings&) = default;
@@ -72,8 +76,8 @@ public:
     // Splitter properties
     float minZAngle_;
     float maxZAngle_;
-    float minXAgle_;
-    float maxXAgle_;
+    float minXAngle_;
+    float maxXAngle_;
     float poleRegionAngle_;
     float interactionRegionMin_;
     float interactionRegionMax_;
@@ -81,6 +85,8 @@ public:
     float xAngleMargin_;
     u_int8_t numZRanges_;
     u_int8_t numXRanges_;
+    float filterOutCenterR_;
+    float filterOutCenterZ_;
 
     // Regions
     ConstSizeVector<Wedge, MaxWedgesNum> wedges_;

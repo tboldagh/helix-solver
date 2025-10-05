@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <string>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <cmath>
 
 
@@ -41,7 +41,7 @@ TEST_F(SyclCompatibilityTest, WedgeTransferableToKernel)
         {
             deviceWedgeCopy[0] = deviceWedge[0];
         });
-    });
+    }).wait();
 
     SplitterSettings::Wedge wedgeCopy;
     queue_.memcpy(&wedgeCopy, deviceWedgeCopy, sizeof(SplitterSettings::Wedge)).wait();
@@ -68,7 +68,7 @@ TEST_F(SyclCompatibilityTest, PoleRegionTransferableToKernel)
         {
             devicePoleRegionCopy[0] = devicePoleRegion[0];
         });
-    });
+    }).wait();
 
     SplitterSettings::PoleRegion poleRegionCopy;
     queue_.memcpy(&poleRegionCopy, devicePoleRegionCopy, sizeof(SplitterSettings::PoleRegion)).wait();
@@ -82,16 +82,18 @@ TEST_F(SyclCompatibilityTest, SplitterSettingsTransferableToKernel)
     constexpr float maxAbsZ = 3100.0;
     constexpr float minZAngle = 0.0;
     constexpr float maxZAngle = 2.0 * M_PI;
-    constexpr float minXAgle = 1.0 / 16 * M_PI;
-    constexpr float maxXAgle = 15.0 / 16 * M_PI;
+    constexpr float minXAngle = 1.0 / 16 * M_PI;
+    constexpr float maxXAngle = 15.0 / 16 * M_PI;
     constexpr float poleRegionAngle = 1.0 / 16 * M_PI;
-    constexpr float interactionRegionMin = -250.0;
-    constexpr float interactionRegionMax = 250.0;
+    constexpr float interactionRegionMin = -200.0;
+    constexpr float interactionRegionMax = 200.0;
     constexpr float zAngleMargin = 4.0 / 256 * M_PI;
     constexpr float xAngleMargin = 2.0 / 256 * M_PI;
     constexpr u_int8_t numZRanges = 16;
     constexpr u_int8_t numXRanges = 8;
-    const SplitterSettings settings(maxAbsXy, maxAbsZ, minZAngle, maxZAngle, minXAgle, maxXAgle, poleRegionAngle, interactionRegionMin, interactionRegionMax, zAngleMargin, xAngleMargin, numZRanges, numXRanges);
+    constexpr float filterOutCenterR = 150.0;
+    constexpr float filterOutCenterZ = 500.0;
+    const SplitterSettings settings(maxAbsXy, maxAbsZ, minZAngle, maxZAngle, minXAngle, maxXAngle, poleRegionAngle, interactionRegionMin, interactionRegionMax, zAngleMargin, xAngleMargin, numZRanges, numXRanges, filterOutCenterR, filterOutCenterZ);
     ASSERT_TRUE(settings.isValid());
 
     auto deviceSettings = sycl::malloc_device<SplitterSettings>(1, queue_);

@@ -31,6 +31,20 @@ PRIVATE
     SplitterUsm
 )
 
+helix_solver_add_library(SplitterTest
+TYPE
+    STATIC
+
+INCLUDE
+    test-include
+
+SRC
+    test-src/SplitterTest.cpp
+
+PRIVATE
+    SplitterUsm
+)
+
 helix_solver_add_library(SplitterSettingsSuite
 UNIT_TEST
 SYCL
@@ -56,6 +70,7 @@ SRC
     test/SplitterSuite.cpp
 
 PRIVATE
+    SplitterTest
     SplitterUsm
     ILoggerMock
 )

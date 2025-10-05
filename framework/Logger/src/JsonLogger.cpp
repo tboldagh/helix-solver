@@ -35,6 +35,11 @@ JsonLogger::~JsonLogger()
 
 void JsonLogger::log(LogMessage&& message)
 {
+    if (message.getSeverity() < minSeverity_)
+    {
+        return;
+    }
+
     std::chrono::microseconds microsecondsSinceEpoch{std::chrono::time_point_cast<std::chrono::microseconds>(message.getTimestamp()).time_since_epoch()};
     std::time_t seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::microseconds(microsecondsSinceEpoch)).count();
     std::time_t microseconds = std::chrono::microseconds(microsecondsSinceEpoch % 1000000).count();
@@ -48,6 +53,11 @@ void JsonLogger::log(LogMessage&& message)
     file_ << "\t\"severity\": \"" << message.getSeverityString() << "\"," << std::endl;
     file_ << "\t\"message\": \"" << message.getMessage() << "\"" << std::endl;
     file_ << "}," << std::endl;
+}
+
+void JsonLogger::setMinSeverity(LogMessage::Severity minSeverity)
+{
+    minSeverity_ = minSeverity;
 }
 
 void JsonLogger::createDirectoryIfNotExists()

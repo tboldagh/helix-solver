@@ -1,0 +1,1178 @@
+#include "CpuHelixSolver/HelixSolver.h"
+#include "SplitterUsm/Splitter.h"
+#include "CpuHelixSolver/Event.h"
+#include "CpuHelixSolver/Result.h"
+#include "CpuHelixSolver/Task.h"
+#include "Logger/OstreamLogger.h"
+#include "Logger/Logger.h"
+#include "RootEventLoader/RootEventLoader.h"
+#include "SpacepointsGenerator/SpacepointsGenerator.h"
+#include "DataTypes/Spacepoint.h"
+#include "DataTypes/ParticleInitial.h"
+
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+#include <fstream>
+
+class HelixSolverTest : public ::testing::Test
+{
+protected:
+    HelixSolverTest()
+    : splitter_(getSplitterSettings())
+    , helixSolver_(splitter_)
+    , task_(event_, result_)
+    {
+        Logger::ILogger::setGlobalInstance(&logger_);
+    }
+
+    ~HelixSolverTest() override
+    {
+        Logger::ILogger::setGlobalInstance(nullptr);
+    }
+
+    static SplitterSettings getSplitterSettings()
+    {
+        constexpr float maxAbsXy = 1100.0;
+        constexpr float maxAbsZ = 3100.0;
+        constexpr float minZAngle = 0.0;
+        constexpr float maxZAngle = 2.0 * M_PI;
+        constexpr float minXAngle = 1.0 / 16 * M_PI;
+        constexpr float maxXAngle = 15.0 / 16 * M_PI;
+        constexpr float poleRegionAngle = 1.0 / 16 * M_PI;
+        constexpr float interactionRegionMin = -200.0;
+        constexpr float interactionRegionMax = 200.0;
+        constexpr float zAngleMargin = 4.0 / 256 * M_PI;
+        constexpr float xAngleMargin = 2.0 / 256 * M_PI;
+        constexpr u_int8_t numZRanges = 16;
+        constexpr u_int8_t numXRanges = 16;
+        constexpr float filterOutCenterR = 150.0;
+        constexpr float filterOutCenterZ = 500.0;
+        return SplitterSettings(
+            maxAbsXy, maxAbsZ,
+            minZAngle, maxZAngle,
+            minXAngle, maxXAngle,
+            poleRegionAngle,
+            interactionRegionMin, interactionRegionMax,
+            zAngleMargin, xAngleMargin,
+            numZRanges, numXRanges,
+            filterOutCenterR, filterOutCenterZ
+        );
+    }
+
+    static void writeRegion(float* sourceAndDestination, uint32_t destinationBegin, const std::vector<u_int32_t>& sourceIndexes)
+    {
+        for (u_int32_t i = 0; i < sourceIndexes.size(); ++i)
+        {
+            sourceAndDestination[destinationBegin + i] = sourceAndDestination[sourceIndexes[i]];
+        }
+    }
+
+    static void writeRegion(u_int8_t* sourceAndDestination, uint32_t destinationBegin, const std::vector<u_int32_t>& sourceIndexes)
+    {
+        for (u_int32_t i = 0; i < sourceIndexes.size(); ++i)
+        {
+            sourceAndDestination[destinationBegin + i] = sourceAndDestination[sourceIndexes[i]];
+        }
+    }
+
+    static void assertRegionEq(const float* data, u_int32_t actualBegin, u_int32_t actualEnd, const std::vector<u_int32_t>& expectedIndexes)
+    {
+        for (u_int32_t i = 0; i < actualEnd - actualBegin; ++i)
+        {
+            EXPECT_EQ(data[actualBegin + i], data[expectedIndexes[i]]);
+        }
+    }
+
+    static void assertRegionEq(const u_int8_t* data, u_int32_t actualBegin, u_int32_t actualEnd, const std::vector<u_int32_t>& expectedIndexes)
+    {
+        for (u_int32_t i = 0; i < actualEnd - actualBegin; ++i)
+        {
+            EXPECT_EQ(data[actualBegin + i], data[expectedIndexes[i]]);
+        }
+    }
+
+    Logger::OstreamLogger logger_{std::cout};
+
+    Splitter splitter_;
+    HelixSolver helixSolver_;
+    Event event_;
+    Result result_;
+    Task task_;
+};
+
+class RegionHitTest : public HelixSolverTest
+{
+protected:
+    RegionHitTest() = default;
+    ~RegionHitTest() override = default;
+
+    static constexpr float qOverPtMin = 1.0f;
+    static constexpr float qOverPtMax = 2.0f;
+    static constexpr float phi0Min = 1.0f;
+    static constexpr float phi0Max = 2.0f;
+    static constexpr u_int8_t qOverPtDivisionLevel = 1;
+    static constexpr u_int8_t phi0DivisionLevel = 1;
+    AccumulatorRegion region_{qOverPtMin, qOverPtMax, phi0Min, phi0Max, qOverPtDivisionLevel, phi0DivisionLevel};
+};
+
+TEST_F(RegionHitTest, AboveRegion)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 5.0f;
+
+    EXPECT_FALSE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, TopRightCorner)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 4.0f - 1e-6f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, CrossingRight)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 3.5f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, BottomRightCorner)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 2.0f;
+    constexpr float phi = 5.0f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, TopLeftAndBottomRightCorner)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 3.0f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, AboveLeftAndBelowRight)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 4.0f;
+    constexpr float phi = 8.0f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, TopLeftCorner)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 2.0f;
+    constexpr float phi = 4.0f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, CrossingLeft)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 2.5f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, CrossingLeftAndRight)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 0.5f;
+    constexpr float phi = 2.0f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, BottomLeftCorner)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 2.0f;
+
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+}
+
+TEST_F(RegionHitTest, BelowRegion)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 1.0f;
+
+    EXPECT_FALSE(helixSolver_.regionHit(region_, r, phi));
+}
+
+
+class FillNewPointListTest : public RegionHitTest
+{
+protected:
+    FillNewPointListTest()
+    {
+        regionSolverData_.numPoints_ = 0;
+
+        // Fill with dummy values make sure the results are not accidental
+        for (u_int32_t i = 0; i < HelixSolver::RegionSolverData::MaxPointListsPointsNum; ++i)
+        {
+            regionSolverData_.pointListsRs_[i] = 2137.0f;
+            regionSolverData_.pointListsPhis_[i] = 2137.0f;
+            regionSolverData_.pointListsLayers_[i] = 42;
+        }
+    }
+
+    ~FillNewPointListTest() override = default;
+    
+    HelixSolver::RegionSolverData regionSolverData_;
+};
+
+
+TEST_F(FillNewPointListTest, SinglePointInRegion)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 3.0f;
+    EXPECT_TRUE(helixSolver_.regionHit(region_, r, phi));
+
+    regionSolverData_.pointListsRs_[0] = r;
+    regionSolverData_.pointListsPhis_[0] = phi;
+    regionSolverData_.pointListsLayers_[0] = 1;
+
+    AccumulatorRegion sourceRegion = region_;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 1;
+    region_.pointListBegin_ = sourceRegion.pointListEnd_;
+    region_.pointListEnd_ = sourceRegion.pointListEnd_;
+
+    helixSolver_.fillNewPointList(region_, sourceRegion, regionSolverData_);
+    EXPECT_EQ(region_.pointListBegin_, sourceRegion.pointListEnd_);
+    EXPECT_EQ(region_.pointListEnd_, 2);
+    EXPECT_EQ(regionSolverData_.pointListsRs_[1], r);
+    EXPECT_EQ(regionSolverData_.pointListsPhis_[1], phi);
+    EXPECT_EQ(regionSolverData_.pointListsLayers_[1], 1);
+}
+
+TEST_F(FillNewPointListTest, SinglePointNotInRegion)
+{
+    constexpr float r = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    constexpr float phi = 10.0f;
+    EXPECT_FALSE(helixSolver_.regionHit(region_, r, phi));
+
+    regionSolverData_.pointListsRs_[0] = r;
+    regionSolverData_.pointListsPhis_[0] = phi;
+    regionSolverData_.pointListsLayers_[0] = 1;
+
+    AccumulatorRegion sourceRegion = region_;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 1;
+    region_.pointListBegin_ = sourceRegion.pointListEnd_;
+    region_.pointListEnd_ = sourceRegion.pointListEnd_;
+
+    helixSolver_.fillNewPointList(region_, sourceRegion, regionSolverData_);
+    EXPECT_EQ(region_.pointListBegin_, sourceRegion.pointListEnd_);
+    EXPECT_EQ(region_.pointListEnd_, 1);
+}
+
+TEST_F(FillNewPointListTest, TwoPointsOneInRegion)
+{
+    // First point - not in region
+    regionSolverData_.pointListsRs_[0] = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    regionSolverData_.pointListsPhis_[0] = 10.0f;
+    EXPECT_FALSE(helixSolver_.regionHit(region_, regionSolverData_.pointListsRs_[0], regionSolverData_.pointListsPhis_[0]));
+
+    // Second point - in region
+    regionSolverData_.pointListsRs_[1] = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    regionSolverData_.pointListsPhis_[1] = 3.0f;
+    EXPECT_TRUE(helixSolver_.regionHit(region_, regionSolverData_.pointListsRs_[1], regionSolverData_.pointListsPhis_[1]));
+
+    // Set up source region with both points
+    const std::vector<u_int32_t> sourcePointListIndexes = {0, 1};
+    writeRegion(regionSolverData_.pointListsRs_, 0, sourcePointListIndexes);
+    writeRegion(regionSolverData_.pointListsPhis_, 0, sourcePointListIndexes);
+    writeRegion(regionSolverData_.pointListsLayers_, 0, sourcePointListIndexes);
+
+
+    AccumulatorRegion sourceRegion = region_;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 2;
+    region_.pointListBegin_ = sourceRegion.pointListEnd_;
+    region_.pointListEnd_ = sourceRegion.pointListEnd_;
+
+    helixSolver_.fillNewPointList(region_, sourceRegion, regionSolverData_);
+    EXPECT_EQ(region_.pointListBegin_, sourceRegion.pointListEnd_);
+    EXPECT_EQ(region_.pointListEnd_, 3);
+    assertRegionEq(regionSolverData_.pointListsRs_, 2, 3, {1});
+    assertRegionEq(regionSolverData_.pointListsPhis_, 2, 3, {1});
+    assertRegionEq(regionSolverData_.pointListsLayers_, 2, 3, {1});
+}
+
+class FillNewPointListMultiplePointsTest : public FillNewPointListTest
+{
+protected:
+    FillNewPointListMultiplePointsTest()
+    {
+        for (float phi : inRegionPhis_)
+        {
+            EXPECT_TRUE(helixSolver_.regionHit(region_, r_, phi));
+        }
+
+        for (float phi : notInRegionPhis_)
+        {
+            EXPECT_FALSE(helixSolver_.regionHit(region_, r_, phi));
+        }
+
+        for (unsigned i = 0; i < inRegionIndexes_.size(); ++i)
+        {
+            regionSolverData_.pointListsRs_[inRegionIndexes_[i]] = r_;
+            regionSolverData_.pointListsPhis_[inRegionIndexes_[i]] = inRegionPhis_[i];
+            regionSolverData_.pointListsLayers_[inRegionIndexes_[i]] = 1;
+        }
+
+        for (unsigned i = 0; i < notInRegionIndexes_.size(); ++i)
+        {
+            regionSolverData_.pointListsRs_[notInRegionIndexes_[i]] = r_;
+            regionSolverData_.pointListsPhis_[notInRegionIndexes_[i]] = notInRegionPhis_[i];
+            regionSolverData_.pointListsLayers_[notInRegionIndexes_[i]] = 1;
+        }
+    }
+
+    ~FillNewPointListMultiplePointsTest() override = default;
+
+    const float r_ = 2.0f / HelixSolver::BMagnitude * 1.0f;
+    const std::vector<float> inRegionPhis_ = { 2.5f, 2.75f, 3.0f, 3.25f, 3.5f};
+    const std::vector<float> notInRegionPhis_ = { 0.0f, 1.0f, 5.0f, 6.0f, 7.0f};
+    // Mixed on purpose
+    const std::vector<u_int32_t> inRegionIndexes_ = {0, 3, 4, 8, 9};
+    const std::vector<u_int32_t> notInRegionIndexes_ = {1, 2, 5, 6, 7};
+};
+
+TEST_F(FillNewPointListMultiplePointsTest, Basic)
+{
+    const std::vector<u_int32_t> sourcePointListIndexes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    writeRegion(regionSolverData_.pointListsRs_, 0, sourcePointListIndexes);
+    writeRegion(regionSolverData_.pointListsPhis_, 0, sourcePointListIndexes);
+    writeRegion(regionSolverData_.pointListsLayers_, 0, sourcePointListIndexes);
+
+    AccumulatorRegion sourceRegion = region_;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 10;
+    region_.pointListBegin_ = sourceRegion.pointListEnd_;
+    region_.pointListEnd_ = sourceRegion.pointListEnd_;
+
+    helixSolver_.fillNewPointList(region_, sourceRegion, regionSolverData_);
+    EXPECT_EQ(region_.pointListBegin_, sourceRegion.pointListEnd_);
+    EXPECT_EQ(region_.pointListEnd_, 15);
+    assertRegionEq(regionSolverData_.pointListsRs_, 0, 10, sourcePointListIndexes);
+    assertRegionEq(regionSolverData_.pointListsPhis_, 0, 10, sourcePointListIndexes);
+    assertRegionEq(regionSolverData_.pointListsLayers_, 0, 10, sourcePointListIndexes);
+    assertRegionEq(regionSolverData_.pointListsRs_, 10, 15, inRegionIndexes_);
+    assertRegionEq(regionSolverData_.pointListsPhis_, 10, 15, inRegionIndexes_);
+    assertRegionEq(regionSolverData_.pointListsLayers_, 10, 15, inRegionIndexes_);
+}
+
+TEST_F(FillNewPointListMultiplePointsTest, NewListNotJustAfterSource)
+{
+    const std::vector<u_int32_t> sourcePointListIndexes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    writeRegion(regionSolverData_.pointListsRs_, 0, sourcePointListIndexes);
+    writeRegion(regionSolverData_.pointListsPhis_, 0, sourcePointListIndexes);
+    writeRegion(regionSolverData_.pointListsLayers_, 0, sourcePointListIndexes);
+
+    const std::vector<u_int32_t> unrelatedPointListIndexes = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+    writeRegion(regionSolverData_.pointListsRs_, 10, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsPhis_, 10, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsLayers_, 10, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsRs_, 20, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsPhis_, 20, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsLayers_, 20, unrelatedPointListIndexes);
+
+    AccumulatorRegion sourceRegion = region_;
+    sourceRegion.pointListBegin_ = 0;
+    sourceRegion.pointListEnd_ = 10;
+    region_.pointListBegin_ = 30;    // source + 2 unrelated
+    region_.pointListEnd_ = 30;
+
+    helixSolver_.fillNewPointList(region_, sourceRegion, regionSolverData_);
+    EXPECT_EQ(region_.pointListBegin_, 30);
+    EXPECT_EQ(region_.pointListEnd_, 35);
+    assertRegionEq(regionSolverData_.pointListsRs_, 0, 10, sourcePointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsPhis_, 0, 10, sourcePointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsLayers_, 0, 10, sourcePointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsRs_, 10, 20, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsPhis_, 10, 20, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsLayers_, 10, 20, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsRs_, 20, 30, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsPhis_, 20, 30, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsLayers_, 20, 30, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsRs_, 30, 35, inRegionIndexes_);
+}
+
+TEST_F(FillNewPointListMultiplePointsTest, SourceNotAtBegin)
+{
+    const std::vector<u_int32_t> sourcePointListIndexes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    writeRegion(regionSolverData_.pointListsRs_, 10, sourcePointListIndexes);
+    writeRegion(regionSolverData_.pointListsPhis_, 10, sourcePointListIndexes);
+    writeRegion(regionSolverData_.pointListsLayers_, 10, sourcePointListIndexes);
+
+    const std::vector<u_int32_t> unrelatedPointListIndexes = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+    writeRegion(regionSolverData_.pointListsRs_, 0, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsPhis_, 0, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsLayers_, 0, unrelatedPointListIndexes);
+
+    writeRegion(regionSolverData_.pointListsRs_, 20, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsPhis_, 20, unrelatedPointListIndexes);
+    writeRegion(regionSolverData_.pointListsLayers_, 20, unrelatedPointListIndexes);
+
+    AccumulatorRegion sourceRegion = region_;
+    sourceRegion.pointListBegin_ = 10;
+    sourceRegion.pointListEnd_ = 20;
+    region_.pointListBegin_ = 30;    // unrelated + source + unrelated
+    region_.pointListEnd_ = 30;
+
+    helixSolver_.fillNewPointList(region_, sourceRegion, regionSolverData_);
+    EXPECT_EQ(region_.pointListBegin_, 30);
+    EXPECT_EQ(region_.pointListEnd_, 35);
+    assertRegionEq(regionSolverData_.pointListsRs_, 0, 10, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsPhis_, 0, 10, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsLayers_, 0, 10, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsRs_, 10, 20, sourcePointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsPhis_, 10, 20, sourcePointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsLayers_, 10, 20, sourcePointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsRs_, 20, 30, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsPhis_, 20, 30, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsLayers_, 20, 30, unrelatedPointListIndexes);  // Assert no unwanted changes
+    assertRegionEq(regionSolverData_.pointListsRs_, 30, 35, inRegionIndexes_);
+    assertRegionEq(regionSolverData_.pointListsPhis_, 30, 35, inRegionIndexes_);
+    assertRegionEq(regionSolverData_.pointListsLayers_, 30, 35, inRegionIndexes_);
+}
+
+
+class ProcessNextAccumulatorRegionTest : public FillNewPointListTest
+{
+protected:
+    ProcessNextAccumulatorRegionTest()
+    {
+        regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+        regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+        regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold - 1;  // always skip crossings check
+
+        std::vector<float> rs = {0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0};
+        for (u_int32_t i = 0; i < rs.size(); ++i)
+        {
+            regionSolverData_.pointListsRs_[i] = rs[i];
+        }
+
+        std::vector<float> phis = {2.0, 2.3, 2.6, 2.9, 3.2, 3.5, 3.8, 4.1, 4.4, 4.7};
+        for (u_int32_t i = 0; i < phis.size(); ++i)
+        {
+            regionSolverData_.pointListsPhis_[i] = phis[i];
+        }
+
+        std::vector<uint32_t> layers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        for (u_int32_t i = 0; i < layers.size(); ++i)
+        {
+            regionSolverData_.pointListsLayers_[i] = layers[i];
+        }
+
+        const std::vector<u_int32_t> sourcePointListIndexes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        writeRegion(regionSolverData_.pointListsRs_, 0, sourcePointListIndexes);
+        writeRegion(regionSolverData_.pointListsPhis_, 0, sourcePointListIndexes);
+        writeRegion(regionSolverData_.pointListsLayers_, 0, sourcePointListIndexes);
+    }
+    ~ProcessNextAccumulatorRegionTest() override = default;
+
+    const u_int16_t regionId_ = 42;
+    Result result_;
+};
+
+TEST_F(ProcessNextAccumulatorRegionTest, DropRegionIfNumberOfPointsIsBelowThreshold)
+{
+    region_.qOverPtDivisionLevel_ = HelixSolver::RegionSolverData::QOverPtMaxDivisionLevel - 1;
+    region_.phi0DivisionLevel_ = HelixSolver::RegionSolverData::Phi0MaxDivisionLevel - 1;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = regionSolverData_.regionSolutionHitsThreshold_ - 1;
+    regionSolverData_.accumulatorRegions_[0] = region_;
+    regionSolverData_.accumulatorRegionStackSize_ = 1;
+
+    helixSolver_.processNextAccumulatorRegion(result_, regionSolverData_);
+    EXPECT_EQ(regionSolverData_.accumulatorRegionStackSize_, 0);
+}
+
+TEST_F(ProcessNextAccumulatorRegionTest, DivideInBothDimensionsIfMaxDivisionLevelsNotReached)
+{
+    region_.qOverPtDivisionLevel_ = HelixSolver::RegionSolverData::QOverPtMaxDivisionLevel - 1;
+    region_.phi0DivisionLevel_ = HelixSolver::RegionSolverData::Phi0MaxDivisionLevel - 1;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = regionSolverData_.regionSolutionHitsThreshold_;
+    regionSolverData_.accumulatorRegions_[0] = region_;
+    regionSolverData_.accumulatorRegionStackSize_ = 1;
+
+    helixSolver_.processNextAccumulatorRegion(result_, regionSolverData_);
+    EXPECT_EQ(regionSolverData_.accumulatorRegionStackSize_, 4);
+
+    std::vector<AccumulatorRegion> actualRegions(regionSolverData_.accumulatorRegions_, regionSolverData_.accumulatorRegions_ + regionSolverData_.accumulatorRegionStackSize_);
+    const float qOverPtMiddle = (qOverPtMin + qOverPtMax) / 2;
+    const float phi0Middle = (phi0Min + phi0Max) / 2;
+    EXPECT_THAT(actualRegions, ::testing::Contains(AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Min, phi0Middle, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_ + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Min, phi0Middle, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_ + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Middle, phi0Max, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_ + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Middle, phi0Max, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_ + 1)));
+}
+
+TEST_F(ProcessNextAccumulatorRegionTest, DividePhi0IfMaxDivisionLevelsNotReached)
+{
+    region_.qOverPtDivisionLevel_ = HelixSolver::RegionSolverData::QOverPtMaxDivisionLevel;
+    region_.phi0DivisionLevel_ = HelixSolver::RegionSolverData::Phi0MaxDivisionLevel - 1;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = regionSolverData_.regionSkipCrossingsCheckThreshold_ + 1;
+    regionSolverData_.accumulatorRegions_[0] = region_;
+    regionSolverData_.accumulatorRegionStackSize_ = 1;
+
+    helixSolver_.processNextAccumulatorRegion(result_, regionSolverData_);
+    EXPECT_EQ(regionSolverData_.accumulatorRegionStackSize_, 2);
+
+    std::vector<AccumulatorRegion> actualRegions(regionSolverData_.accumulatorRegions_, regionSolverData_.accumulatorRegions_ + regionSolverData_.accumulatorRegionStackSize_);
+    const float phi0Middle = (phi0Min + phi0Max) / 2;
+    EXPECT_THAT(actualRegions, ::testing::Contains(AccumulatorRegion(qOverPtMin, qOverPtMax, phi0Min, phi0Middle, region_.qOverPtDivisionLevel_, region_.phi0DivisionLevel_ + 1)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(AccumulatorRegion(qOverPtMin, qOverPtMax, phi0Middle, phi0Max, region_.qOverPtDivisionLevel_, region_.phi0DivisionLevel_ + 1)));
+}
+
+TEST_F(ProcessNextAccumulatorRegionTest, DivideQOverPtIfMaxDivisionLevelsNotReached)
+{
+    region_.qOverPtDivisionLevel_ = HelixSolver::RegionSolverData::QOverPtMaxDivisionLevel - 1;
+    region_.phi0DivisionLevel_ = HelixSolver::RegionSolverData::Phi0MaxDivisionLevel;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = regionSolverData_.regionSkipCrossingsCheckThreshold_ + 1;
+    regionSolverData_.accumulatorRegions_[0] = region_;
+    regionSolverData_.accumulatorRegionStackSize_ = 1;
+
+    helixSolver_.processNextAccumulatorRegion(result_, regionSolverData_);
+    EXPECT_EQ(regionSolverData_.accumulatorRegionStackSize_, 2);
+
+    std::vector<AccumulatorRegion> actualRegions(regionSolverData_.accumulatorRegions_, regionSolverData_.accumulatorRegions_ + regionSolverData_.accumulatorRegionStackSize_);
+    const float qOverPtMiddle = (qOverPtMin + qOverPtMax) / 2;
+    EXPECT_THAT(actualRegions, ::testing::Contains(AccumulatorRegion(qOverPtMin, qOverPtMiddle, phi0Min, phi0Max, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_)));
+    EXPECT_THAT(actualRegions, ::testing::Contains(AccumulatorRegion(qOverPtMiddle, qOverPtMax, phi0Min, phi0Max, region_.qOverPtDivisionLevel_ + 1, region_.phi0DivisionLevel_)));
+}
+
+TEST_F(ProcessNextAccumulatorRegionTest, AddSolutionIfMaxDivisionLevelsReached)
+{
+    region_.qOverPtDivisionLevel_ = HelixSolver::RegionSolverData::QOverPtMaxDivisionLevel;
+    region_.phi0DivisionLevel_ = HelixSolver::RegionSolverData::Phi0MaxDivisionLevel;
+    region_.pointListBegin_ = 0;
+    region_.pointListEnd_ = regionSolverData_.regionSkipCrossingsCheckThreshold_ + 1;
+    regionSolverData_.accumulatorRegions_[0] = region_;
+    regionSolverData_.accumulatorRegionStackSize_ = 1;
+
+    helixSolver_.processNextAccumulatorRegion(result_, regionSolverData_);
+    EXPECT_EQ(regionSolverData_.accumulatorRegionStackSize_, 0);
+    EXPECT_EQ(result_.numSolutions_, 1);
+    EXPECT_EQ(result_.solutionHitCounts_[0], HelixSolver::SolutionHitsThreshold);
+    const float expectedR = 1000.0f / (0.5f * (qOverPtMin + qOverPtMax) * HelixSolver::BMagnitude);
+    EXPECT_FLOAT_EQ(result_.solutionRs_[0], expectedR);
+    const float expectedPhi = HelixSolver::wrapMinusPiToPi(0.5f * (phi0Min + phi0Max) + 0.5f * M_PI);
+    EXPECT_FLOAT_EQ(result_.solutionPhis_[0], expectedPhi);
+}
+
+
+class HelixDetectionTest : public FillNewPointListTest
+{
+protected:
+    HelixDetectionTest()
+    : logger_(std::cout)
+    {
+        logger_.setMinSeverity(Logger::LogMessage::Severity::Debug);
+        Logger::ILogger::setGlobalInstance(&logger_);
+    }
+    
+    ~HelixDetectionTest() override = default;
+
+    static float lerp(float minValue, float maxValue, float t)
+    {
+        return minValue + t * (maxValue - minValue);
+    }
+
+    void generateSpacepoints(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints)
+    {
+        constexpr float maxAbsXy = 1100.0f;
+        constexpr float maxAbsZ = 3100.0f;
+        SpacepointsGenerator spacepointsGenerator(maxAbsZ, maxAbsXy);
+        std::vector<DataTypes::Spacepoint> spacepoints = spacepointsGenerator.generate(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
+    
+        for (const auto& spacepoint : spacepoints)
+        {
+            event_.xs_[event_.numPoints_] = spacepoint.x_;
+            event_.ys_[event_.numPoints_] = spacepoint.y_;
+            event_.zs_[event_.numPoints_] = spacepoint.z_;
+            event_.numPoints_++;
+        }
+    }
+
+    void generateSpacepoints(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints)
+    {
+        constexpr float maxAbsXy = 1100.0f;
+        constexpr float maxAbsZ = 3100.0f;
+        SpacepointsGenerator spacepointsGenerator(maxAbsZ, maxAbsXy);
+        std::vector<DataTypes::Spacepoint> spacepoints = spacepointsGenerator.generate(particleInitials, rs, counterClockwise, numPoints);
+
+        for (const auto& spacepoint : spacepoints)
+        {
+            event_.xs_[event_.numPoints_] = spacepoint.x_;
+            event_.ys_[event_.numPoints_] = spacepoint.y_;
+            event_.zs_[event_.numPoints_] = spacepoint.z_;
+            event_.numPoints_++;
+        }
+    }
+
+    void generateSpacepointsAndSolve(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints, u_int16_t regionId)
+    {
+        generateSpacepoints(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
+
+        const u_int32_t eventNumPoints = event_.numPoints_;
+
+        // for (u_int32_t i = 0; i < eventNumPoints; ++i)
+        // {
+        //     LOG_DEBUG("(" + std::to_string(event_.xs_[i]) + ", " + std::to_string(event_.ys_[i]) + ", " + std::to_string(event_.zs_[i]) + ")");
+        // }
+
+        regionSolverData_.regionId_ = regionId;
+        regionSolverData_.numPoints_ = eventNumPoints;
+        for (u_int32_t i = 0; i < eventNumPoints; ++i)
+        {
+            regionSolverData_.indexes_[i] = i;
+        }
+
+        helixSolver_.solveRegion(task_, regionSolverData_);
+    }
+
+    void generateSpacepointsAndSolveTask(const std::vector<float>& xAngles, const std::vector<float>& zAngles, const std::vector<float>& interactionZs, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints, u_int16_t regionId)
+    {
+        generateSpacepoints(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints);
+        
+        const u_int32_t eventNumPoints = event_.numPoints_;
+        
+        // for (u_int32_t i = 0; i < eventNumPoints; ++i)
+        // {
+        //     LOG_DEBUG("(" + std::to_string(event_.xs_[i]) + ", " + std::to_string(event_.ys_[i]) + ", " + std::to_string(event_.zs_[i]) + ")");
+        // }
+        
+        helixSolver_.solve(task_);
+    }
+    void generateSpacepointsAndSolveTask(const std::vector<DataTypes::ParticleInitial>& particleInitials, const std::vector<float>& rs, const std::vector<bool>& counterClockwise, const std::vector<uint8_t>& numPoints, u_int16_t regionId)
+    {
+        generateSpacepoints(particleInitials, rs, counterClockwise, numPoints);
+
+        const u_int32_t eventNumPoints = event_.numPoints_;
+        
+        // for (u_int32_t i = 0; i < eventNumPoints; ++i)
+        // {
+        //     LOG_DEBUG("(" + std::to_string(event_.xs_[i]) + ", " + std::to_string(event_.ys_[i]) + ", " + std::to_string(event_.zs_[i]) + ")");
+        // }
+
+        helixSolver_.solve(task_);
+    }
+
+    static float rToQOverPt(float r)
+    {
+        return 1.0f / (r * HelixSolver::BMagnitude);
+    }
+
+    static float qOverPtToR(float qOverPt)
+    {
+        return 1.0f / (qOverPt * HelixSolver::BMagnitude);
+    }
+
+    void saveResult(const std::string& path)
+    {
+        std::ofstream resultFile(path);
+        for (u_int32_t i = 0; i < result_.numSolutions_; ++i)
+        {
+            resultFile << i << ",\t" 
+                    << static_cast<unsigned>(result_.solutionHitCounts_[i]) << ",\t"
+                    << result_.solutionRs_[i] << ",\t"
+                    << result_.solutionPhis_[i] << ",\t"
+                    << rToQOverPt(result_.solutionRs_[i]) << std::endl;
+        }
+        resultFile.close();
+    }
+
+    bool matchingSolutionExists(float expectedR, float expectedPhi, float expectedQ)
+    {
+        const float minR = (1 - 0.05f) * expectedR;
+        const float maxR = (1 + 0.05f) * expectedR;
+        const float minPhi = HelixSolver::wrapMinusPiToPi(expectedPhi - 0.01f);
+        const float maxPhi = HelixSolver::wrapMinusPiToPi(expectedPhi + 0.01f);
+
+        bool foundMatchingSolution = false;
+        for (u_int32_t i = 0; i < result_.numSolutions_; ++i)
+        {
+            const float r = result_.solutionRs_[i];
+            const float phi = result_.solutionPhis_[i];
+
+            // LOG_DEBUG("r: " + std::to_string(minR) + " | " + std::to_string(r) + " | " + std::to_string(maxR) + ", phi: " + std::to_string(minPhi) + " | " + std::to_string(phi) + " | " + std::to_string(maxPhi) + ", q: " + std::to_string(result_.solutionQs_[i]) + " | " + std::to_string(expectedQ));
+
+            foundMatchingSolution |= r >= minR && r <= maxR && phi >= minPhi && phi <= maxPhi && result_.solutionQs_[i] == expectedQ;
+        }
+
+        if (!foundMatchingSolution)
+        {
+            LOG_WARNING("No matching solution found for r = " + std::to_string(expectedR) + ", phi = " + std::to_string(expectedPhi));
+        }
+
+        return foundMatchingSolution;
+    }
+
+    bool solutionsDoNotRepeat()
+    {
+        for (u_int32_t i = 0; i < result_.numSolutions_; ++i)
+        {
+            for (u_int32_t j = i + 1; j < result_.numSolutions_; ++j)
+            {
+                if (result_.solutionRs_[i] == result_.solutionRs_[j] && result_.solutionPhis_[i] == result_.solutionPhis_[j] && result_.solutionQs_[i] == result_.solutionQs_[j])
+                {
+                    LOG_WARNING("Repating Solution i: " + std::to_string(i) + ", j: " + std::to_string(j) + ", r: " + std::to_string(result_.solutionRs_[i]) + ", phi: " + std::to_string(result_.solutionPhis_[i]) + ", q: " + std::to_string(result_.solutionQs_[i]));
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    void assertSolutionsCorrect(float expectedR, float expectedPhi, float expectedQ, u_int8_t numPoints)
+    {
+        for (u_int32_t i = 0; i < result_.numSolutions_; ++i)
+        {
+            EXPECT_LE(result_.solutionHitCounts_[i], numPoints);
+        }
+        EXPECT_TRUE(matchingSolutionExists(expectedR, expectedPhi, expectedQ));
+    }
+
+    u_int32_t nextRandomInt(uint32_t minValue, uint32_t maxValue)
+    {
+        randomGeneratorValue = (randomGeneratorValue * randomGeneratorA + randomGeneratorC) % randomGeneratorM;
+        return minValue + (randomGeneratorValue % (maxValue - minValue));
+    }
+
+    float nextRandomFloat(float minValue, float maxValue)
+    {
+        return minValue + static_cast<float>(nextRandomInt(0, 10000)) / 10000.0f * (maxValue - minValue);
+    }
+
+    Logger::OstreamLogger logger_;
+
+    // linear congruential generator
+    static constexpr u_int32_t randomGeneratorA = 1103515245;
+    static constexpr u_int32_t randomGeneratorC = 12345;
+    static constexpr u_int32_t randomGeneratorM = 2147483648;
+    u_int32_t randomGeneratorValue = 42;
+};
+
+TEST_F(HelixDetectionTest, SingleHelixBasicWedge)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[1];
+    const float xAngle = (wedge.xAngleMin_ + wedge.xAngleMax_) / 2;
+    const float zAngle = (wedge.zAngleMin_ + wedge.zAngleMax_) / 2;
+    const float interactionZ = 0.0f;
+    const float r = 10000.0f;
+    const bool counterClockwise = true;
+    const uint8_t numPoints = 10;
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
+
+    const float expectedPhi = zAngle + 0.5f * M_PI;
+    const float expectedQ = counterClockwise ? 1.0f : -1.0f;
+    EXPECT_TRUE(matchingSolutionExists(r, expectedPhi, expectedQ));
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+
+TEST_F(HelixDetectionTest, SingleHelixBasicWedgeParticleInitial)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[21];
+    const float r = 10000.0f;
+    const bool counterClockwise = true;
+    const uint8_t numPoints = 10;
+
+    // ParticleInitial(event_id=0, particle_id=81064794869727232, particle_type=4294967085, process=0, vx=0.0263284, vy=-0.0105945, vz=22.9012, vt=-4.93979, px=0.751312, py=0.30547, pz=0.0179915, m=0.13957, q=-1.0, eta=0.0221815, phi=0.386168, pt=0.811038, p=0.811237, vertex_primary_id=18, vertex_secondary_id=0, generation=94, sub_particle_id=0)
+    DataTypes::ParticleInitial particleInitial(0.0263284, -0.0105945, 22.9012, -0.190902, 0.241511, 0.683707, 0.749818);
+    generateSpacepointsAndSolveTask({particleInitial}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
+    
+    const auto [xAngle, zAngle] = SpacepointsGenerator::directionToAngles(particleInitial.directionX_, particleInitial.directionY_, particleInitial.directionZ_);
+    const float expectedPhi = zAngle + 0.5f * M_PI;
+    const float expectedQ = counterClockwise ? 1.0f : -1.0f;
+    EXPECT_TRUE(matchingSolutionExists(r, expectedPhi, expectedQ));
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+
+TEST_F(HelixDetectionTest, SingleHelixRotatedWedge)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[0];
+    const float xAngle = (wedge.xAngleMin_ + wedge.xAngleMax_) / 2;
+    const float zAngle = (2 * M_PI - wedge.zAngleMin_ + wedge.zAngleMax_) / 2;
+    const float interactionZ = 0.0f;
+    const float r = 10000.0f;
+    const bool counterClockwise = true;
+    const uint8_t numPoints = 10;
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
+
+    const float expectedPhi = zAngle + 0.5f * M_PI;
+    const float expectedQ = counterClockwise ? 1.0f : -1.0f;
+    EXPECT_TRUE(matchingSolutionExists(r, expectedPhi, expectedQ));
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+
+class SingleCounterClockwiseHelixInCenterOfWedgeTest : public HelixDetectionTest, public ::testing::WithParamInterface<int> {};
+TEST_P(SingleCounterClockwiseHelixInCenterOfWedgeTest, CounterClockwise)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[GetParam()];
+    const float xAngle = (wedge.xAngleMin_ + wedge.xAngleMax_) / 2;
+    const float zAngle = wedge.zAngleMin_ < wedge.zAngleMax_ ? (wedge.zAngleMin_ + wedge.zAngleMax_) / 2 : (2 * M_PI - wedge.zAngleMin_ + wedge.zAngleMax_) / 2;
+    const float interactionZ = 0.0f;
+    const float r = 10000.0f;
+    const bool counterClockwise = true;
+    const uint8_t numPoints = 10;
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
+
+    const float expectedPhi = zAngle + 0.5f * M_PI;
+    const float expectedQ = counterClockwise ? 1.0f : -1.0f;
+    EXPECT_TRUE(matchingSolutionExists(r, expectedPhi, expectedQ));
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+INSTANTIATE_TEST_SUITE_P(CounterClockwiseParticle, SingleCounterClockwiseHelixInCenterOfWedgeTest, ::testing::Range(0, 256));
+
+class SingleClockwiseHelixInCenterOfWedgeTest : public HelixDetectionTest, public ::testing::WithParamInterface<int> {};
+TEST_P(SingleClockwiseHelixInCenterOfWedgeTest, Clockwise)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[GetParam()];
+    const float xAngle = (wedge.xAngleMin_ + wedge.xAngleMax_) / 2;
+    const float zAngle = wedge.zAngleMin_ < wedge.zAngleMax_ ? (wedge.zAngleMin_ + wedge.zAngleMax_) / 2 : (2 * M_PI - wedge.zAngleMin_ + wedge.zAngleMax_) / 2;
+    const float interactionZ = 0.0f;
+    const float r = 10000.0f;
+    const bool counterClockwise = false;
+    const uint8_t numPoints = 2 * HelixSolver::SolutionHitsThreshold;
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve({xAngle}, {zAngle}, {interactionZ}, {r}, {counterClockwise}, {numPoints}, wedge.id_);
+
+    const float expectedPhi = zAngle + 0.5f * M_PI;
+    const float expectedQ = counterClockwise ? 1.0f : -1.0f;
+    EXPECT_TRUE(matchingSolutionExists(r, expectedPhi, expectedQ));
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+INSTANTIATE_TEST_SUITE_P(ClockwiseParticle, SingleClockwiseHelixInCenterOfWedgeTest, ::testing::Range(0, 256));
+
+TEST_F(HelixDetectionTest, MultipleHelixesBasicWedge)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[1];
+
+    std::vector<float> xAngles;
+    std::vector<float> zAngles;
+    std::vector<float> interactionZs;
+    std::vector<float> rs;
+    std::vector<bool> counterClockwise;
+    std::vector<uint8_t> numPoints;
+    constexpr u_int32_t numHelixes = 5;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
+        zAngles.push_back(nextRandomFloat(wedge.zAngleMin_, wedge.zAngleMax_));
+        interactionZs.push_back(nextRandomFloat(settings.interactionRegionMin_, settings.interactionRegionMax_));
+        rs.push_back(nextRandomFloat(2000.0f, 10000.0f));
+        counterClockwise.push_back(true);
+        numPoints.push_back(8);
+    }
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;    
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints, wedge.id_);
+    
+    std::vector<float> expectedPhis;
+    std::vector<float> expectedQs;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        expectedPhis.push_back(zAngles[i] + 0.5f * M_PI);
+        expectedQs.push_back(counterClockwise[i] ? 1.0f : -1.0f);
+    }
+
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        EXPECT_TRUE(matchingSolutionExists(rs[i], expectedPhis[i], expectedQs[i]));
+    }
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+
+TEST_F(HelixDetectionTest, MultipleHelixesRotatedWedge)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[0];
+
+    std::vector<float> xAngles;
+    std::vector<float> zAngles;
+    std::vector<float> interactionZs;
+    std::vector<float> rs;
+    std::vector<bool> counterClockwise;
+    std::vector<uint8_t> numPoints;
+    constexpr u_int32_t numHelixes = 20;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        const float zAngleMin = wedge.zAngleMin_ < wedge.zAngleMax_ ? wedge.zAngleMax_ : 2 * M_PI - wedge.zAngleMin_;
+        float zAngle = nextRandomFloat(zAngleMin, wedge.zAngleMax_);
+        zAngle = zAngle >= 0 ? zAngle : 2 * M_PI - zAngle;
+
+        xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
+        zAngles.push_back(zAngle);
+        interactionZs.push_back(nextRandomFloat(settings.interactionRegionMin_, settings.interactionRegionMax_));
+        rs.push_back(nextRandomFloat(2000.0f, 10000.0f));
+        counterClockwise.push_back(true);
+        numPoints.push_back(8);
+    }
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;    
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints, wedge.id_);
+    
+    std::vector<float> expectedPhis;
+    std::vector<float> expectedQs;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        expectedPhis.push_back(zAngles[i] + 0.5f * M_PI);
+        expectedQs.push_back(counterClockwise[i] ? 1.0f : -1.0f);
+    }
+
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        EXPECT_TRUE(matchingSolutionExists(rs[i], expectedPhis[i], expectedQs[i]));
+    }
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+
+class MultipleCounterClockwiseHelixInCenterOfWedgeTest : public HelixDetectionTest, public ::testing::WithParamInterface<int> {};
+TEST_P(MultipleCounterClockwiseHelixInCenterOfWedgeTest, CounterClockwise)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[GetParam()];
+
+    std::vector<float> xAngles;
+    std::vector<float> zAngles;
+    std::vector<float> interactionZs;
+    std::vector<float> rs;
+    std::vector<bool> counterClockwise;
+    std::vector<uint8_t> numPoints;
+    constexpr u_int32_t numHelixes = 20;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        const float zAngleMin = wedge.zAngleMin_ < wedge.zAngleMax_ ? wedge.zAngleMax_ : 2 * M_PI - wedge.zAngleMin_;
+        float zAngle = nextRandomFloat(zAngleMin, wedge.zAngleMax_);
+        zAngle = zAngle >= 0 ? zAngle : 2 * M_PI - zAngle;
+
+        xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
+        zAngles.push_back(zAngle);
+        interactionZs.push_back(nextRandomFloat(settings.interactionRegionMin_, settings.interactionRegionMax_));
+        rs.push_back(nextRandomFloat(2000.0f, 10000.0f));
+        counterClockwise.push_back(true);
+        numPoints.push_back(8);
+    }
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints, wedge.id_);
+
+    std::vector<float> expectedPhis;
+    std::vector<float> expectedQs;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        expectedPhis.push_back(zAngles[i] + 0.5f * M_PI);
+        expectedQs.push_back(counterClockwise[i] ? 1.0f : -1.0f);
+    }
+
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        EXPECT_TRUE(matchingSolutionExists(rs[i], expectedPhis[i], expectedQs[i]));
+    }
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+INSTANTIATE_TEST_SUITE_P(CounterClockwiseParticle, MultipleCounterClockwiseHelixInCenterOfWedgeTest, ::testing::Range(0, 256));
+
+class MultipleClockwiseHelixInCenterOfWedgeTest : public HelixDetectionTest, public ::testing::WithParamInterface<int> {};
+TEST_P(MultipleClockwiseHelixInCenterOfWedgeTest, Clockwise)
+{
+    const SplitterSettings& settings = getSplitterSettings();
+    const SplitterSettings::Wedge wedge = settings.wedges_[GetParam()];
+
+    std::vector<float> xAngles;
+    std::vector<float> zAngles;
+    std::vector<float> interactionZs;
+    std::vector<float> rs;
+    std::vector<bool> counterClockwise;
+    std::vector<uint8_t> numPoints;
+    constexpr u_int32_t numHelixes = 20;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        const float zAngleMin = wedge.zAngleMin_ < wedge.zAngleMax_ ? wedge.zAngleMax_ : 2 * M_PI - wedge.zAngleMin_;
+        float zAngle = nextRandomFloat(zAngleMin, wedge.zAngleMax_);
+        zAngle = zAngle >= 0 ? zAngle : 2 * M_PI - zAngle;
+
+        xAngles.push_back(nextRandomFloat(wedge.xAngleMin_, wedge.xAngleMax_));
+        zAngles.push_back(zAngle);
+        interactionZs.push_back(nextRandomFloat(settings.interactionRegionMin_, settings.interactionRegionMax_));
+        rs.push_back(nextRandomFloat(2000.0f, 10000.0f));
+        counterClockwise.push_back(false);
+        numPoints.push_back(8);
+    }
+
+    regionSolverData_.regionSolutionHitsThreshold_ = HelixSolver::SolutionHitsThreshold;
+    regionSolverData_.regionLinesCrossingsThreshold_ = HelixSolver::LinesCrossingsThreshold;
+    regionSolverData_.regionSkipCrossingsCheckThreshold_ = HelixSolver::SolutionHitsThreshold * 2;
+
+    generateSpacepointsAndSolve(xAngles, zAngles, interactionZs, rs, counterClockwise, numPoints, wedge.id_);
+
+    std::vector<float> expectedPhis;
+    std::vector<float> expectedQs;
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        expectedPhis.push_back(zAngles[i] + 0.5f * M_PI);
+        expectedQs.push_back(counterClockwise[i] ? 1.0f : -1.0f);
+    }
+
+    for (u_int32_t i = 0; i < numHelixes; ++i)
+    {
+        EXPECT_TRUE(matchingSolutionExists(rs[i], expectedPhis[i], expectedQs[i]));
+    }
+    EXPECT_TRUE(solutionsDoNotRepeat());
+}
+INSTANTIATE_TEST_SUITE_P(ClockwiseParticle, MultipleClockwiseHelixInCenterOfWedgeTest, ::testing::Range(0, 256));
+
+TEST_F(HelixDetectionTest, FullEvent)
+{
+    // This test assumes that full event contains at least one helix candidate for each region.
+    // Goal is to assert that the kernel is able to find helixes in all regions. There is no
+    // guarantee that the found helixes are correct.
+
+    logger_.setMinSeverity(Logger::LogMessage::Severity::Debug);
+
+    // Set wedges solution hits threshold and lines crossings threshold based on xAngles
+    for (u_int16_t regionId = 1; regionId <= splitter_.settings_.wedges_.getSize(); ++regionId)
+    {
+        SplitterSettings::Wedge& region = splitter_.settings_.wedges_[regionId - 1];
+
+        if (region.xAngleMin_ < 0.2f || region.xAngleMax_ > 2.5f)
+        {
+            region.solutionHitsThreshold_ = 7;
+            region.linesCrossingsThreshold_ = 4;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
+        }
+        else if (region.xAngleMin_ < 0.8f || region.xAngleMax_ > 2.0f)
+        {
+            region.solutionHitsThreshold_ = 6;
+            region.linesCrossingsThreshold_ = 3;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
+        }
+        else if (region.xAngleMin_ < 1.0f || region.xAngleMax_ > 1.8f)
+        {
+            region.solutionHitsThreshold_ = 6;
+            region.linesCrossingsThreshold_ = 3;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
+        }
+        else if (region.xAngleMin_ < 1.4f || region.xAngleMax_ > 1.6f)
+        {
+            region.solutionHitsThreshold_ = 6;
+            region.linesCrossingsThreshold_ = 3;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
+        }
+        else
+        {
+            region.solutionHitsThreshold_ = 6;
+            region.linesCrossingsThreshold_ = 3;
+            region.skipCrossingsCheckThreshold_ = 4 * region.solutionHitsThreshold_;
+        }
+    }
+    helixSolver_.setSplitter(splitter_);
+
+    const std::string eventPath = "/helix/repo/data/odd_output_ttbar_PU200_100/spacepoints.root";
+    RootEventLoader eventLoader;
+    if (!eventLoader.setInputFile(eventPath))
+    {
+        ASSERT_TRUE(false);
+    }
+    
+    constexpr EventUsm::EventId eventId = 0;
+    event_.eventId_ = eventId;
+    ASSERT_TRUE(eventLoader.loadEvent(eventId, event_.xs_, event_.ys_, event_.zs_, &event_.numPoints_));
+
+    const u_int16_t numWedges = splitter_.getNumRegions() - 2;
+    std::vector<u_int32_t*> regionIndexes;
+    regionIndexes.reserve(numWedges);
+    std::vector<u_int32_t*> regionNumPoints;
+    regionNumPoints.reserve(numWedges);
+
+    std::vector<HelixSolver::RegionSolverData> regionSolverData;
+    regionSolverData.reserve(numWedges);
+    for (u_int16_t i = 0; i < numWedges; ++i)
+    {
+        regionSolverData.emplace_back();
+    }
+    for (u_int16_t i = 0; i < numWedges; ++i)
+    {
+        regionIndexes.emplace_back(regionSolverData[i].indexes_);
+        regionNumPoints.emplace_back(&regionSolverData[i].numPoints_);
+    }
+    splitter_.splitIntoRegions(event_.xs_, event_.ys_, event_.zs_, event_.numPoints_, regionIndexes, regionNumPoints, numWedges);
+
+    // Reset number of solutions
+    result_.numSolutions_ = 0;
+
+    uint32_t lastRegionNumSolutions_ = 0;
+    bool allRegionsContainHelix = true;
+    for (u_int16_t regionId = 1; regionId <= splitter_.settings_.wedges_.getSize(); ++regionId)
+    {
+        regionSolverData[regionId - 1].regionId_ = regionId;
+        helixSolver_.solveRegion(task_, regionSolverData[regionId - 1]);
+
+        SplitterSettings::Wedge region = splitter_.settings_.wedges_[regionId - 1];
+        uint32_t regionNumSolutions_ = result_.numSolutions_ - lastRegionNumSolutions_;
+        const float averageHitCount = regionNumSolutions_ > 0 ? std::accumulate(result_.solutionHitCounts_ + lastRegionNumSolutions_, result_.solutionHitCounts_ + lastRegionNumSolutions_ + regionNumSolutions_, 0.0f) / static_cast<float>(regionNumSolutions_) : 0.0f;
+        lastRegionNumSolutions_ = result_.numSolutions_;
+        std::stringstream ss;
+        ss << "Wedge id: " << region.id_
+            << "\tsolutions: " << regionNumSolutions_
+            << "\txAngleMin: " << region.xAngleMin_
+            << "\taverage hit count: " << averageHitCount;
+        LOG_DEBUG(ss.str());
+
+        if (!regionNumSolutions_)
+        {
+            ss.str("");
+            ss << "Wedge id: " << region.id_
+                << "\tNo solutions found!";
+            LOG_WARNING(ss.str());
+            allRegionsContainHelix = false;
+        }
+    }
+    EXPECT_TRUE(allRegionsContainHelix);
+}

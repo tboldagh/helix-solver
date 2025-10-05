@@ -4,6 +4,7 @@
 
 #include <map>
 #include <memory>
+#include <sycl/sycl.hpp>
 
 
 class IQueue;

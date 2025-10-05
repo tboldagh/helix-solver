@@ -1,130 +1,18 @@
-#include "SplitterUsm/TestDataLoader.h"
 #include "SplitterUsm/SplitterSettings.h"
 #include "SplitterUsm/Splitter.h"
 #include "EventUsm/EventUsm.h"
 #include "Logger/Logger.h"
 #include "ILoggerMock/ILoggerMock.h"
+#include "SplitterTest/SplitterTest.h"
 
 #include <gtest/gtest.h>
 #include <fstream>
 #include <string>
 #include <cstdlib>
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include <cmath>
 #include <unordered_set>
 
-
-class SplitterTest : public ::testing::Test
-{
-protected:
-    SplitterTest()
-    : splitterSettings_(getSplitterSettings())
-    , splitter_(splitterSettings_)
-    {
-        writeSplitterSettings();
-    }
-
-    ~SplitterTest() override {}
-
-    SplitterSettings getSplitterSettings()
-    {
-        constexpr float maxAbsXy = 1100.0;
-        constexpr float maxAbsZ = 3100.0;
-        constexpr float minZAngle = 0.0;
-        constexpr float maxZAngle = 2.0 * M_PI;
-        constexpr float minXAgle = 1.0 / 16 * M_PI;
-        constexpr float maxXAgle = 15.0 / 16 * M_PI;
-        constexpr float poleRegionAngle = 1.0 / 16 * M_PI;
-        constexpr float interactionRegionMin = -250.0;
-        constexpr float interactionRegionMax = 250.0;
-        constexpr float zAngleMargin = 4.0 / 256 * M_PI;
-        constexpr float xAngleMargin = 2.0 / 256 * M_PI;
-        constexpr u_int8_t numZRanges = 16;
-        constexpr u_int8_t numXRanges = 8;
-        return SplitterSettings(
-            maxAbsXy, maxAbsZ,
-            minZAngle, maxZAngle,
-            minXAgle, maxXAgle,
-            poleRegionAngle,
-            interactionRegionMin, interactionRegionMax,
-            zAngleMargin, xAngleMargin,
-            numZRanges, numXRanges
-        );
-    }
-
-    void writeSplitterSettings()
-    {
-        ASSERT_TRUE(TestDataLoader::writeSplitterSettings(SplitterSettingsPath, splitterSettings_));
-    }
-
-    static void writePoints(const std::string& path, const std::string& content)
-    {
-        std::ofstream file(path);
-        ASSERT_TRUE(file.is_open());
-        file << content;
-    }
-
-    static void runTestDataGenerator(const std::string& pointsPath, const std::string& pointsWithRegionIdPath)
-    {
-        const std::string command = "python3 " + TestDataGeneratorPath
-                + " --splitter_settings " + SplitterSettingsPath
-                + " --points " + pointsPath
-                + " --points_output " + pointsWithRegionIdPath;
-        ASSERT_EQ(std::system(command.c_str()), 0);
-    }
-
-    void readPointsWithRegionIds(const std::string& path, EventUsm::EventId eventId)
-    {
-        std::optional<TestDataLoader::PointsWithRegionIds> pointsWithRegionIdsOptional = TestDataLoader::readPointsWithRegionIds(path, eventId);
-        ASSERT_TRUE(pointsWithRegionIdsOptional.has_value());
-        pointsWithRegionIds_ = std::move(pointsWithRegionIdsOptional.value());
-    }
-
-    void prepareTestData(const std::string& pointsPath, const std::string& pointsWithRegionIdPath)
-    {
-        runTestDataGenerator(pointsPath, pointsWithRegionIdPath);
-        constexpr EventUsm::EventId eventId = 0;
-        readPointsWithRegionIds(pointsWithRegionIdPath, eventId);
-    }
-
-    bool regionIdsEqual(const Splitter::RegionIds& actual, const Splitter::RegionIds& expected)
-    {
-        std::unordered_set<u_int16_t> actualSet;
-        for (const auto& regionId : actual)
-        {
-            if (regionId == 0)
-            {
-                break;
-            }
-
-            actualSet.insert(regionId);
-        }
-
-        std::unordered_set<u_int16_t> expectedSet;
-        for (const auto& regionId : expected)
-        {
-            if (regionId == 0)
-            {
-                break;
-            }
-
-            expectedSet.insert(regionId);
-        }
-
-        return actualSet == expectedSet;
-    }
-
-    const SplitterSettings splitterSettings_;
-    const Splitter splitter_;
-    static const std::string SandboxPath;
-    static const std::string SplitterSettingsPath;
-    static const std::string TestDataGeneratorPath;
-    TestDataLoader::PointsWithRegionIds pointsWithRegionIds_;
-};
-
-const std::string SplitterTest::SandboxPath = "/tmp/ut_sandbox";
-const std::string SplitterTest::SplitterSettingsPath = SandboxPath + "/SplitterTest_splitterSettings.json";
-const std::string SplitterTest::TestDataGeneratorPath = "/helix/repo/application/experimental/SplitterUsm/TestDataGenerator/TestDataGenerator.py";
 
 class SyclSplitterTest : public SplitterTest
 {
@@ -162,8 +50,10 @@ TEST_F(SyclSplitterTest, Random10Points)
     }
     event->hostNumPoints_ = 10;
 
-    event->allocateOnDevice(queue_);
-    event->transferToDevice(queue_);
+    EventUsm::EventKernelMemory eventMemory(queue_);
+    eventMemory.allocate();
+    event->setKernelMemory(&eventMemory);
+    event->transferToDevice();
 
     auto deviceSplitter = sycl::malloc_device<Splitter>(1, queue_);
     queue_.memcpy(deviceSplitter, &splitter_, sizeof(Splitter)).wait();
@@ -173,17 +63,15 @@ TEST_F(SyclSplitterTest, Random10Points)
 
     queue_.submit([&](sycl::handler& handler)
     {
-        auto xs = event->deviceXs_;
-        auto ys = event->deviceYs_;
-        auto zs = event->deviceZs_;
+        auto xs = event->kernelMemory_->xs_;
+        auto ys = event->kernelMemory_->ys_;
+        auto zs = event->kernelMemory_->zs_;
 
         handler.parallel_for(sycl::range<1>(event->hostNumPoints_), [xs, ys, zs, deviceRegionIds, deviceSplitter](sycl::id<1> idx)
         {
             deviceSplitter->getRegionIds(xs[idx], ys[idx], zs[idx], deviceRegionIds[idx]);
         });
     }).wait();
-
-    event->deallocateOnDevice(queue_);
 
     queue_.memcpy(regionIds.data(), deviceRegionIds, 10 * sizeof(Splitter::RegionIds)).wait();
 
@@ -194,7 +82,9 @@ TEST_F(SyclSplitterTest, Random10Points)
         ASSERT_TRUE(regionIdsEqual(regionIds[i], expectedRegionIds));
     }
 
+    sycl::free(deviceSplitter, queue_);
     sycl::free(deviceRegionIds, queue_);
+    eventMemory.deallocate();
 }
 
 
