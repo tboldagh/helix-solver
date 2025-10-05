@@ -55,7 +55,7 @@ class DetectorPlot:
         for line_x, line_y, line_z in zip(line_xs, line_ys, line_zs):
             self.ax.plot3D(line_x, line_z, line_y, c=color, linewidth=size)
 
-    def plot_wedge(self, wedge, color='yellow'):
+    def plot_wedge(self, wedge, color='yellow', linewidth=1):
         outermost_points = wedge.get_outermost_points()
         interaction_region_zs = wedge.get_interaction_region_zs()
 
@@ -90,9 +90,9 @@ class DetectorPlot:
         zs.append([outermost_points['z_angle_min_x_angle_max']['z'], outermost_points['z_angle_max_x_angle_max']['z']])
 
         for i in range(len(xs)):
-            self.ax.plot(xs[i], zs[i], ys[i], color=color)
+            self.ax.plot(xs[i], zs[i], ys[i], color=color, linewidth=linewidth)
 
-    def plot_pole_region(self, region, num_rays=16, color='yellow'):
+    def plot_pole_region(self, region, num_rays=16, color='yellow', linewidth=1):
         outermost_points = region.get_outermost_points(num_rays)
         interaction_region_z = region.get_interaction_region_z()
 
@@ -114,4 +114,4 @@ class DetectorPlot:
         zs.append([outermost_points[-1]['z'], outermost_points[0]['z']])
 
         for i in range(len(xs)):
-            self.ax.plot(xs[i], zs[i], ys[i], color=color)
+            self.ax.plot(xs[i], zs[i], ys[i], color=color, linewidth=linewidth)

@@ -560,11 +560,11 @@ void CpuHelixSolverTests::writeResultsHeader(std::ofstream& file)
 {
     if (params_.testType_ == SolverTestParams::TestType::SpacepointsSingleEventPerformance)
     {
-        file << "eventId,\ttotal,\tsplitter,\tsolver\n";
+        file << "eventId,\trunId,\ttotal,\tsplitter,\tsolver\n";
     }
     else
     {
-        file << "eventId,\trunId,\tindex,\tr,\tphi,\thitCount,\txAngleMin,\txAngleMax,\tparticleId\n";
+        file << "eventId,\tindex,\tq,\tr,\tphi,\thitCount,\txAngleMin,\txAngleMax,\tparticleId\n";
     }
 }
 
@@ -598,13 +598,14 @@ void CpuHelixSolverTests::writeResultSpacepointsSingleEvent(std::ofstream& file,
     const uint32_t eventId = task.getEvent().eventId_;
     for (uint32_t i = 0; i < result.numSolutions_; ++i)
     {
+        const float q = result.solutionQs_[i];
         const float r = result.solutionRs_[i];
         const float phi = result.solutionPhis_[i];
         const uint32_t hitCount = result.solutionHitCounts_[i];
         const float xAngleMin = result.xAngleMins_[i];
         const float xAngleMax = result.xAngleMaxs_[i];
 
-        file << eventId << ",\t" << i << ",\t" << r << ",\t" << phi << ",\t" << hitCount << ",\t" << xAngleMin << ",\t" << xAngleMax << ",\tnull\n";
+        file << eventId << ",\t" << i << ",\t" << q << ",\t" << r << ",\t" << phi << ",\t" << hitCount << ",\t" << xAngleMin << ",\t" << xAngleMax << ",\tnull\n";
     }
 }
 
@@ -614,13 +615,14 @@ void CpuHelixSolverTests::writeResultParticlesInitial(std::ofstream& file, const
     const uint32_t eventId = params_.eventId_;
     for (uint32_t i = 0; i < result.numSolutions_; ++i)
     {
+        const float q = result.solutionQs_[i];
         const float r = result.solutionRs_[i];
         const float phi = result.solutionPhis_[i];
         const uint32_t hitCount = result.solutionHitCounts_[i];
         const float xAngleMin = result.xAngleMins_[i];
         const float xAngleMax = result.xAngleMaxs_[i];
 
-        file << eventId << ",\t" << i << ",\t" << r << ",\t" << phi << ",\t" << hitCount << ",\t" << xAngleMin << ",\t" << xAngleMax << ",\tnull\n";
+        file << eventId << ",\t" << i << ",\t" << q << ",\t" << r << ",\t" << phi << ",\t" << hitCount << ",\t" << xAngleMin << ",\t" << xAngleMax << ",\tnull\n";
     }
 }
 
@@ -630,6 +632,7 @@ void CpuHelixSolverTests::writeResultRunPerParticleInitial(std::ofstream& file, 
     const uint32_t eventId = task.getEvent().eventId_;
     for (uint32_t i = 0; i < result.numSolutions_; ++i)
     {
+        const float q = result.solutionQs_[i];
         const float r = result.solutionRs_[i];
         const float phi = result.solutionPhis_[i];
         const uint32_t hitCount = result.solutionHitCounts_[i];
@@ -637,7 +640,7 @@ void CpuHelixSolverTests::writeResultRunPerParticleInitial(std::ofstream& file, 
         const float xAngleMax = result.xAngleMaxs_[i];
         const uint64_t particleId = eventIdParticleIdMap_[eventId];
     
-        file << eventId << ",\t" << i << ",\t" << r << ",\t" << phi << ",\t" << hitCount << ",\t" << xAngleMin << ",\t" << xAngleMax << ",\t" << particleId << "\n";
+        file << eventId << ",\t" << i << ",\t" << q << ",\t" << r << ",\t" << phi << ",\t" << hitCount << ",\t" << xAngleMin << ",\t" << xAngleMax << ",\t" << particleId << "\n";
     }
 }
 
